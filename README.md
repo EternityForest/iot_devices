@@ -28,7 +28,7 @@ class RandomDevice(device.Device):
         # On demand requestable data point pulled by application.
         # All you have to do is set the val to a callable.
         self.numeric_data_point("dyn_random")
-        self.set_data_point_getter("random", random.random)
+        self.set_data_point_getter("dyn_random", random.random)
 ```
 
 ## Declare a module has devices
