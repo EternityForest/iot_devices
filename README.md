@@ -36,24 +36,14 @@ This tells the host what module you would need to import to get a device having 
 
 ```json
 {
-	"devices":{
-		"RandomDevice": {
-			"submodule":"devices.random"
-			}
-		}
+    "devices":{
+        "RandomDevice": {
+            "submodule":"devices.random"
+            }
+        }
 } 
 ```
 
-## Declare a module has devices 
-```
-{
-	"devices":{
-		"RandomDevice": {
-			"submodule":"devices.random"
-			}
-		}
-} 
-```
 
 ## Using the device
 

@@ -1,7 +1,7 @@
 {
-	"devices":{
-		"RandomDevice": {
-			"submodule":"devices.random"
-			}
-		}
+    "devices":{
+        "RandomDevice": {
+            "submodule":"devices.random"
+            }
+        }
 } 
