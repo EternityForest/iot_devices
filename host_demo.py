@@ -13,3 +13,6 @@ device = c("Random Device", data)
 
 #One of the values this class exposes
 print(device.datapoints['random'])
+
+# This is an on-demand getter
+print(device.request_data_point('dyn_random'))
