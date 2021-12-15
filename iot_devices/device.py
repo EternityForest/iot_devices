@@ -186,6 +186,7 @@ class Device():
                            unit: str = '',
                            handler:  Optional[Callable[[str,float,Any], Any]] = None,
                            interval: float = 0,
+                           writable=True,
                            **kwargs):
         """register a new numeric data point with the given properties. handler will be called when it changes.
         only meant to be called from within __init__.
@@ -200,6 +201,8 @@ class Device():
         rates by the host, if the host wants to poll.
 
         It does not mean the host SHOULD poll this, it only suggest a rate to poll at if the host has a subscriber to this data.
+
+        Writable is purely for a host that might subclass this, to determine if it should allow writing to the point.
 
 
 
@@ -245,6 +248,7 @@ class Device():
                            unit: str = '',
                            handler: Optional[Callable[[str,float,Any], Any]] = None,
                            interval: float = 0,
+                           writable=True,
                            **kwargs):
         """register a new string data point with the given properties. handler will be called when it changes.
         only meant to be called from within __init__.
@@ -291,6 +295,7 @@ class Device():
                            unit: str = '',
                            handler: Optional[Callable[[Dict,float,Any], Any]] = None,
                            interval: float = 0,
+                            writable=True,
                            **kwargs):
         """register a new string data point with the given properties. handler will be called when it changes.
         only meant to be called from within __init__.
