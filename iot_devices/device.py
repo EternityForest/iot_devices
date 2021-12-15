@@ -34,8 +34,10 @@ class Device():
 
     # this name must be the same as the name of the device itself
     type: str="Device"
-
     default_config={}
+
+    # Iterable of config keys that should be considered secret, and hidden behind asterisks and such.
+    config_secrets={}
 
     def __init__(self, name: str, config: Dict[str, str]):
         """ name must be a special char free string. config must be a dict of string keys and values.
@@ -53,6 +55,12 @@ class Device():
         the class based on the type, then auto-creating a subclass that adds any program-specific features.
         
         the other intent is you just manually create the data and use the device library in your program.
+
+
+        Options starting with temp. are reserved for device specific things that should not actually be saved.
+
+
+        Options endning with __ are used to add additional fields with special meaning.
         """
 
         config=copy.deepcopy(config)
@@ -82,7 +90,7 @@ class Device():
         
 
     @staticmethod
-    def discover_devices(config:Dict[str, str] = {}, current_device: Optional[object]=None, **kwargs) -> Dict[str, Dict]:
+    def discover_devices(config:Dict[str, str] = {}, current_device: Optional[object]=None, intent="", **kwargs) -> Dict[str, Dict]:
         """ gives a dict of device data dicts that could be used to create a new device, indexed by a descriptive name.
         not required and may just return None.
 
@@ -93,6 +101,33 @@ class Device():
         suggesting how to further set up a partly configured device, or suggesting ways to add another similar device.
 
         Kwargs is reserved for further hints on what kinds of devices should be discovered.
+
+        The device should reuse as much of the given config as possible, discarding anything that wouldn't 
+        work with the selected device.
+
+        Intent may be a hint as to what kind of config you are looking for.  If it is "new", that means the host wants to add another
+        similar device.  If it is "replace", the host wants to keep the same config but point at a different physical device.  If it is
+        "configure",  the host wants to look for alternate configurations available for the same exact device.
+
+        Discovery could even be used to suggest configuratons once you already have a connection to a device.
+
+
+        Security gotcha:
+
+        Discovered suggestions MUST NOT have any passwords or secrets if the suggestion is for something other than what
+        the user provided it for, unless the protocol does not reveal the secrets to the server.
+        
+        You do not want to autosuggest trying the same credentials at bad.com that the user gave for example.com.
+
+    
+        
+        UI:
+
+        The suggested UI semantics for discover commands is "Add a similar device" and "Reconfigure this device".
+        
+        Reconfiguration should always be available as the user might always want to take an existing device object and
+        swap out the actual physical device it connects to.
+
 
         """
 
@@ -133,7 +168,8 @@ class Device():
                            unit: str = '',
                            handler: Optional[Callable] = None,
                            default: float = 0,
-                           interval: float = 0):
+                           interval: float = 0,
+                           **kwargs):
         """register a new numeric data point with the given properties. handler will be called when it changes.
         only meant to be called from within __init__.
         
@@ -258,7 +294,10 @@ class Device():
 
         return self.datapoints[name]
 
-    def set_alarm(self, name:str, datapoint:str, expression:str, priority:str="info" ,trip_delay:float=0, auto_ack:bool=False, release_condition:Optional[str]=None):
+    def set_alarm(self, name:str, datapoint:str, 
+            expression:str, priority:str="info" ,
+            trip_delay:float=0, auto_ack:bool=False,
+             release_condition:Optional[str]=None, **kw):
         """ declare an alarm on a certain data point.   this means we should consider the data point to be in an
             alarm state whenever the expression is true.  
             
