@@ -19,12 +19,13 @@ def _discoverPossibleDevices():
 
     paths = copy.deepcopy(sys.path)
     here = os.path.dirname(os.path.abspath(__file__))
-    print(here)
     paths.append(here)
 
     # Priority
     for i in reversed(paths):
-        for d in os.listdir():
+        if not os.path.isdir(i):
+            continue
+        for d in os.listdir(i):
             folder = os.path.join(i,d)
             if os.path.isdir(folder):
                 if os.path.isfile(os.path.join(folder, "devices_manifest.json")):

@@ -1,4 +1,6 @@
-from typing import Callable, Dict, Optional, Union
+import collections
+import traceback
+from typing import Any, Callable, Dict, Optional, Union
 import logging
 import time
 import json
@@ -33,13 +35,13 @@ class Device():
 
 
     # this name must be the same as the name of the device itself
-    type: str="Device"
+    device_type: str="Device"
     default_config={}
 
     # Iterable of config keys that should be considered secret, and hidden behind asterisks and such.
     config_secrets={}
 
-    def __init__(self, name: str, config: Dict[str, str]):
+    def __init__(self, name: str, config: Dict[str, str],**kw):
         """ name must be a special char free string. config must be a dict of string keys and values.
         all options that are device-specific must begin with "device."
         
@@ -65,6 +67,8 @@ class Device():
 
         config=copy.deepcopy(config)
 
+        if config.get("type",self.device_type) != self.device_type:
+            raise ValueError("This config does not match this class type:"+str((config['type'], self,type)))
     
 
         # Raise error on bad data.
@@ -82,9 +86,11 @@ class Device():
             if not i in self.config:
                 self.set_config_option(i,self.default_config[i])
 
+        self.name=name
         if 'name' in self.config:
             if not self.config['name']== name:
                 raise ValueError("Nonmatching name")
+            name=self.name = config[self.name]
         else:
             self.set_config_option('name', name)
         
@@ -144,19 +150,31 @@ class Device():
         the host is responsible for subclassing this and actually saving the data somehow, should that feature be needed.
         """
 
-        self.config[key] = value
-        self.datapoints = {}
+        # Auto strip the values to clean them up
+        self.config[key] = value.strip()
 
-    def print(self, str: str, title: str = ""):
+
+    def set_config_default(self, key: str, value: str):
+        """sets an option in self.config if it does not exist or is blank. used for subclassing as you may want to persist.
+       
+         Calls into set_config_option, you should not need to subclass this.
+        """
+
+        if not key in self.config or not self.config[key].strip():
+            self.set_config_option(key,value.strip())
+
+
+    def print(self, s: str, title: str = ""):
         """used by the device to print to the hosts live device message feed, if such a thing should happen to exist"""
-        logging.info(title + ': ' + str)
+        logging.info(title + ': ' + str(s))
 
-        print(str)
-
-    def handle_error(self, str: str, title: str = ""):
+    def handle_error(self, s: str, title: str = ""):
         """like print but specifically marked as error. may get special notification.  should not be used for brief network loss
         """
-        logging.error(title + ': ' + str)
+        logging.error(title + ': ' + str(s))
+
+    def handle_exception(self):
+        self.handle_error(traceback.format_exc())
 
     def numeric_data_point(self,
                            name: str,
@@ -166,8 +184,7 @@ class Device():
                            lo: Optional[float] = None,
                            description: str = "",
                            unit: str = '',
-                           handler: Optional[Callable] = None,
-                           default: float = 0,
+                           handler:  Optional[Callable[[str,float,Any], Any]] = None,
                            interval: float = 0,
                            **kwargs):
         """register a new numeric data point with the given properties. handler will be called when it changes.
@@ -222,25 +239,105 @@ class Device():
         self.__datapointhandlers[name] = onChangeAttempt
 
 
-
-    # TODO
     def string_data_point(self,
-                          name: str,
-                          description: str = "",
-                          handler: Optional[Callable] = None):
+                           name: str,
+                           description: str = "",
+                           unit: str = '',
+                           handler: Optional[Callable[[str,float,Any], Any]] = None,
+                           interval: float = 0,
+                           **kwargs):
         """register a new string data point with the given properties. handler will be called when it changes.
         only meant to be called from within __init__.
+        
+        The intent is that you can subclass this and have your own implementation of data points,
+        such as exposing an MQTT api or whatever else.
+
+        Interval annotates the default data rate the point will produce, for use in setting default poll
+        rates by the host, if the host wants to poll.
+
+        It does not mean the host SHOULD poll this, it only suggest a rate to poll at if the host has a subscriber to this data.
+
+        self.datapoints[name] will start out with tha value of None
+
         """
 
-    # TODO
+        self.datapoints[name] = None
+
+        def onChangeAttempt(v: Optional[str], t, a):
+            if v is None:
+                return
+            if callable(v):
+                v = v()
+            v = str(v)
+            t = t or time.monotonic()
+
+            if self.datapoints[name] == v:
+                return
+
+            self.datapoints[name] = v
+
+            #Handler used by the device
+            if handler:
+                handler(v, t, a)
+
+            self.on_data_change(name, v, t, a)
+
+        self.__datapointhandlers[name] = onChangeAttempt
+
+
     def object_data_point(self,
-                          name: str,
-                          description: str = "",
-                          handler: Optional[Callable] = None):
-        """register a new data point with the given properties. handler will be called when it changes.
-            it can be any json serializable value
-        only meant to be called from by the device itself.
+                           name: str,
+                           description: str = "",
+                           unit: str = '',
+                           handler: Optional[Callable[[Dict,float,Any], Any]] = None,
+                           interval: float = 0,
+                           **kwargs):
+        """register a new string data point with the given properties. handler will be called when it changes.
+        only meant to be called from within __init__.
+        
+        The intent is that you can subclass this and have your own implementation of data points,
+        such as exposing an MQTT api or whatever else.
+
+        Interval annotates the default data rate the point will produce, for use in setting default poll
+        rates by the host, if the host wants to poll.
+
+        It does not mean the host SHOULD poll this, it only suggest a rate to poll at if the host has a subscriber to this data.
+
+        self.datapoints[name] will start out with tha value of None
+
         """
+
+        self.datapoints[name] = None
+
+        def onChangeAttempt(v: Optional[str], t, a):
+            if v is None:
+                return
+            if callable(v):
+                v = v()
+
+            # Validate
+            json.dumps(v)
+
+            # Mutability trouble
+            v = copy.deepcopy(v)
+
+            t = t or time.monotonic()
+
+            if self.datapoints[name] == v:
+                return
+
+            self.datapoints[name] = v
+
+            #Handler used by the device
+            if handler:
+                handler(v, t, a)
+
+            self.on_data_change(name, v, t, a)
+
+        self.__datapointhandlers[name] = onChangeAttempt
+
+
+
 
     def set_data_point(self,
                        name: str,
@@ -353,7 +450,7 @@ class Device():
         send a message to everyone including yourself.
         """
 
-    def get_management_form(self) -> Optional[str]:
+    def get_management_form(self,) -> Optional[str]:
         """must return a snippet of html suitable for insertion into a form tag, but not the form tag itself.
         the host application is responsible for implementing the post target, the authentication, etc.
         
@@ -364,5 +461,5 @@ class Device():
         """
 
     @classmethod
-    def get_create_form() -> Optional[str]:
-        """must return a snippet of html used the same way as get_management_form, but for creating new devices"""
+    def get_create_form(**kwargs) -> Optional[str]:
+        """must return a snippet of html used the same way as get_management_form, but for creating brand new devices"""

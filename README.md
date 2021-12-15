@@ -17,6 +17,7 @@ from iot_devices import device
 import random
 
 class RandomDevice(device.Device):
+    device_type = "RandomDevice"
     def __init__(self,name, data):
         device.Device.__init__(self,name, data)
 
