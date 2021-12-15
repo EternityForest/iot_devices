@@ -80,7 +80,8 @@ class RTL433Client(devices.Device):
             self.numeric_data_point("rssi", min=-180, 
                 max=12, interval=float(
                     data.get("device.interval", 300)),
-                 description="-75 if recetly seen, otherwise -180, we don't have real RSSI data")
+                 description="-75 if recetly seen, otherwise -180, we don't have real RSSI data",
+                 writable=False)
 
             self.set_config_default('device.id','')
 
@@ -96,7 +97,7 @@ class RTL433Client(devices.Device):
                 connectionID=str("RTL433Connection")
             )
            
-            self.numeric_data_point("mqttStatus")
+            self.numeric_data_point("mqttStatus",writable=False)
             self.connection.subscribeToStatus(self.onConnectionChange)
             self.set_data_point("mqttStatus", 1 if self.connection.isConnected else 0)
 
@@ -107,7 +108,7 @@ class RTL433Client(devices.Device):
             def onBattery(t, m):
                 m = float(m)
                 if not 'battery' in self.datapoints:
-                    self.numeric_data_point("battery",default=50)
+                    self.numeric_data_point("battery",default=50,writable=False)
 
                     # Always set before setting the alarm.
                     self.set_data_point("battery", m)
@@ -120,7 +121,7 @@ class RTL433Client(devices.Device):
             def onWind(t, m):
                 m = float(m)
                 if not 'wind' in self.datapoints:
-                    self.numeric_data_point("wind",unit = "km/h")
+                    self.numeric_data_point("wind",unit = "km/h",writable=False)
 
                     self.set_alarm(
                         name="High Wind", datapoint="wind", expression="value > 35", priority="info")
@@ -130,7 +131,7 @@ class RTL433Client(devices.Device):
             def onTemp(t, m):
                 m = float(m)
                 if not 'temp' in self.datapoints:
-                    self.numeric_data_point("temp",unit = "degC")
+                    self.numeric_data_point("temp",unit = "degC",writable=False)
                     self.set_alarm(
                         name="Freezing temperatures", datapoint="wind", expression="value < 2", priority="info")
 
@@ -139,7 +140,7 @@ class RTL433Client(devices.Device):
             def onHum(t, m):
                 m = float(m)
                 if not 'humidity' in self.datapoints:
-                    self.numeric_data_point("humidity",unit = "%")
+                    self.numeric_data_point("humidity",unit = "%",writable=False)
                     self.set_alarm(
                         name="High humidity", datapoint="humidity", expression="value > 80", priority="info")
                     self.set_alarm(
@@ -151,34 +152,34 @@ class RTL433Client(devices.Device):
             def onMoist(t, m):
                 m = float(m)
                 if not 'moisture' in self.datapoints:
-                    self.numeric_data_point("moisture",unit = "%")
+                    self.numeric_data_point("moisture",unit = "%",writable=False)
                 self.set_data_point("moisture", m)
 
 
             def onPres(t, m):
                 m = float(m)
                 if not 'pressure' in self.datapoints:
-                    self.numeric_data_point("pressure",unit = "Pa")
+                    self.numeric_data_point("pressure",unit = "Pa",writable=False)
                 self.set_data_point("pressure", m)
 
 
             def onWeight(t, m):
                 m = float(m)
                 if not 'weight' in self.datapoints:
-                    self.numeric_data_point("weight")
+                    self.numeric_data_point("weight",writable=False)
                 self.set_data_point("weight", m)
 
 
             def onCommandCode(t, m):
                 m = float(m)
                 if not 'lastCommandCode' in self.datapoints:
-                    self.object_data_pointt("lastCommandCode")
+                    self.object_data_point("lastCommandCode",writable=False)
                 self.set_data_point("lastCommandCode", (m,time.time()))
 
             def onCommandName(t, m):
                 m = float(m)
                 if not 'lastCommandName' in self.datapoints:
-                    self.object_data_pointt("lastCommandName")
+                    self.object_data_point("lastCommandName",writable=False)
                 self.set_data_point("lastCommandName", (m,time.time()))
 
      
