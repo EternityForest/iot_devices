@@ -33,8 +33,9 @@ class Device():
 
 
     # this name must be the same as the name of the device itself
-    type:str="Device"
+    type: str="Device"
 
+    default_config={}
 
     def __init__(self, name: str, config: Dict[str, str]):
         """ name must be a special char free string. config must be a dict of string keys and values.
@@ -56,14 +57,12 @@ class Device():
 
         config=copy.deepcopy(config)
 
-        if not config.get('name',name) == name:
-            raise ValueError("Nonmatching name")
-        config['name']= name
+    
 
         # Raise error on bad data.
         json.dumps(config)
 
-        self.config: Dict[str, str] = name
+        self.config: Dict[str, str] = config
         self.__datapointhandlers: Dict[str, Callable] = {}
         self.datapoints = {}
 
@@ -71,10 +70,24 @@ class Device():
         #That return the new value
         self.__datapoint_getters: Dict[str, Callable] = {}
 
+        for i in self.default_config:
+            if not i in self.config:
+                self.set_config_option(i,self.default_config[i])
+
+        if 'name' in self.config:
+            if not self.config['name']== name:
+                raise ValueError("Nonmatching name")
+        else:
+            self.set_config_option('name', name)
+        
+
     @staticmethod
-    def discover_devices() -> Dict[str, Dict]:
+    def discover_devices(config = None) -> Dict[str, Dict]:
         """ gives a dict of device data dicts that could be used to create a new device, indexed by a descriptive name.
         not required and may just return None.
+
+        You may pass a partial config that the device may ignore.  It is to let you pass connection details used to find other
+        similar devices.
         """
 
         return {}
@@ -129,7 +142,7 @@ class Device():
 
         It does not mean the host SHOULD poll this, it only suggest a rate to poll at if the host has a subscriber to this data.
 
-        
+
 
         self.datapoints[name] will start out with tha value of None
 
