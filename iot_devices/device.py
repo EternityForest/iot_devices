@@ -90,7 +90,7 @@ class Device():
         if 'name' in self.config:
             if not self.config['name']== name:
                 raise ValueError("Nonmatching name")
-            name=self.name = config[self.name]
+            name=self.name = config['name']
         else:
             self.set_config_option('name', name)
         

@@ -1,3 +1,8 @@
+#!/usr/bin/python3
+
+# Run this file with the tui-dash.conf  as the first command line argument
+
+
 import threading
 from time import time
 
@@ -160,34 +165,35 @@ def customize(c):
 
 
 
-data = {
-    "type": "RTL433Client",
-    "device.server": 'localhost'
-}
+
+import sys
+import configparser
+
+with open(sys.argv[1]) as f:
+    cfg = configparser.ConfigParser()
+    cfg.read_file(f)
 
 
-# Get the class that would be able to construct a matching device given the data
-c = get_class(data)
-
-c=customize(c)
-
-# Make an instance of that device
-device = c("RTL433 Spy", data)
+devs = []
 
 
+for i in cfg.sections():
+    data = cfg[i]
+    data['name'] = i
 
+    #Make it a real dict
+    d ={}
+    for j in data:
+        d[j]=data[j]
+    data=d
 
-data = {
-    "type": "RandomDevice",
-}
+    # Get the class that would be able to construct a matching device given the data
+    c = get_class(data)
+    c=customize(c)
 
-
-# Get the class that would be able to construct a matching device given the data
-c = get_class(data)
-
-c=customize(c)
-# Make an instance of that device
-device = c("Nonsense", data)
+    # Make an instance of that device
+    device = c(i, data)
+    devs.append(device)
 
 
 
