@@ -82,12 +82,18 @@ class Device():
         
 
     @staticmethod
-    def discover_devices(config = None) -> Dict[str, Dict]:
+    def discover_devices(config:Dict[str, str] = {}, current_device: Optional[object]=None, **kwargs) -> Dict[str, Dict]:
         """ gives a dict of device data dicts that could be used to create a new device, indexed by a descriptive name.
         not required and may just return None.
 
         You may pass a partial config that the device may ignore.  It is to let you pass connection details used to find other
         similar devices.
+
+        Current device MAY be set to the current version of a device, if it is being used in a UI along the lines of
+        suggesting how to further set up a partly configured device, or suggesting ways to add another similar device.
+
+        Kwargs is reserved for further hints on what kinds of devices should be discovered.
+
         """
 
         return {}
