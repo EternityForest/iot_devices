@@ -388,10 +388,9 @@ class Device():
         if name in self.__datapoint_getters:
             x = self.__datapoint_getters[name]()
             if not x is None:
-                self.datapoints[name] = x
-
                 # there has been a change! Maybe!  call a handler
                 self.__datapointhandlers[name](x, time.monotonic(), "From getter")
+                self.datapoints[name] = x
                 return x
 
         return self.datapoints[name]

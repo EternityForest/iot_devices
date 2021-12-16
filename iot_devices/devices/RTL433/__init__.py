@@ -77,23 +77,28 @@ class RTL433Client(devices.Device):
         devices.Device.__init__(self, name, data)
 
         try:
+            self.set_config_default('device.interval','300')
+
             self.numeric_data_point("rssi", min=-180, 
-                max=12, interval=float(
-                    data.get("device.interval", 300)),
+                max=12, interval=float(self.config["device.interval"]),
                  description="-75 if recetly seen, otherwise -180, we don't have real RSSI data",
                  writable=False)
 
             self.set_config_default('device.id','')
-
+            self.set_config_default('device.model','')
+            self.set_config_default('device.server','localhost')
+            self.set_config_default('device.port','1883')
+            self.set_config_default('device.password','')
+            self.set_config_default('device.mqttTopic','home/rtl_433')
 
             # This connection is actually  possibly shared
             # Scullery does the deduplication for us
 
             # Kaithem already puts an alarm on this for us.
             self.connection = mqtt.getConnection(
-                data.get("device.server", "localhost"),
-                int(data.get("device.port", "1883").strip() or 1883),
-                password=data.get("device.password", "").strip(),
+                self.config["device.server"],
+                int(self.config["device.port"].strip() or 1883),
+                password=self.config["device.password"].strip(),
                 connectionID=str("RTL433Connection")
             )
            
@@ -108,7 +113,7 @@ class RTL433Client(devices.Device):
             def onBattery(t, m):
                 m = float(m)
                 if not 'battery' in self.datapoints:
-                    self.numeric_data_point("battery",default=50,writable=False)
+                    self.numeric_data_point("battery",default=50,writable=False,unit="%")
 
                     # Always set before setting the alarm.
                     self.set_data_point("battery", m)

@@ -3,6 +3,7 @@
 # Run this file with the tui-dash.conf  as the first command line argument
 
 
+
 import threading
 from time import time
 
@@ -33,7 +34,7 @@ class LineBox2(urwid.LineBox):
 lock = threading.RLock()
 #cols = urwid.Columns([])
 
-cols = urwid.GridFlow([], cell_width=48, h_sep=2, v_sep=1, align='left')
+cols = urwid.GridFlow([], cell_width=56, h_sep=2, v_sep=1, align='left')
 loop = urwid.MainLoop(urwid.Filler(cols,'top'))
 
 def work(*a):
@@ -50,55 +51,15 @@ def work(*a):
 loop.set_alarm_in(0.1, work)
 
 class CustomButton(urwid.Button):
-    button_left = urwid.Text('[')
-    button_right = urwid.Text(']')
+    button_left = urwid.Text('[', align="right")
+    button_right = urwid.Text(']',align="left")
 
 
 def Button(*args, **kwargs):
     b = CustomButton(*args, **kwargs)
     b = urwid.AttrMap(b, '', 'highlight')
-    b = urwid.Padding(b, left=4, right=4)
+    b = urwid.Padding(b, left=1, right=1)
     return b
-
-
-class BoxButton(urwid.WidgetWrap):
-    _border_char = u'─'
-    def __init__(self, label, on_press=None, user_data=None):
-        padding_size = 2
-        border = self._border_char * (len(label) + padding_size * 2)
-        cursor_position = len(border) + padding_size
-
-        self.top = u'┌' + border + u'┐\n'
-        self.middle = u'│  ' + label + u'  │\n'
-        self.bottom = u'└' + border + u'┘'
-
-        # self.widget = urwid.Text([self.top, self.middle, self.bottom])
-        self.widget = urwid.Pile([
-            urwid.Text(self.top[:-1]),
-            urwid.Text(self.middle[:-1]),
-            urwid.Text(self.bottom),
-        ])
-
-        self.widget = urwid.AttrMap(self.widget, '', 'highlight')
-
-        # self.widget = urwid.Padding(self.widget, 'center')
-        # self.widget = urwid.Filler(self.widget)
-
-        # here is a lil hack: use a hidden button for evt handling
-        self._hidden_btn = urwid.Button('hidden %s' % label, on_press, user_data)
-
-        super(BoxButton, self).__init__(self.widget)
-
-    def selectable(self):
-        return True
-
-    def keypress(self, *args, **kw):
-        return self._hidden_btn.keypress(*args, **kw)
-
-    def mouse_event(self, *args, **kw):
-        return self._hidden_btn.mouse_event(*args, **kw)
-
-
 
 
 
@@ -131,25 +92,38 @@ def customize(c):
                     self.edits[point].set_edit_text(str(value))
 
 
-        def numeric_data_point(self, name,writable=True, default=0, **kwargs):
+        def numeric_data_point(self, name,writable=True, default=0, unit='',**kwargs):
             c.numeric_data_point(self, name,**kwargs)
 
             with lock:
                 t = urwid.Text(('bold', name), 'left', 'any')
 
                 if not writable:
-                    t2 = urwid.Text("no data")
-                    cols = urwid.Columns([t,t2])
+                    t2 = urwid.Text("no data ")
+                    ut = urwid.Text(unit)
+
+                    def refresh(*a):
+                        self.request_data_point(name)
+                    b2= Button("get", refresh)
+
+                    cols = urwid.Columns([t, t2,ut,b2],min_width=8)
                     self.txts[name]=t2
 
                 else:
                     t2 = urwid.numedit.FloatEdit('',str(default))
+                    ut = urwid.Text(unit)
+
                     self.edits[name]=t2
 
                     def set(*a):
                         self.set_data_point(name,t2.value())
                     b= Button("Set", set)
-                    cols = urwid.Columns([t,t2,b])
+
+                    def refresh(*a):
+                        self.request_data_point(name)
+                    b2= Button("get", refresh)
+
+                    cols = urwid.Columns([t,ut,t2,ut,b,b2],min_width=8)
                     cols.set_focus(t2)
 
                 self.pile.contents.append(   (cols,('pack', 1)) )
@@ -168,8 +142,17 @@ def customize(c):
 
 import sys
 import configparser
+try:
+    file = sys.argv[1]
+except:
+    import os
+    if os.path.exists("tui-dash.conf"):
+        file = "tui-dash.conf"
+    else:
+        file = os.path.join(os.path.dirname(__file__),"tui-dash.conf")
 
-with open(sys.argv[1]) as f:
+
+with open(file) as f:
     cfg = configparser.ConfigParser()
     cfg.read_file(f)
 
