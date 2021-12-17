@@ -25,12 +25,14 @@ minimum = min
 maximum = max
 
 class Device():
-    """represents exactly one "device".   should not be used to represent an interface to a large collection, use
+    """represents exactly one "device".   
+    should not be used to represent an interface to a large collection, use
     one instance per device.
     
-    it is a future proposed kaithem_automation device spec meant to allow you to write integrations that are also general 
-    purpose libraries.
-    
+
+    Note that this is meant to be subclassed twice.  Once by the actual driver, and again by the 
+    host application, to detemine how to handle calls made by the driver.
+
     """
 
 
@@ -42,27 +44,21 @@ class Device():
     config_secrets={}
 
     def __init__(self, name: str, config: Dict[str, str],**kw):
-        """ name must be a special char free string. config must be a dict of string keys and values.
-        all options that are device-specific must begin with "device."
+        """ 
         
-        all options must be strings, let's keep this extremely simple and easy and basic and not
-        restrict what kind of file is needed to store them, and also be 1-1 compatible with html forms.
-        
-        data must contain a name field, and must contain a type field matching the device type name.
-        
-        all other fields must be optional, and a blank unconfigured device should be creatable.  the device should set
-        it's own missing fields for use as a template.
-        
-        the intent here is that some kind of loader mechanism will create a device by dynamically looking up
-        the class based on the type, then auto-creating a subclass that adds any program-specific features.
-        
-        the other intent is you just manually create the data and use the device library in your program.
+        Args:
+            name: must be a special char free string.  
+                It may contain slashes, for compatibility with hosts using that for heirarchy
+       
+            config: must contain a name field, and must contain a type field matching the device type name.
+                All other fields must be optional, and a blank unconfigured device should be creatable.  
+                The device should set it's own missing fields for use as a template 
+                
+                Options starting with temp. are reserved for device specific things that should not actually be saved.
+                Options endning with __ are used to add additional fields with special meaning.  Don't use these!
 
 
-        Options starting with temp. are reserved for device specific things that should not actually be saved.
-
-
-        Options endning with __ are used to add additional fields with special meaning.
+                All your device-specific options should begin with device.
         """
 
         config=copy.deepcopy(config)
@@ -97,43 +93,46 @@ class Device():
 
     @staticmethod
     def discover_devices(config:Dict[str, str] = {}, current_device: Optional[object]=None, intent="", **kwargs) -> Dict[str, Dict]:
-        """ gives a dict of device data dicts that could be used to create a new device, indexed by a descriptive name.
-        not required and may just return None.
+        """ 
+        Discover a set of suggested configs that could be used to build a new device.        
+        
+        Not required to be implemented and may just return {}  
 
-        You may pass a partial config that the device may ignore.  It is to let you pass connection details used to find other
-        similar devices.
-
-        Current device MAY be set to the current version of a device, if it is being used in a UI along the lines of
-        suggesting how to further set up a partly configured device, or suggesting ways to add another similar device.
-
-        Kwargs is reserved for further hints on what kinds of devices should be discovered.
-
-        The device should reuse as much of the given config as possible, discarding anything that wouldn't 
-        work with the selected device.
-
-        Intent may be a hint as to what kind of config you are looking for.  If it is "new", that means the host wants to add another
-        similar device.  If it is "replace", the host wants to keep the same config but point at a different physical device.  If it is
-        "configure",  the host wants to look for alternate configurations available for the same exact device.
-
-        Discovery could even be used to suggest configuratons once you already have a connection to a device.
-
-
-        Security gotcha:
-
-        Discovered suggestions MUST NOT have any passwords or secrets if the suggestion is for something other than what
-        the user provided it for, unless the protocol does not reveal the secrets to the server.
+        ***********************
+        Discovered suggestions MUST NOT have any passwords or secrets if the suggestion would cause them to be tried somewhere
+        other than what the user provided them for, unless the protocol does not actually reveal the secrets to the server.
         
         You do not want to autosuggest trying the same credentials at bad.com that the user gave for example.com.
 
     
-        
-        UI:
-
         The suggested UI semantics for discover commands is "Add a similar device" and "Reconfigure this device".
         
         Reconfiguration should always be available as the user might always want to take an existing device object and
         swap out the actual physical device it connects to.
 
+
+        Args:
+            config: You may pass a partial config, or a completed config to find other
+                similar devices. The device should reuse as much of the given config as possible and logical,
+                discarding anything that wouldn't  work with the selected device.
+
+            current_device: May be set to the current version of a device, if it is being used in a UI along the lines of
+                suggesting how to further set up a partly configured device, or suggesting ways to add another similar device.
+
+            kwargs: is reserved for further hints on what kinds of devices should be discovered.
+
+        
+            intent: may be a hint as to what kind of config you are looking for.  
+                If it is "new", that means the host wants to add another
+                similar device.  If it is "replace", the host wants to keep the same config 
+                but point at a different physical device.  If it is
+                "configure",  the host wants to look for alternate configurations available for the same exact device.
+
+        Returns:
+            A dict of device data dicts that could be used to create a new device, indexed by a descriptive name.
+
+
+      
 
         """
 
@@ -141,22 +140,28 @@ class Device():
 
     def set_config_option(self, key: str, value: str):
         """sets an option in self.config. used for subclassing as you may want to persist.
-        __init__ will automatically set the state.  this is used by the device itself to set it's 
-        own persistent values at runtime, perhaps in response to a websocket message.
 
-        Will always set the key in self.config.
+        __init__ will automatically set the state when passed the config dict, you don't have to do that part.
         
+        this is used by the device itself to set it's own persistent values at runtime, perhaps in response to a websocket message.
+
         
         the host is responsible for subclassing this and actually saving the data somehow, should that feature be needed.
         """
+
+        if not isinstance(key,str):
+            raise TypeError("Key must be str")
+
+        value = str(value)
+        if len(value)>8192:
+            logging.error("Excessively long param for "+key+" starting with "+value[:128])
 
         # Auto strip the values to clean them up
         self.config[key] = value.strip()
 
 
     def set_config_default(self, key: str, value: str):
-        """sets an option in self.config if it does not exist or is blank. used for subclassing as you may want to persist.
-       
+        """sets an option in self.config if it does not exist or is blank.        
          Calls into set_config_option, you should not need to subclass this.
         """
 
@@ -174,6 +179,7 @@ class Device():
         logging.error(title + ': ' + str(s))
 
     def handle_exception(self):
+        "Helper function that just calls handle_error with a traceback."
         self.handle_error(traceback.format_exc())
 
     def numeric_data_point(self,
@@ -184,29 +190,36 @@ class Device():
                            lo: Optional[float] = None,
                            description: str = "",
                            unit: str = '',
-                           handler:  Optional[Callable[[str,float,Any], Any]] = None,
+                           handler:  Optional[Callable[[float,float,Any], Any]] = None,
                            interval: float = 0,
                            writable=True,
                            **kwargs):
-        """register a new numeric data point with the given properties. handler will be called when it changes.
-        only meant to be called from within __init__.
+        """Register a new numeric data point with the given properties. 
         
-        hi and lo just tell what is a value outside of normal ranges that a user may want to be aware of.
-        they do not have any special alarm function by default.
-
-        The intent is that you can subclass this and have your own implementation of data points,
-        such as exposing an MQTT api or whatever else.
-
-        Interval annotates the default data rate the point will produce, for use in setting default poll
-        rates by the host, if the host wants to poll.
-
-        It does not mean the host SHOULD poll this, it only suggest a rate to poll at if the host has a subscriber to this data.
-
-        Writable is purely for a host that might subclass this, to determine if it should allow writing to the point.
-
-
-
+        Handler will be called when it changes.
         self.datapoints[name] will start out with tha value of None
+
+
+        Most fields are just extra annotations to the host.
+
+        Args:
+            min: The min value the point can take on
+            max: The max value the point can take on
+
+            hi: A value the point can take on that would be considered excessive
+            lo: A value the point can take on that would be considered excessively low
+
+            description: Free text
+
+            unit: A unit of measure, such as "degC" or "MPH"
+            
+            handler: A function taking the value,timestamp, and annotation on changes
+
+            interval :annotates the default data rate the point will produce, for use in setting default poll
+                rates by the host, if the host wants to poll.  It does not mean the host SHOULD poll this, 
+                it only suggest a rate to poll at if the host has an interest in this data.
+
+            writable:  is purely for a host that might subclass this, to determine if it should allow writing to the point.
 
         """
 
@@ -250,18 +263,27 @@ class Device():
                            interval: float = 0,
                            writable=True,
                            **kwargs):
-        """register a new string data point with the given properties. handler will be called when it changes.
-        only meant to be called from within __init__.
+        """Register a new string data point with the given properties. 
         
-        The intent is that you can subclass this and have your own implementation of data points,
-        such as exposing an MQTT api or whatever else.
-
-        Interval annotates the default data rate the point will produce, for use in setting default poll
-        rates by the host, if the host wants to poll.
-
-        It does not mean the host SHOULD poll this, it only suggest a rate to poll at if the host has a subscriber to this data.
-
+        Handler will be called when it changes.
         self.datapoints[name] will start out with tha value of None
+
+
+        Most fields are just extra annotations to the host.
+
+
+        Args:
+            description: Free text
+            
+            handler: A function taking the value,timestamp, and annotation on changes
+
+            interval: annotates the default data rate the point will produce, for use in setting default poll
+                rates by the host if the host wants to poll.  
+                
+                It does not mean the host SHOULD poll this, 
+                it only suggest a rate to poll at if the host has an interest in this data.
+
+            writable:  is purely for a host that might subclass this, to determine if it should allow writing to the point.
 
         """
 
@@ -297,21 +319,27 @@ class Device():
                            interval: float = 0,
                             writable=True,
                            **kwargs):
-        """register a new string data point with the given properties. handler will be called when it changes.
-        only meant to be called from within __init__.
+        """Register a new object data point with the given properties.   Here "object"
+        means a JSON-like object.
         
-        The intent is that you can subclass this and have your own implementation of data points,
-        such as exposing an MQTT api or whatever else.
-
-        Interval annotates the default data rate the point will produce, for use in setting default poll
-        rates by the host, if the host wants to poll.
-
-        It does not mean the host SHOULD poll this, it only suggest a rate to poll at if the host has a subscriber to this data.
-
+        Handler will be called when it changes.
         self.datapoints[name] will start out with tha value of None
 
-        """
 
+        Most fields are just extra annotations to the host.
+
+        Args:
+            description: Free text
+            
+            handler: A function taking the value,timestamp, and annotation on changes
+
+            interval :annotates the default data rate the point will produce, for use in setting default poll
+                rates by the host, if the host wants to poll.  It does not mean the host SHOULD poll this, 
+                it only suggest a rate to poll at if the host has an interest in this data.
+
+            writable:  is purely for a host that might subclass this, to determine if it should allow writing to the point.
+
+        """
         self.datapoints[name] = None
 
         def onChangeAttempt(v: Optional[str], t, a):
@@ -350,16 +378,21 @@ class Device():
                        timestamp: Optional[float] = None,
                        annotation: Optional[float] = None):
         """
-        set a data point of the device. may be called by the device itself or by user code. this is the primary api
-        and we try to funnel as much as absolutely possible into it.
+        Set a data point of the device. may be called by the device itself or by user code. 
+        
+        This is the primary api and we try to funnel as much as absolutely possible into it.
         
         things like button presses that are not actually "data points" can be represented as things like
         (button_event_name, timestamp) tuples in object_tags.
         
         things like autodiscovered ui can be done just by adding more descriptive metadata to a data point.
-                
-        timestamp if present is a time.monotonic() time.  annotation is an arbitrary object meant to be compared for identity,
-        for various uses, such as loop prevention when dealting with network sync, when you need to know where a value came from.
+        
+        Args:
+            name: The data point to set
+            timestamp: if present is a time.monotonic() time.  
+            annotation: is an arbitrary object meant to be compared for identity,
+                for various uses, such as loop prevention when dealting with network sync, when you need to know where a value came from.
+
 
         This must be thread safe, but the change detection could glitch out and discard if you go from A to B and back to A again.
         
@@ -373,10 +406,13 @@ class Device():
 
     
     def set_data_point_getter(self,name:str, getter: Callable):
+        """Set the Getter of a datapoint, making it into an on-request point.
+        The callable may return either the new value, or None if it has no new data.
+        """
         self.__datapoint_getters[name] = getter
 
     def on_data_change(self, name: str, value, timestamp: float, annotation):
-        "used for subclassing, this is how you watch for data changes"
+        "Used for subclassing, this is how you watch for data changes"
         pass
 
     def request_data_point(self, name: str):
@@ -425,7 +461,7 @@ class Device():
 
 
     def close(self):
-        "relese all resources and clean up"
+        "Release all resources and clean up"
 
     def on_delete(self):
         """

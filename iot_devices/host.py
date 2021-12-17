@@ -6,7 +6,7 @@ import importlib
 import json
 import copy 
 import logging
-
+from typing import Dict,Type
 known_device_types = {}
 
 
@@ -15,8 +15,14 @@ known_device_types = {}
 # Programmatically generated device classes go here
 device_classes= weakref.WeakValueDictionary()
 
-def discover():
-    "Search system paths for modules that have a devices manifest."
+def discover() -> Dict[str,Dict]:
+    """Search system paths for modules that have a devices manifest.
+
+    Returns:
+        A dict indexed by the device type name, with the values being info dicts.
+        The contents of these is currently opaque, there are no standard keys.  You should just look at the names for now.
+    
+    """
 
     paths = copy.deepcopy(sys.path)
     here = os.path.dirname(os.path.abspath(__file__))
@@ -54,9 +60,12 @@ def discover():
     return known_device_types
 
 
-def get_class(data):
+def get_class(data) -> Type:
     """
     Return the class that one would use to construct a device given it's data.  Automatically search all system paths.
+
+    Returns:
+        A class, not an instance
     """
     t = data['type']
 
