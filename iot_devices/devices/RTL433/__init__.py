@@ -124,7 +124,8 @@ class RTL433Client(devices.Device):
                     self.set_alarm(name="Low battery",
                                    datapoint="battery",
                                    expression="value < 15",
-                                   priority="info")
+                                   priority="info",
+                                   auto_ack=True)
 
                 self.set_data_point("battery", m)
 
@@ -169,7 +170,7 @@ class RTL433Client(devices.Device):
                                    datapoint="humidity",
                                    expression="value < 20",
                                    priority="info",
-                                   autoAck=True)
+                                   auto_ack=True)
 
                 self.set_data_point("humidity", m)
 

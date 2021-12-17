@@ -128,6 +128,8 @@ class Device():
                 but point at a different physical device.  If it is
                 "configure",  the host wants to look for alternate configurations available for the same exact device.
 
+                If it is "step", the user wants to refine the existing config.
+
         Returns:
             A dict of device data dicts that could be used to create a new device, indexed by a descriptive name.
 
@@ -391,7 +393,7 @@ class Device():
             name: The data point to set
 
             timestamp: if present is a time.monotonic() time.  
-            
+
             annotation: is an arbitrary object meant to be compared for identity,
                 for various uses, such as loop prevention when dealting with network sync, when you need to know where a value came from.
 
@@ -503,5 +505,5 @@ class Device():
         """
 
     @classmethod
-    def get_create_form(**kwargs) -> Optional[str]:
+    def get_create_form(cls, **kwargs) -> Optional[str]:
         """must return a snippet of html used the same way as get_management_form, but for creating brand new devices"""

@@ -9,12 +9,86 @@ Classes
     should not be used to represent an interface to a large collection, use
     one instance per device.
     
-    
     Note that this is meant to be subclassed twice.  Once by the actual driver, and again by the 
     host application, to detemine how to handle calls made by the driver.
     
     Args:
-        name: must be a special char free string.  
+        name: must be a special char free string.  import weakref
+
+import sys
+import os
+import importlib
+import json
+import copy 
+import logging
+
+known_device_types = {}
+
+
+
+
+# Programmatically generated device classes go here
+device_classes= weakref.WeakValueDictionary()
+
+def discover():
+    "Search system paths for modules that have a devices manifest."
+
+    paths = copy.deepcopy(sys.path)
+    here = os.path.dirname(os.path.abspath(__file__))
+    paths.append(here)
+
+    # Priority
+    for i in reversed(paths):
+        if not os.path.isdir(i):
+            continue
+        for d in os.listdir(i):
+            folder = os.path.join(i,d)
+            if os.path.isdir(folder):
+                if os.path.isfile(os.path.join(folder, "devices_manifest.json")):
+                    try:
+                        with open(os.path.join(folder, "devices_manifest.json")) as f:
+                            d = f.read()
+                            d = json.loads(d)
+
+                        for dev in d['devices']:
+                            known_device_types[dev] = d['devices'][dev]
+
+                            #Special case handling devices included in this library for demo purposes.
+                            modulename =os.path.basename(folder)
+                            if os.path.dirname(folder)== here:
+                                modulename= "iot_device"
+
+                            x = d['devices'][dev].get("submodule",None)
+                            if x:
+                                modulename=modulename+"."+x
+
+                            known_device_types[dev]['importable'] = modulename
+
+                    except:
+                        logging.exception("Error with devices manifest in: "+folder)
+    return known_device_types
+
+
+def get_class(data):
+    """
+    Return the class that one would use to construct a device given it's data.  Automatically search all system paths.
+    """
+    t = data['type']
+
+    if t in device_classes:
+        try:
+            return device_classes[data]
+        except KeyError:
+            pass
+
+    if not t in known_device_types:
+        discover()
+
+    m = known_device_types[t]['importable']
+    module  =  importlib.import_module(m)
+    return module.__dict__[t]
+ 
+
             It may contain slashes, for compatibility with hosts using that for heirarchy
     
         config: must contain a name field, and must contain a type field matching the device type name.
@@ -23,6 +97,8 @@ Classes
             
             Options starting with temp. are reserved for device specific things that should not actually be saved.
             Options endning with __ are used to add additional fields with special meaning.  Don't use these!
+
+            Blank options must be considered the same as nonexistent options.
     
     
             All your device-specific options should begin with device.
