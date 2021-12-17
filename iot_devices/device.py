@@ -389,7 +389,9 @@ class Device():
         
         Args:
             name: The data point to set
+
             timestamp: if present is a time.monotonic() time.  
+            
             annotation: is an arbitrary object meant to be compared for identity,
                 for various uses, such as loop prevention when dealting with network sync, when you need to know where a value came from.
 

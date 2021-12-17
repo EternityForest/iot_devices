@@ -168,7 +168,8 @@ class RTL433Client(devices.Device):
                     self.set_alarm(name="Low humidity",
                                    datapoint="humidity",
                                    expression="value < 20",
-                                   priority="info")
+                                   priority="info",
+                                   autoAck=True)
 
                 self.set_data_point("humidity", m)
 
