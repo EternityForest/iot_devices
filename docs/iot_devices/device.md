@@ -9,86 +9,12 @@ Classes
     should not be used to represent an interface to a large collection, use
     one instance per device.
     
+    
     Note that this is meant to be subclassed twice.  Once by the actual driver, and again by the 
     host application, to detemine how to handle calls made by the driver.
     
     Args:
-        name: must be a special char free string.  import weakref
-
-import sys
-import os
-import importlib
-import json
-import copy 
-import logging
-
-known_device_types = {}
-
-
-
-
-# Programmatically generated device classes go here
-device_classes= weakref.WeakValueDictionary()
-
-def discover():
-    "Search system paths for modules that have a devices manifest."
-
-    paths = copy.deepcopy(sys.path)
-    here = os.path.dirname(os.path.abspath(__file__))
-    paths.append(here)
-
-    # Priority
-    for i in reversed(paths):
-        if not os.path.isdir(i):
-            continue
-        for d in os.listdir(i):
-            folder = os.path.join(i,d)
-            if os.path.isdir(folder):
-                if os.path.isfile(os.path.join(folder, "devices_manifest.json")):
-                    try:
-                        with open(os.path.join(folder, "devices_manifest.json")) as f:
-                            d = f.read()
-                            d = json.loads(d)
-
-                        for dev in d['devices']:
-                            known_device_types[dev] = d['devices'][dev]
-
-                            #Special case handling devices included in this library for demo purposes.
-                            modulename =os.path.basename(folder)
-                            if os.path.dirname(folder)== here:
-                                modulename= "iot_device"
-
-                            x = d['devices'][dev].get("submodule",None)
-                            if x:
-                                modulename=modulename+"."+x
-
-                            known_device_types[dev]['importable'] = modulename
-
-                    except:
-                        logging.exception("Error with devices manifest in: "+folder)
-    return known_device_types
-
-
-def get_class(data):
-    """
-    Return the class that one would use to construct a device given it's data.  Automatically search all system paths.
-    """
-    t = data['type']
-
-    if t in device_classes:
-        try:
-            return device_classes[data]
-        except KeyError:
-            pass
-
-    if not t in known_device_types:
-        discover()
-
-    m = known_device_types[t]['importable']
-    module  =  importlib.import_module(m)
-    return module.__dict__[t]
- 
-
+        name: must be a special char free string.  
             It may contain slashes, for compatibility with hosts using that for heirarchy
     
         config: must contain a name field, and must contain a type field matching the device type name.
@@ -97,8 +23,6 @@ def get_class(data):
             
             Options starting with temp. are reserved for device specific things that should not actually be saved.
             Options endning with __ are used to add additional fields with special meaning.  Don't use these!
-
-            Blank options must be considered the same as nonexistent options.
     
     
             All your device-specific options should begin with device.
@@ -151,10 +75,12 @@ def get_class(data):
                 but point at a different physical device.  If it is
                 "configure",  the host wants to look for alternate configurations available for the same exact device.
         
+                If it is "step", the user wants to refine the existing config.
+        
         Returns:
             A dict of device data dicts that could be used to create a new device, indexed by a descriptive name.
 
-    `get_create_form(...) ‑> Optional[str]`
+    `get_create_form(**kwargs) ‑> Optional[str]`
     :   must return a snippet of html used the same way as get_management_form, but for creating brand new devices
 
     ### Methods
@@ -177,7 +103,7 @@ def get_class(data):
     `handle_exception(self)`
     :   Helper function that just calls handle_error with a traceback.
 
-    `numeric_data_point(self, name: str, min: Optional[float] = None, max: Optional[float] = None, hi: Optional[float] = None, lo: Optional[float] = None, description: str = '', unit: str = '', handler: Optional[Callable[[float, float, Any], Any]] = None, interval: float = 0, writable=True, **kwargs)`
+    `numeric_data_point(self, name: str, min: Optional[float] = None, max: Optional[float] = None, hi: Optional[float] = None, lo: Optional[float] = None, description: str = '', unit: str = '', handler: Optional[Callable[[float, float, Any], Any]] = None, interval: float = 0, subtype: str = '', writable=True, **kwargs)`
     :   Register a new numeric data point with the given properties. 
         
         Handler will be called when it changes.
@@ -204,8 +130,10 @@ def get_class(data):
                 it only suggest a rate to poll at if the host has an interest in this data.
         
             writable:  is purely for a host that might subclass this, to determine if it should allow writing to the point.
+        
+            subtype: A string further describing the data type of this value, as a hint to UI generation.
 
-    `object_data_point(self, name: str, description: str = '', unit: str = '', handler: Optional[Callable[[Dict, float, Any], Any]] = None, interval: float = 0, writable=True, **kwargs)`
+    `object_data_point(self, name: str, description: str = '', unit: str = '', handler: Optional[Callable[[Dict, float, Any], Any]] = None, interval: float = 0, writable=True, subtype: str = '', **kwargs)`
     :   Register a new object data point with the given properties.   Here "object"
         means a JSON-like object.
         
@@ -225,6 +153,8 @@ def get_class(data):
                 it only suggest a rate to poll at if the host has an interest in this data.
         
             writable:  is purely for a host that might subclass this, to determine if it should allow writing to the point.
+        
+            subtype: A string further describing the data type of this value, as a hint to UI generation.
 
     `on_data_change(self, name: str, value, timestamp: float, annotation)`
     :   Used for subclassing, this is how you watch for data changes
@@ -303,7 +233,7 @@ def get_class(data):
             name: The data point to set
         
             timestamp: if present is a time.monotonic() time.  
-            
+        
             annotation: is an arbitrary object meant to be compared for identity,
                 for various uses, such as loop prevention when dealting with network sync, when you need to know where a value came from.
         
@@ -317,7 +247,7 @@ def get_class(data):
     :   Set the Getter of a datapoint, making it into an on-request point.
         The callable may return either the new value, or None if it has no new data.
 
-    `string_data_point(self, name: str, description: str = '', unit: str = '', handler: Optional[Callable[[str, float, Any], Any]] = None, interval: float = 0, writable=True, **kwargs)`
+    `string_data_point(self, name: str, description: str = '', unit: str = '', handler: Optional[Callable[[str, float, Any], Any]] = None, interval: float = 0, writable=True, subtype: str = '', **kwargs)`
     :   Register a new string data point with the given properties. 
         
         Handler will be called when it changes.
@@ -339,3 +269,5 @@ def get_class(data):
                 it only suggest a rate to poll at if the host has an interest in this data.
         
             writable:  is purely for a host that might subclass this, to determine if it should allow writing to the point.
+        
+            subtype: A string further describing the data type of this value, as a hint to UI generation.

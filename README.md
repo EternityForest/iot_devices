@@ -98,6 +98,12 @@ print(device.request_data_point('dyn_random'))
 
 Nothing should be added here that would preclude a device from being used in a stateless service container with all persistent data on a remote host.
 
+#### Describing your data point type
+
+You have a subtype parameter when declaring data types, as a hint to the GU generator. See [List of subtypes](docs/subtypes.md).
+
+You also have a unit for numeric types.   There should not ever be any kind of complex schema language!!
+
 
 #### Documentation
 This project uses google style docstrings with pdoc3.

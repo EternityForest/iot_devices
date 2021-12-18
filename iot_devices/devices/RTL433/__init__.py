@@ -197,16 +197,16 @@ class RTL433Client(devices.Device):
                 self.set_data_point("weight", m)
 
             def onCommandCode(t, m):
-                m = float(m)
+                m = int(m)
                 if not 'lastCommandCode' in self.datapoints:
-                    self.object_data_point("lastCommandCode", writable=False)
-                self.set_data_point("lastCommandCode", (m, time.time()))
+                    self.object_data_point("lastCommandCode", writable=False, subtype="event")
+                self.set_data_point("lastCommandCode",  [m, time.time(), None ])
 
             def onCommandName(t, m):
-                m = float(m)
+                m = str(m)
                 if not 'lastCommandName' in self.datapoints:
-                    self.object_data_point("lastCommandName", writable=False)
-                self.set_data_point("lastCommandName", (m, time.time()))
+                    self.object_data_point("lastCommandName", writable=False,  subtype="event")
+                self.set_data_point("lastCommandName", [m, time.time(), None ])
 
             def onJSON(t, m):
                 m = json.loads(m)

@@ -194,6 +194,7 @@ class Device():
                            unit: str = '',
                            handler:  Optional[Callable[[float,float,Any], Any]] = None,
                            interval: float = 0,
+                           subtype: str='',
                            writable=True,
                            **kwargs):
         """Register a new numeric data point with the given properties. 
@@ -222,6 +223,8 @@ class Device():
                 it only suggest a rate to poll at if the host has an interest in this data.
 
             writable:  is purely for a host that might subclass this, to determine if it should allow writing to the point.
+
+            subtype: A string further describing the data type of this value, as a hint to UI generation.
 
         """
 
@@ -264,6 +267,7 @@ class Device():
                            handler: Optional[Callable[[str,float,Any], Any]] = None,
                            interval: float = 0,
                            writable=True,
+                           subtype: str='',
                            **kwargs):
         """Register a new string data point with the given properties. 
         
@@ -286,6 +290,8 @@ class Device():
                 it only suggest a rate to poll at if the host has an interest in this data.
 
             writable:  is purely for a host that might subclass this, to determine if it should allow writing to the point.
+
+            subtype: A string further describing the data type of this value, as a hint to UI generation.
 
         """
 
@@ -320,6 +326,7 @@ class Device():
                            handler: Optional[Callable[[Dict,float,Any], Any]] = None,
                            interval: float = 0,
                             writable=True,
+                            subtype: str='',
                            **kwargs):
         """Register a new object data point with the given properties.   Here "object"
         means a JSON-like object.
@@ -340,6 +347,9 @@ class Device():
                 it only suggest a rate to poll at if the host has an interest in this data.
 
             writable:  is purely for a host that might subclass this, to determine if it should allow writing to the point.
+
+            subtype: A string further describing the data type of this value, as a hint to UI generation.
+
 
         """
         self.datapoints[name] = None
