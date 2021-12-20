@@ -1,13 +1,17 @@
 {
-    "devices":{
+    "devices": {
         "RandomDevice": {
-            "submodule":"devices.random",
-            "description" : "Just a demo device that makes pseudorandom numbers on request",
+            "submodule": "devices.random",
+            "description": "Just a demo device that makes pseudorandom numbers on request",
             "classname": "RandomDevice"
-            },
+        },
         "RTL433Client": {
-                "submodule":"devices.RTL433",
-                "description" : "Listen to messages from rtl_433 and decode them into things like weather station data"
-                }
+            "submodule": "devices.RTL433",
+            "description": "Listen to messages from rtl_433 and decode them into things like weather station data"
+        },
+        "Zigbee2MQTT": {
+            "submodule": "devices.Zigbee2MQTTPlugin",
+            "description": "This makes all your ZigBee devices on an MQTT server available as data points."
         }
-} 
+    }
+}

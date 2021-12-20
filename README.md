@@ -11,6 +11,7 @@ that can be used to access any device using this spec.
 
 It also aims to include a library of commonly used devices.
 
+Note: The included example devices all have their own dependencies.  Most need Scullery.
 
 ## Implement a device
 

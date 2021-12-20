@@ -496,12 +496,18 @@ class Device():
         manage forms including yourself.  they are only meant for very tiny amounts of general interest data and fast commands.
         
         this lowest common denominator approach is to ensure that the ui can be fully served over mqtt if desired.
+
+        The host page should provide a single JS function send_ui_message(m) to send this message.
+
+        Manage forms should stay with Vanilla JS as much as possible, or else use an iframe.
     
         """
 
     def send_ui_message(self, msg:Union[float, int, str, bool, None, dict, list]):
         """
-        send a message to everyone including yourself.
+        send a message to everyone including yourself.  
+        The host page should provide a function set_ui_message_handler(f)
+        To set a JS callback to recieve these.
         """
 
     def get_management_form(self,) -> Optional[str]:

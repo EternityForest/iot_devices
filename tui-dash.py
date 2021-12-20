@@ -7,7 +7,6 @@
 import threading
 from time import time
 
-from matplotlib.pyplot import fill
 from iot_devices.host import get_class
 
 
@@ -34,7 +33,7 @@ class LineBox2(urwid.LineBox):
 lock = threading.RLock()
 #cols = urwid.Columns([])
 
-cols = urwid.GridFlow([], cell_width=56, h_sep=2, v_sep=1, align='left')
+cols = urwid.GridFlow([], cell_width=60, h_sep=2, v_sep=1, align='left')
 loop = urwid.MainLoop(urwid.Filler(cols,'top'))
 
 def work(*a):
@@ -106,7 +105,7 @@ def customize(c):
                         self.request_data_point(name)
                     b2= Button("get", refresh)
 
-                    cols = urwid.Columns([t, t2,ut,b2],min_width=8)
+                    cols = urwid.Columns([(29,t), (8,t2),(6,ut),(9,b2)],min_width=4,dividechars=1)
                     self.txts[name]=t2
 
                 else:
@@ -123,7 +122,7 @@ def customize(c):
                         self.request_data_point(name)
                     b2= Button("get", refresh)
 
-                    cols = urwid.Columns([t,ut,t2,ut,b,b2],min_width=8)
+                    cols = urwid.Columns([(20,t),(8,t2),(6,ut),(9,b),(9,b2)],min_width=4, dividechars=1)
                     cols.set_focus(t2)
 
                 self.pile.contents.append(   (cols,('pack', 1)) )
