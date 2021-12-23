@@ -171,6 +171,10 @@ Classes
         manage forms including yourself.  they are only meant for very tiny amounts of general interest data and fast commands.
         
         this lowest common denominator approach is to ensure that the ui can be fully served over mqtt if desired.
+        
+        The host page should provide a single JS function send_ui_message(m) to send this message.
+        
+        Manage forms should stay with Vanilla JS as much as possible, or else use an iframe.
 
     `print(self, s: str, title: str = '')`
     :   used by the device to print to the hosts live device message feed, if such a thing should happen to exist
@@ -181,7 +185,9 @@ Classes
         Meant to be called by external host code.
 
     `send_ui_message(self, msg: Union[float, int, str, bool, ForwardRef(None), dict, list])`
-    :   send a message to everyone including yourself.
+    :   send a message to everyone including yourself.  
+        The host page should provide a function set_ui_message_handler(f)
+        To set a JS callback to recieve these.
 
     `set_alarm(self, name: str, datapoint: str, expression: str, priority: str = 'info', trip_delay: float = 0, auto_ack: bool = False, release_condition: Optional[str] = None, **kw)`
     :   declare an alarm on a certain data point.   this means we should consider the data point to be in an

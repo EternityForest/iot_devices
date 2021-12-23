@@ -5,6 +5,12 @@
 Don't define any types here you don't have an immediate use for.  If you to describe data in a way that isn't covered by units of measure,
 just use a URI type name like "foo.blah.myawesometype".   This file should not be 758 pages long. We want to use as few different primitives as possible.
 
+## string
+
+### color
+
+A CSS style hex color starting with #
+
 ## Numeric
 
 ### trigger
@@ -27,6 +33,10 @@ The main purpose of this is so that devices can declare a pushbutton-like input.
 This is a timestamp used for the same purpose as trigger.  Note that within the data itself, unix times are preferred
 because data points already have the monotonic metadata, but any kind of timestamp in floating point seconds may be used.  
 Only deltas should be examined here, the real point is just to use it as a simple trigger.
+
+### light_fade_duration
+
+Represents a setting that affects the duration of a light fade.
 
 
 ## Object

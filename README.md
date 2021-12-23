@@ -113,6 +113,10 @@ This project uses google style docstrings with pdoc3.
 
 ### Device tips
 
+### Property names
+
+If the device has "subdevices",  the properties should be of the form "subdevicename.property"
+
 
 #### Interacting with the device.
 
