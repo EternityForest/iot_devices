@@ -45,7 +45,29 @@ class Device():
 
     def __init__(self, name: str, config: Dict[str, str],**kw):
         """ 
-        
+
+        Attributes:
+
+            config:
+                The current configuration of the device
+
+            config_properties:
+                For each key in config, there MAY be an option here that can contain any of these optional keys.
+
+                secret:
+                    Denotes that the key must be protected from shoulder surfing
+
+                description:
+                    Free text
+                    
+                type:
+                    Values may be
+
+                    bool:
+                        'yes', 'true', or 'enable' should represent true, with yes being preferred
+                    
+                    local_fs_path:
+                        String is a path on the same folder as the device
         Args:
             name: must be a special char free string.  
                 It may contain slashes, for compatibility with hosts using that for heirarchy
@@ -73,6 +95,9 @@ class Device():
         self.config: Dict[str, str] = config
         self.__datapointhandlers: Dict[str, Callable] = {}
         self.datapoints = {}
+
+        # Used to store properties about config keys
+        self.config_properties: Dict[str, Dict[str:Any]]= {}
 
         #Functions that can be called to explicitly request a data point
         #That return the new value
@@ -110,6 +135,7 @@ class Device():
         Reconfiguration should always be available as the user might always want to take an existing device object and
         swap out the actual physical device it connects to.
 
+        Kwargs is reserved for further hints on what kinds of devices should be discovered.
 
         Args:
             config: You may pass a partial config, or a completed config to find other
@@ -133,6 +159,9 @@ class Device():
         Returns:
             A dict of device data dicts that could be used to create a new device, indexed by a descriptive name.
 
+    
+        
+        UI:
 
       
 
@@ -142,6 +171,8 @@ class Device():
 
     def set_config_option(self, key: str, value: str):
         """sets an option in self.config. used for subclassing as you may want to persist.
+        __init__ will automatically set the state.  this is used by the device itself to set it's 
+        own persistent values at runtime, perhaps in response to a websocket message.
 
         __init__ will automatically set the state when passed the config dict, you don't have to do that part.
         
@@ -202,6 +233,8 @@ class Device():
         Handler will be called when it changes.
         self.datapoints[name] will start out with tha value of None
 
+        The intent is that you can subclass this and have your own implementation of data points,
+        such as exposing an MQTT api or whatever else.
 
         Most fields are just extra annotations to the host.
 
@@ -274,6 +307,8 @@ class Device():
         Handler will be called when it changes.
         self.datapoints[name] will start out with tha value of None
 
+        Interval annotates the default data rate the point will produce, for use in setting default poll
+        rates by the host, if the host wants to poll.
 
         Most fields are just extra annotations to the host.
 
@@ -334,6 +369,8 @@ class Device():
         Handler will be called when it changes.
         self.datapoints[name] will start out with tha value of None
 
+        Interval annotates the default data rate the point will produce, for use in setting default poll
+        rates by the host, if the host wants to poll.
 
         Most fields are just extra annotations to the host.
 
@@ -352,6 +389,7 @@ class Device():
 
 
         """
+
         self.datapoints[name] = None
 
         def onChangeAttempt(v: Optional[str], t, a):
@@ -382,6 +420,40 @@ class Device():
         self.__datapointhandlers[name] = onChangeAttempt
 
 
+
+    def bytestream_data_point(self,
+                           name: str,
+                           description: str = "",
+                           unit: str = '',
+                           handler: Optional[Callable[[Dict,float,Any], Any]] = None,
+                            writable=True,
+                           **kwargs):
+        """register a new bytestream data point with the given properties. handler will be called when it changes.
+        only meant to be called from within __init__.
+        
+        Bytestream data points do not store data, they only push it through.
+
+        Despite the name, buffers of bytes may not be broken up or combined, this is buffer oriented,
+        """
+
+        self.datapoints[name] = None
+
+        def onChangeAttempt(v: Optional[str], t, a):
+            t = t or time.monotonic()
+            self.datapoints[name] = v
+
+            #Handler used by the device
+            if handler:
+                handler(v, t, a)
+
+            self.on_data_change(name, v, t, a)
+
+        self.__datapointhandlers[name] = onChangeAttempt
+
+
+    def push_bytes(self,name:str,value:bytes):
+        """Same as set_data_point but for bytestream data"""
+        self.set_data_point(name, value)
 
 
     def set_data_point(self,
@@ -523,3 +595,18 @@ class Device():
     @classmethod
     def get_create_form(cls, **kwargs) -> Optional[str]:
         """must return a snippet of html used the same way as get_management_form, but for creating brand new devices"""
+
+    def handle_web_request(self,relpath,params,method,**kwargs):
+        """To be called by the framework.  Security must be handled by the framework.
+           Frameworks may implement separate read and write permissions that apply separately
+           to GET and other requests.
+
+           For this reason you should always check that the method is a POST before accepting a write operation.   
+        """
+        return "No web content here"
+
+    def web_serve_file(self,path,filename=None,mime=None):
+        """
+        From within your web handler, you can return the result of this to serve that file
+        """
+        raise NotImplementedError("This host framework does not support this feature")

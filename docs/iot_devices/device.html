@@ -1,0 +1,2275 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
+<meta name="generator" content="pdoc 0.10.0" />
+<title>iot_devices.device API documentation</title>
+<meta name="description" content="" />
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
+<link rel="stylesheet preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/styles/github.min.css" crossorigin>
+<style>:root{--highlight-color:#fe9}.flex{display:flex !important}body{line-height:1.5em}#content{padding:20px}#sidebar{padding:30px;overflow:hidden}#sidebar > *:last-child{margin-bottom:2cm}.http-server-breadcrumbs{font-size:130%;margin:0 0 15px 0}#footer{font-size:.75em;padding:5px 30px;border-top:1px solid #ddd;text-align:right}#footer p{margin:0 0 0 1em;display:inline-block}#footer p:last-child{margin-right:30px}h1,h2,h3,h4,h5{font-weight:300}h1{font-size:2.5em;line-height:1.1em}h2{font-size:1.75em;margin:1em 0 .50em 0}h3{font-size:1.4em;margin:25px 0 10px 0}h4{margin:0;font-size:105%}h1:target,h2:target,h3:target,h4:target,h5:target,h6:target{background:var(--highlight-color);padding:.2em 0}a{color:#058;text-decoration:none;transition:color .3s ease-in-out}a:hover{color:#e82}.title code{font-weight:bold}h2[id^="header-"]{margin-top:2em}.ident{color:#900}pre code{background:#f8f8f8;font-size:.8em;line-height:1.4em}code{background:#f2f2f1;padding:1px 4px;overflow-wrap:break-word}h1 code{background:transparent}pre{background:#f8f8f8;border:0;border-top:1px solid #ccc;border-bottom:1px solid #ccc;margin:1em 0;padding:1ex}#http-server-module-list{display:flex;flex-flow:column}#http-server-module-list div{display:flex}#http-server-module-list dt{min-width:10%}#http-server-module-list p{margin-top:0}.toc ul,#index{list-style-type:none;margin:0;padding:0}#index code{background:transparent}#index h3{border-bottom:1px solid #ddd}#index ul{padding:0}#index h4{margin-top:.6em;font-weight:bold}@media (min-width:200ex){#index .two-column{column-count:2}}@media (min-width:300ex){#index .two-column{column-count:3}}dl{margin-bottom:2em}dl dl:last-child{margin-bottom:4em}dd{margin:0 0 1em 3em}#header-classes + dl > dd{margin-bottom:3em}dd dd{margin-left:2em}dd p{margin:10px 0}.name{background:#eee;font-weight:bold;font-size:.85em;padding:5px 10px;display:inline-block;min-width:40%}.name:hover{background:#e0e0e0}dt:target .name{background:var(--highlight-color)}.name > span:first-child{white-space:nowrap}.name.class > span:nth-child(2){margin-left:.4em}.inherited{color:#999;border-left:5px solid #eee;padding-left:1em}.inheritance em{font-style:normal;font-weight:bold}.desc h2{font-weight:400;font-size:1.25em}.desc h3{font-size:1em}.desc dt code{background:inherit}.source summary,.git-link-div{color:#666;text-align:right;font-weight:400;font-size:.8em;text-transform:uppercase}.source summary > *{white-space:nowrap;cursor:pointer}.git-link{color:inherit;margin-left:1em}.source pre{max-height:500px;overflow:auto;margin:0}.source pre code{font-size:12px;overflow:visible}.hlist{list-style:none}.hlist li{display:inline}.hlist li:after{content:',\2002'}.hlist li:last-child:after{content:none}.hlist .hlist{display:inline;padding-left:1em}img{max-width:100%}td{padding:0 .5em}.admonition{padding:.1em .5em;margin-bottom:1em}.admonition-title{font-weight:bold}.admonition.note,.admonition.info,.admonition.important{background:#aef}.admonition.todo,.admonition.versionadded,.admonition.tip,.admonition.hint{background:#dfd}.admonition.warning,.admonition.versionchanged,.admonition.deprecated{background:#fd4}.admonition.error,.admonition.danger,.admonition.caution{background:lightpink}</style>
+<style media="screen and (min-width: 700px)">@media screen and (min-width:700px){#sidebar{width:30%;height:100vh;overflow:auto;position:sticky;top:0}#content{width:70%;max-width:100ch;padding:3em 4em;border-left:1px solid #ddd}pre code{font-size:1em}.item .name{font-size:1em}main{display:flex;flex-direction:row-reverse;justify-content:flex-end}.toc ul ul,#index ul{padding-left:1.5em}.toc > ul > li{margin-top:.5em}}</style>
+<style media="print">@media print{#sidebar h1{page-break-before:always}.source{display:none}}@media print{*{background:transparent !important;color:#000 !important;box-shadow:none !important;text-shadow:none !important}a[href]:after{content:" (" attr(href) ")";font-size:90%}a[href][title]:after{content:none}abbr[title]:after{content:" (" attr(title) ")"}.ir a:after,a[href^="javascript:"]:after,a[href^="#"]:after{content:""}pre,blockquote{border:1px solid #999;page-break-inside:avoid}thead{display:table-header-group}tr,img{page-break-inside:avoid}img{max-width:100% !important}@page{margin:0.5cm}p,h2,h3{orphans:3;widows:3}h1,h2,h3,h4,h5,h6{page-break-after:avoid}}</style>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/highlight.min.js" integrity="sha256-Uv3H6lx7dJmRfRvH8TH6kJD1TSK1aFcwgx+mdg3epi8=" crossorigin></script>
+<script>window.addEventListener('DOMContentLoaded', () => hljs.initHighlighting())</script>
+</head>
+<body>
+<main>
+<article id="content">
+<header>
+<h1 class="title">Module <code>iot_devices.device</code></h1>
+</header>
+<section id="section-intro">
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">import collections
+import traceback
+from typing import Any, Callable, Dict, Optional, Union
+import logging
+import time
+import json
+import copy
+
+# example device_manifest.json file that should be in any module declaring devices. keys are device type names.
+
+
+# submodule values are the submodule you would have to import to get access to that device type. blank is the root.
+# easy to read manually!
+&#34;&#34;&#34;
+&#34;devices&#34;: {
+  &#34;Device&#34;:{
+    &#34;submodule&#34;: &#34;&#34;
+    &#34;description&#34;: &#34;Device base clas
+  }
+}
+&#34;&#34;&#34;
+
+#Gonna overwrite these functions insude functions...
+minimum = min
+maximum = max
+
+class Device():
+    &#34;&#34;&#34;represents exactly one &#34;device&#34;.   
+    should not be used to represent an interface to a large collection, use
+    one instance per device.
+    
+
+    Note that this is meant to be subclassed twice.  Once by the actual driver, and again by the 
+    host application, to detemine how to handle calls made by the driver.
+
+    &#34;&#34;&#34;
+
+
+    # this name must be the same as the name of the device itself
+    device_type: str=&#34;Device&#34;
+    default_config={}
+
+    # Iterable of config keys that should be considered secret, and hidden behind asterisks and such.
+    config_secrets={}
+
+    def __init__(self, name: str, config: Dict[str, str],**kw):
+        &#34;&#34;&#34; 
+
+        Attributes:
+
+            config:
+                The current configuration of the device
+
+            config_properties:
+                For each key in config, there MAY be an option here that can contain any of these optional keys.
+
+                secret:
+                    Denotes that the key must be protected from shoulder surfing
+
+                description:
+                    Free text
+                    
+                type:
+                    Values may be
+
+                    bool:
+                        &#39;yes&#39;, &#39;true&#39;, or &#39;enable&#39; should represent true, with yes being preferred
+                    
+                    local_fs_path:
+                        String is a path on the same folder as the device
+        Args:
+            name: must be a special char free string.  
+                It may contain slashes, for compatibility with hosts using that for heirarchy
+       
+            config: must contain a name field, and must contain a type field matching the device type name.
+                All other fields must be optional, and a blank unconfigured device should be creatable.  
+                The device should set it&#39;s own missing fields for use as a template 
+                
+                Options starting with temp. are reserved for device specific things that should not actually be saved.
+                Options endning with __ are used to add additional fields with special meaning.  Don&#39;t use these!
+
+
+                All your device-specific options should begin with device.
+        &#34;&#34;&#34;
+
+        config=copy.deepcopy(config)
+
+        if config.get(&#34;type&#34;,self.device_type) != self.device_type:
+            raise ValueError(&#34;This config does not match this class type:&#34;+str((config[&#39;type&#39;], self,type)))
+    
+
+        # Raise error on bad data.
+        json.dumps(config)
+
+        self.config: Dict[str, str] = config
+        self.__datapointhandlers: Dict[str, Callable] = {}
+        self.datapoints = {}
+
+        # Used to store properties about config keys
+        self.config_properties: Dict[str, Dict[str:Any]]= {}
+
+        #Functions that can be called to explicitly request a data point
+        #That return the new value
+        self.__datapoint_getters: Dict[str, Callable] = {}
+
+        for i in self.default_config:
+            if not i in self.config:
+                self.set_config_option(i,self.default_config[i])
+
+        self.name=name
+        if &#39;name&#39; in self.config:
+            if not self.config[&#39;name&#39;]== name:
+                raise ValueError(&#34;Nonmatching name&#34;)
+            name=self.name = config[&#39;name&#39;]
+        else:
+            self.set_config_option(&#39;name&#39;, name)
+        
+
+    @staticmethod
+    def discover_devices(config:Dict[str, str] = {}, current_device: Optional[object]=None, intent=&#34;&#34;, **kwargs) -&gt; Dict[str, Dict]:
+        &#34;&#34;&#34; 
+        Discover a set of suggested configs that could be used to build a new device.        
+        
+        Not required to be implemented and may just return {}  
+
+        ***********************
+        Discovered suggestions MUST NOT have any passwords or secrets if the suggestion would cause them to be tried somewhere
+        other than what the user provided them for, unless the protocol does not actually reveal the secrets to the server.
+        
+        You do not want to autosuggest trying the same credentials at bad.com that the user gave for example.com.
+
+    
+        The suggested UI semantics for discover commands is &#34;Add a similar device&#34; and &#34;Reconfigure this device&#34;.
+        
+        Reconfiguration should always be available as the user might always want to take an existing device object and
+        swap out the actual physical device it connects to.
+
+        Kwargs is reserved for further hints on what kinds of devices should be discovered.
+
+        Args:
+            config: You may pass a partial config, or a completed config to find other
+                similar devices. The device should reuse as much of the given config as possible and logical,
+                discarding anything that wouldn&#39;t  work with the selected device.
+
+            current_device: May be set to the current version of a device, if it is being used in a UI along the lines of
+                suggesting how to further set up a partly configured device, or suggesting ways to add another similar device.
+
+            kwargs: is reserved for further hints on what kinds of devices should be discovered.
+
+        
+            intent: may be a hint as to what kind of config you are looking for.  
+                If it is &#34;new&#34;, that means the host wants to add another
+                similar device.  If it is &#34;replace&#34;, the host wants to keep the same config 
+                but point at a different physical device.  If it is
+                &#34;configure&#34;,  the host wants to look for alternate configurations available for the same exact device.
+
+                If it is &#34;step&#34;, the user wants to refine the existing config.
+
+        Returns:
+            A dict of device data dicts that could be used to create a new device, indexed by a descriptive name.
+
+    
+        
+        UI:
+
+      
+
+        &#34;&#34;&#34;
+
+        return {}
+
+    def set_config_option(self, key: str, value: str):
+        &#34;&#34;&#34;sets an option in self.config. used for subclassing as you may want to persist.
+        __init__ will automatically set the state.  this is used by the device itself to set it&#39;s 
+        own persistent values at runtime, perhaps in response to a websocket message.
+
+        __init__ will automatically set the state when passed the config dict, you don&#39;t have to do that part.
+        
+        this is used by the device itself to set it&#39;s own persistent values at runtime, perhaps in response to a websocket message.
+
+        
+        the host is responsible for subclassing this and actually saving the data somehow, should that feature be needed.
+        &#34;&#34;&#34;
+
+        if not isinstance(key,str):
+            raise TypeError(&#34;Key must be str&#34;)
+
+        value = str(value)
+        if len(value)&gt;8192:
+            logging.error(&#34;Excessively long param for &#34;+key+&#34; starting with &#34;+value[:128])
+
+        # Auto strip the values to clean them up
+        self.config[key] = value.strip()
+
+
+    def set_config_default(self, key: str, value: str):
+        &#34;&#34;&#34;sets an option in self.config if it does not exist or is blank.        
+         Calls into set_config_option, you should not need to subclass this.
+        &#34;&#34;&#34;
+
+        if not key in self.config or not self.config[key].strip():
+            self.set_config_option(key,value.strip())
+
+
+    def print(self, s: str, title: str = &#34;&#34;):
+        &#34;&#34;&#34;used by the device to print to the hosts live device message feed, if such a thing should happen to exist&#34;&#34;&#34;
+        logging.info(title + &#39;: &#39; + str(s))
+
+    def handle_error(self, s: str, title: str = &#34;&#34;):
+        &#34;&#34;&#34;like print but specifically marked as error. may get special notification.  should not be used for brief network loss
+        &#34;&#34;&#34;
+        logging.error(title + &#39;: &#39; + str(s))
+
+    def handle_exception(self):
+        &#34;Helper function that just calls handle_error with a traceback.&#34;
+        self.handle_error(traceback.format_exc())
+
+    def numeric_data_point(self,
+                           name: str,
+                           min: Optional[float] = None,
+                           max: Optional[float] = None,
+                           hi: Optional[float] = None,
+                           lo: Optional[float] = None,
+                           description: str = &#34;&#34;,
+                           unit: str = &#39;&#39;,
+                           handler:  Optional[Callable[[float,float,Any], Any]] = None,
+                           interval: float = 0,
+                           subtype: str=&#39;&#39;,
+                           writable=True,
+                           **kwargs):
+        &#34;&#34;&#34;Register a new numeric data point with the given properties. 
+        
+        Handler will be called when it changes.
+        self.datapoints[name] will start out with tha value of None
+
+        The intent is that you can subclass this and have your own implementation of data points,
+        such as exposing an MQTT api or whatever else.
+
+        Most fields are just extra annotations to the host.
+
+        Args:
+            min: The min value the point can take on
+            max: The max value the point can take on
+
+            hi: A value the point can take on that would be considered excessive
+            lo: A value the point can take on that would be considered excessively low
+
+            description: Free text
+
+            unit: A unit of measure, such as &#34;degC&#34; or &#34;MPH&#34;
+            
+            handler: A function taking the value,timestamp, and annotation on changes
+
+            interval :annotates the default data rate the point will produce, for use in setting default poll
+                rates by the host, if the host wants to poll.  It does not mean the host SHOULD poll this, 
+                it only suggest a rate to poll at if the host has an interest in this data.
+
+            writable:  is purely for a host that might subclass this, to determine if it should allow writing to the point.
+
+            subtype: A string further describing the data type of this value, as a hint to UI generation.
+
+        &#34;&#34;&#34;
+
+        if min is None:
+            min = -10**24
+
+        if max is None:
+            max = 10**24
+
+        self.datapoints[name] = None
+
+        def onChangeAttempt(v: Optional[float], t, a):
+            if v is None:
+                return
+            if callable(v):
+                v = v()
+            v = float(v)
+            v = minimum(max, v)
+            v = maximum(min, v)
+            t = t or time.monotonic()
+
+            if self.datapoints[name] == v:
+                return
+
+            self.datapoints[name] = v
+
+            #Handler used by the device
+            if handler:
+                handler(v, t, a)
+
+            self.on_data_change(name, v, t, a)
+
+        self.__datapointhandlers[name] = onChangeAttempt
+
+
+    def string_data_point(self,
+                           name: str,
+                           description: str = &#34;&#34;,
+                           unit: str = &#39;&#39;,
+                           handler: Optional[Callable[[str,float,Any], Any]] = None,
+                           interval: float = 0,
+                           writable=True,
+                           subtype: str=&#39;&#39;,
+                           **kwargs):
+        &#34;&#34;&#34;Register a new string data point with the given properties. 
+        
+        Handler will be called when it changes.
+        self.datapoints[name] will start out with tha value of None
+
+        Interval annotates the default data rate the point will produce, for use in setting default poll
+        rates by the host, if the host wants to poll.
+
+        Most fields are just extra annotations to the host.
+
+
+        Args:
+            description: Free text
+            
+            handler: A function taking the value,timestamp, and annotation on changes
+
+            interval: annotates the default data rate the point will produce, for use in setting default poll
+                rates by the host if the host wants to poll.  
+                
+                It does not mean the host SHOULD poll this, 
+                it only suggest a rate to poll at if the host has an interest in this data.
+
+            writable:  is purely for a host that might subclass this, to determine if it should allow writing to the point.
+
+            subtype: A string further describing the data type of this value, as a hint to UI generation.
+
+        &#34;&#34;&#34;
+
+        self.datapoints[name] = None
+
+        def onChangeAttempt(v: Optional[str], t, a):
+            if v is None:
+                return
+            if callable(v):
+                v = v()
+            v = str(v)
+            t = t or time.monotonic()
+
+            if self.datapoints[name] == v:
+                return
+
+            self.datapoints[name] = v
+
+            #Handler used by the device
+            if handler:
+                handler(v, t, a)
+
+            self.on_data_change(name, v, t, a)
+
+        self.__datapointhandlers[name] = onChangeAttempt
+
+
+    def object_data_point(self,
+                           name: str,
+                           description: str = &#34;&#34;,
+                           unit: str = &#39;&#39;,
+                           handler: Optional[Callable[[Dict,float,Any], Any]] = None,
+                           interval: float = 0,
+                            writable=True,
+                            subtype: str=&#39;&#39;,
+                           **kwargs):
+        &#34;&#34;&#34;Register a new object data point with the given properties.   Here &#34;object&#34;
+        means a JSON-like object.
+        
+        Handler will be called when it changes.
+        self.datapoints[name] will start out with tha value of None
+
+        Interval annotates the default data rate the point will produce, for use in setting default poll
+        rates by the host, if the host wants to poll.
+
+        Most fields are just extra annotations to the host.
+
+        Args:
+            description: Free text
+            
+            handler: A function taking the value,timestamp, and annotation on changes
+
+            interval :annotates the default data rate the point will produce, for use in setting default poll
+                rates by the host, if the host wants to poll.  It does not mean the host SHOULD poll this, 
+                it only suggest a rate to poll at if the host has an interest in this data.
+
+            writable:  is purely for a host that might subclass this, to determine if it should allow writing to the point.
+
+            subtype: A string further describing the data type of this value, as a hint to UI generation.
+
+
+        &#34;&#34;&#34;
+
+        self.datapoints[name] = None
+
+        def onChangeAttempt(v: Optional[str], t, a):
+            if v is None:
+                return
+            if callable(v):
+                v = v()
+
+            # Validate
+            json.dumps(v)
+
+            # Mutability trouble
+            v = copy.deepcopy(v)
+
+            t = t or time.monotonic()
+
+            if self.datapoints[name] == v:
+                return
+
+            self.datapoints[name] = v
+
+            #Handler used by the device
+            if handler:
+                handler(v, t, a)
+
+            self.on_data_change(name, v, t, a)
+
+        self.__datapointhandlers[name] = onChangeAttempt
+
+
+
+    def bytestream_data_point(self,
+                           name: str,
+                           description: str = &#34;&#34;,
+                           unit: str = &#39;&#39;,
+                           handler: Optional[Callable[[Dict,float,Any], Any]] = None,
+                            writable=True,
+                           **kwargs):
+        &#34;&#34;&#34;register a new bytestream data point with the given properties. handler will be called when it changes.
+        only meant to be called from within __init__.
+        
+        Bytestream data points do not store data, they only push it through.
+
+        Despite the name, buffers of bytes may not be broken up or combined, this is buffer oriented,
+        &#34;&#34;&#34;
+
+        self.datapoints[name] = None
+
+        def onChangeAttempt(v: Optional[str], t, a):
+            t = t or time.monotonic()
+            self.datapoints[name] = v
+
+            #Handler used by the device
+            if handler:
+                handler(v, t, a)
+
+            self.on_data_change(name, v, t, a)
+
+        self.__datapointhandlers[name] = onChangeAttempt
+
+
+    def push_bytes(self,name:str,value:bytes):
+        &#34;&#34;&#34;Same as set_data_point but for bytestream data&#34;&#34;&#34;
+        self.set_data_point(name, value)
+
+
+    def set_data_point(self,
+                       name: str,
+                       value,
+                       timestamp: Optional[float] = None,
+                       annotation: Optional[float] = None):
+        &#34;&#34;&#34;
+        Set a data point of the device. may be called by the device itself or by user code. 
+        
+        This is the primary api and we try to funnel as much as absolutely possible into it.
+        
+        things like button presses that are not actually &#34;data points&#34; can be represented as things like
+        (button_event_name, timestamp) tuples in object_tags.
+        
+        things like autodiscovered ui can be done just by adding more descriptive metadata to a data point.
+        
+        Args:
+            name: The data point to set
+
+            timestamp: if present is a time.monotonic() time.  
+
+            annotation: is an arbitrary object meant to be compared for identity,
+                for various uses, such as loop prevention when dealting with network sync, when you need to know where a value came from.
+
+
+        This must be thread safe, but the change detection could glitch out and discard if you go from A to B and back to A again.
+        
+        When there is multiple writers you will want to aither do your own lock or ensure that you use unique values, 
+        like with an event counter.
+        
+        &#34;&#34;&#34;
+
+
+        self.__datapointhandlers[name](value, timestamp, annotation)
+
+    
+    def set_data_point_getter(self,name:str, getter: Callable):
+        &#34;&#34;&#34;Set the Getter of a datapoint, making it into an on-request point.
+        The callable may return either the new value, or None if it has no new data.
+        &#34;&#34;&#34;
+        self.__datapoint_getters[name] = getter
+
+    def on_data_change(self, name: str, value, timestamp: float, annotation):
+        &#34;Used for subclassing, this is how you watch for data changes&#34;
+        pass
+
+    def request_data_point(self, name: str):
+        &#34;&#34;&#34;Rather than just passively read, actively request a data point&#39;s new value.
+
+        Meant to be called by external host code.
+        
+        &#34;&#34;&#34;
+        if name in self.__datapoint_getters:
+            x = self.__datapoint_getters[name]()
+            if not x is None:
+                # there has been a change! Maybe!  call a handler
+                self.__datapointhandlers[name](x, time.monotonic(), &#34;From getter&#34;)
+                self.datapoints[name] = x
+                return x
+
+        return self.datapoints[name]
+
+    def set_alarm(self, name:str, datapoint:str, 
+            expression:str, priority:str=&#34;info&#34; ,
+            trip_delay:float=0, auto_ack:bool=False,
+             release_condition:Optional[str]=None, **kw):
+        &#34;&#34;&#34; declare an alarm on a certain data point.   this means we should consider the data point to be in an
+            alarm state whenever the expression is true.  
+            
+            used by the device itself to tell the host what it considers to be an alarm condition.
+            
+            the expression must look like &#34;value &gt; 90&#34;, where the operator can be any of the common comparision operators.
+            
+            you may set the trip delay to require it to stay tripped for a certain time,
+            polling during that time and resettig if it is not tripped.
+            
+            the alarm remains in the alarm state till the release condition is met, by default it&#39;s just when the trip
+            condition is inactive.  at which point it will need to be acknowledged by the user.
+            
+            
+            these alarms should be considered &#34;presets&#34; that the user can override if possible.   
+            by default this function could just be a no-op, it&#39;s here because of kaithem_automation&#39;s alarm support,
+            but many applications may be better off with full manual alarming.  
+            
+            in kaithem the expression is arbitrary, but for this lowest common denominator definition it&#39;s likely best to
+            limit it to easily semantically parsible strings.
+        
+        &#34;&#34;&#34;
+        pass
+
+
+    def close(self):
+        &#34;Release all resources and clean up&#34;
+
+    def on_delete(self):
+        &#34;&#34;&#34;
+        release all persistent resources, used by the host app to tell the user the device is being permanently deleted.
+        may be used to delete any files automatically created.
+        &#34;&#34;&#34;
+
+
+    # optional ui integration features
+    # these are here so that device drivers can device fully custom u_is.
+
+
+    def on_ui_message(self,msg:Union[float, int, str, bool, None, dict, list],**kw):
+        &#34;&#34;&#34;recieve a json message from the ui page.  the host is responsible for providing a send_ui_message(msg)
+        function to the manage and create forms, and a set_ui_message_callback(f) function.
+        
+        these messages are not directed at anyone in particular, have no semantics, and will be recieved by all
+        manage forms including yourself.  they are only meant for very tiny amounts of general interest data and fast commands.
+        
+        this lowest common denominator approach is to ensure that the ui can be fully served over mqtt if desired.
+
+        The host page should provide a single JS function send_ui_message(m) to send this message.
+
+        Manage forms should stay with Vanilla JS as much as possible, or else use an iframe.
+    
+        &#34;&#34;&#34;
+
+    def send_ui_message(self, msg:Union[float, int, str, bool, None, dict, list]):
+        &#34;&#34;&#34;
+        send a message to everyone including yourself.  
+        The host page should provide a function set_ui_message_handler(f)
+        To set a JS callback to recieve these.
+        &#34;&#34;&#34;
+
+    def get_management_form(self,) -&gt; Optional[str]:
+        &#34;&#34;&#34;must return a snippet of html suitable for insertion into a form tag, but not the form tag itself.
+        the host application is responsible for implementing the post target, the authentication, etc.
+        
+        when the user posts the form, the config options will be used to first close the device, then build 
+        a completely new device.
+        
+        the host is responsible for the name and type parts of config, and everything other than the device.* keys.
+        &#34;&#34;&#34;
+
+    @classmethod
+    def get_create_form(cls, **kwargs) -&gt; Optional[str]:
+        &#34;&#34;&#34;must return a snippet of html used the same way as get_management_form, but for creating brand new devices&#34;&#34;&#34;
+
+    def handle_web_request(self,relpath,params,method,**kwargs):
+        &#34;&#34;&#34;To be called by the framework.  Security must be handled by the framework.
+           Frameworks may implement separate read and write permissions that apply separately
+           to GET and other requests.
+
+           For this reason you should always check that the method is a POST before accepting a write operation.   
+        &#34;&#34;&#34;
+        return &#34;No web content here&#34;
+
+    def web_serve_file(self,path,filename=None,mime=None):
+        &#34;&#34;&#34;
+        From within your web handler, you can return the result of this to serve that file
+        &#34;&#34;&#34;
+        raise NotImplementedError(&#34;This host framework does not support this feature&#34;)</code></pre>
+</details>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+<h2 class="section-title" id="header-classes">Classes</h2>
+<dl>
+<dt id="iot_devices.device.Device"><code class="flex name class">
+<span>class <span class="ident">Device</span></span>
+<span>(</span><span>name: str, config: Dict[str, str], **kw)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>represents exactly one "device". <br>
+should not be used to represent an interface to a large collection, use
+one instance per device.</p>
+<p>Note that this is meant to be subclassed twice.
+Once by the actual driver, and again by the
+host application, to detemine how to handle calls made by the driver.</p>
+<h2 id="attributes">Attributes</h2>
+<p>config:
+The current configuration of the device</p>
+<p>config_properties:
+For each key in config, there MAY be an option here that can contain any of these optional keys.</p>
+<pre><code>secret:
+    Denotes that the key must be protected from shoulder surfing
+
+description:
+    Free text
+
+type:
+    Values may be
+
+    bool:
+        'yes', 'true', or 'enable' should represent true, with yes being preferred
+
+    local_fs_path:
+        String is a path on the same folder as the device
+</code></pre>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>name</code></strong></dt>
+<dd>must be a special char free string.<br>
+It may contain slashes, for compatibility with hosts using that for heirarchy</dd>
+<dt><strong><code>config</code></strong></dt>
+<dd>
+<p>must contain a name field, and must contain a type field matching the device type name.
+All other fields must be optional, and a blank unconfigured device should be creatable.<br>
+The device should set it's own missing fields for use as a template </p>
+<p>Options starting with temp. are reserved for device specific things that should not actually be saved.
+Options endning with __ are used to add additional fields with special meaning.
+Don't use these!</p>
+<p>All your device-specific options should begin with device.</p>
+</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class Device():
+    &#34;&#34;&#34;represents exactly one &#34;device&#34;.   
+    should not be used to represent an interface to a large collection, use
+    one instance per device.
+    
+
+    Note that this is meant to be subclassed twice.  Once by the actual driver, and again by the 
+    host application, to detemine how to handle calls made by the driver.
+
+    &#34;&#34;&#34;
+
+
+    # this name must be the same as the name of the device itself
+    device_type: str=&#34;Device&#34;
+    default_config={}
+
+    # Iterable of config keys that should be considered secret, and hidden behind asterisks and such.
+    config_secrets={}
+
+    def __init__(self, name: str, config: Dict[str, str],**kw):
+        &#34;&#34;&#34; 
+
+        Attributes:
+
+            config:
+                The current configuration of the device
+
+            config_properties:
+                For each key in config, there MAY be an option here that can contain any of these optional keys.
+
+                secret:
+                    Denotes that the key must be protected from shoulder surfing
+
+                description:
+                    Free text
+                    
+                type:
+                    Values may be
+
+                    bool:
+                        &#39;yes&#39;, &#39;true&#39;, or &#39;enable&#39; should represent true, with yes being preferred
+                    
+                    local_fs_path:
+                        String is a path on the same folder as the device
+        Args:
+            name: must be a special char free string.  
+                It may contain slashes, for compatibility with hosts using that for heirarchy
+       
+            config: must contain a name field, and must contain a type field matching the device type name.
+                All other fields must be optional, and a blank unconfigured device should be creatable.  
+                The device should set it&#39;s own missing fields for use as a template 
+                
+                Options starting with temp. are reserved for device specific things that should not actually be saved.
+                Options endning with __ are used to add additional fields with special meaning.  Don&#39;t use these!
+
+
+                All your device-specific options should begin with device.
+        &#34;&#34;&#34;
+
+        config=copy.deepcopy(config)
+
+        if config.get(&#34;type&#34;,self.device_type) != self.device_type:
+            raise ValueError(&#34;This config does not match this class type:&#34;+str((config[&#39;type&#39;], self,type)))
+    
+
+        # Raise error on bad data.
+        json.dumps(config)
+
+        self.config: Dict[str, str] = config
+        self.__datapointhandlers: Dict[str, Callable] = {}
+        self.datapoints = {}
+
+        # Used to store properties about config keys
+        self.config_properties: Dict[str, Dict[str:Any]]= {}
+
+        #Functions that can be called to explicitly request a data point
+        #That return the new value
+        self.__datapoint_getters: Dict[str, Callable] = {}
+
+        for i in self.default_config:
+            if not i in self.config:
+                self.set_config_option(i,self.default_config[i])
+
+        self.name=name
+        if &#39;name&#39; in self.config:
+            if not self.config[&#39;name&#39;]== name:
+                raise ValueError(&#34;Nonmatching name&#34;)
+            name=self.name = config[&#39;name&#39;]
+        else:
+            self.set_config_option(&#39;name&#39;, name)
+        
+
+    @staticmethod
+    def discover_devices(config:Dict[str, str] = {}, current_device: Optional[object]=None, intent=&#34;&#34;, **kwargs) -&gt; Dict[str, Dict]:
+        &#34;&#34;&#34; 
+        Discover a set of suggested configs that could be used to build a new device.        
+        
+        Not required to be implemented and may just return {}  
+
+        ***********************
+        Discovered suggestions MUST NOT have any passwords or secrets if the suggestion would cause them to be tried somewhere
+        other than what the user provided them for, unless the protocol does not actually reveal the secrets to the server.
+        
+        You do not want to autosuggest trying the same credentials at bad.com that the user gave for example.com.
+
+    
+        The suggested UI semantics for discover commands is &#34;Add a similar device&#34; and &#34;Reconfigure this device&#34;.
+        
+        Reconfiguration should always be available as the user might always want to take an existing device object and
+        swap out the actual physical device it connects to.
+
+        Kwargs is reserved for further hints on what kinds of devices should be discovered.
+
+        Args:
+            config: You may pass a partial config, or a completed config to find other
+                similar devices. The device should reuse as much of the given config as possible and logical,
+                discarding anything that wouldn&#39;t  work with the selected device.
+
+            current_device: May be set to the current version of a device, if it is being used in a UI along the lines of
+                suggesting how to further set up a partly configured device, or suggesting ways to add another similar device.
+
+            kwargs: is reserved for further hints on what kinds of devices should be discovered.
+
+        
+            intent: may be a hint as to what kind of config you are looking for.  
+                If it is &#34;new&#34;, that means the host wants to add another
+                similar device.  If it is &#34;replace&#34;, the host wants to keep the same config 
+                but point at a different physical device.  If it is
+                &#34;configure&#34;,  the host wants to look for alternate configurations available for the same exact device.
+
+                If it is &#34;step&#34;, the user wants to refine the existing config.
+
+        Returns:
+            A dict of device data dicts that could be used to create a new device, indexed by a descriptive name.
+
+    
+        
+        UI:
+
+      
+
+        &#34;&#34;&#34;
+
+        return {}
+
+    def set_config_option(self, key: str, value: str):
+        &#34;&#34;&#34;sets an option in self.config. used for subclassing as you may want to persist.
+        __init__ will automatically set the state.  this is used by the device itself to set it&#39;s 
+        own persistent values at runtime, perhaps in response to a websocket message.
+
+        __init__ will automatically set the state when passed the config dict, you don&#39;t have to do that part.
+        
+        this is used by the device itself to set it&#39;s own persistent values at runtime, perhaps in response to a websocket message.
+
+        
+        the host is responsible for subclassing this and actually saving the data somehow, should that feature be needed.
+        &#34;&#34;&#34;
+
+        if not isinstance(key,str):
+            raise TypeError(&#34;Key must be str&#34;)
+
+        value = str(value)
+        if len(value)&gt;8192:
+            logging.error(&#34;Excessively long param for &#34;+key+&#34; starting with &#34;+value[:128])
+
+        # Auto strip the values to clean them up
+        self.config[key] = value.strip()
+
+
+    def set_config_default(self, key: str, value: str):
+        &#34;&#34;&#34;sets an option in self.config if it does not exist or is blank.        
+         Calls into set_config_option, you should not need to subclass this.
+        &#34;&#34;&#34;
+
+        if not key in self.config or not self.config[key].strip():
+            self.set_config_option(key,value.strip())
+
+
+    def print(self, s: str, title: str = &#34;&#34;):
+        &#34;&#34;&#34;used by the device to print to the hosts live device message feed, if such a thing should happen to exist&#34;&#34;&#34;
+        logging.info(title + &#39;: &#39; + str(s))
+
+    def handle_error(self, s: str, title: str = &#34;&#34;):
+        &#34;&#34;&#34;like print but specifically marked as error. may get special notification.  should not be used for brief network loss
+        &#34;&#34;&#34;
+        logging.error(title + &#39;: &#39; + str(s))
+
+    def handle_exception(self):
+        &#34;Helper function that just calls handle_error with a traceback.&#34;
+        self.handle_error(traceback.format_exc())
+
+    def numeric_data_point(self,
+                           name: str,
+                           min: Optional[float] = None,
+                           max: Optional[float] = None,
+                           hi: Optional[float] = None,
+                           lo: Optional[float] = None,
+                           description: str = &#34;&#34;,
+                           unit: str = &#39;&#39;,
+                           handler:  Optional[Callable[[float,float,Any], Any]] = None,
+                           interval: float = 0,
+                           subtype: str=&#39;&#39;,
+                           writable=True,
+                           **kwargs):
+        &#34;&#34;&#34;Register a new numeric data point with the given properties. 
+        
+        Handler will be called when it changes.
+        self.datapoints[name] will start out with tha value of None
+
+        The intent is that you can subclass this and have your own implementation of data points,
+        such as exposing an MQTT api or whatever else.
+
+        Most fields are just extra annotations to the host.
+
+        Args:
+            min: The min value the point can take on
+            max: The max value the point can take on
+
+            hi: A value the point can take on that would be considered excessive
+            lo: A value the point can take on that would be considered excessively low
+
+            description: Free text
+
+            unit: A unit of measure, such as &#34;degC&#34; or &#34;MPH&#34;
+            
+            handler: A function taking the value,timestamp, and annotation on changes
+
+            interval :annotates the default data rate the point will produce, for use in setting default poll
+                rates by the host, if the host wants to poll.  It does not mean the host SHOULD poll this, 
+                it only suggest a rate to poll at if the host has an interest in this data.
+
+            writable:  is purely for a host that might subclass this, to determine if it should allow writing to the point.
+
+            subtype: A string further describing the data type of this value, as a hint to UI generation.
+
+        &#34;&#34;&#34;
+
+        if min is None:
+            min = -10**24
+
+        if max is None:
+            max = 10**24
+
+        self.datapoints[name] = None
+
+        def onChangeAttempt(v: Optional[float], t, a):
+            if v is None:
+                return
+            if callable(v):
+                v = v()
+            v = float(v)
+            v = minimum(max, v)
+            v = maximum(min, v)
+            t = t or time.monotonic()
+
+            if self.datapoints[name] == v:
+                return
+
+            self.datapoints[name] = v
+
+            #Handler used by the device
+            if handler:
+                handler(v, t, a)
+
+            self.on_data_change(name, v, t, a)
+
+        self.__datapointhandlers[name] = onChangeAttempt
+
+
+    def string_data_point(self,
+                           name: str,
+                           description: str = &#34;&#34;,
+                           unit: str = &#39;&#39;,
+                           handler: Optional[Callable[[str,float,Any], Any]] = None,
+                           interval: float = 0,
+                           writable=True,
+                           subtype: str=&#39;&#39;,
+                           **kwargs):
+        &#34;&#34;&#34;Register a new string data point with the given properties. 
+        
+        Handler will be called when it changes.
+        self.datapoints[name] will start out with tha value of None
+
+        Interval annotates the default data rate the point will produce, for use in setting default poll
+        rates by the host, if the host wants to poll.
+
+        Most fields are just extra annotations to the host.
+
+
+        Args:
+            description: Free text
+            
+            handler: A function taking the value,timestamp, and annotation on changes
+
+            interval: annotates the default data rate the point will produce, for use in setting default poll
+                rates by the host if the host wants to poll.  
+                
+                It does not mean the host SHOULD poll this, 
+                it only suggest a rate to poll at if the host has an interest in this data.
+
+            writable:  is purely for a host that might subclass this, to determine if it should allow writing to the point.
+
+            subtype: A string further describing the data type of this value, as a hint to UI generation.
+
+        &#34;&#34;&#34;
+
+        self.datapoints[name] = None
+
+        def onChangeAttempt(v: Optional[str], t, a):
+            if v is None:
+                return
+            if callable(v):
+                v = v()
+            v = str(v)
+            t = t or time.monotonic()
+
+            if self.datapoints[name] == v:
+                return
+
+            self.datapoints[name] = v
+
+            #Handler used by the device
+            if handler:
+                handler(v, t, a)
+
+            self.on_data_change(name, v, t, a)
+
+        self.__datapointhandlers[name] = onChangeAttempt
+
+
+    def object_data_point(self,
+                           name: str,
+                           description: str = &#34;&#34;,
+                           unit: str = &#39;&#39;,
+                           handler: Optional[Callable[[Dict,float,Any], Any]] = None,
+                           interval: float = 0,
+                            writable=True,
+                            subtype: str=&#39;&#39;,
+                           **kwargs):
+        &#34;&#34;&#34;Register a new object data point with the given properties.   Here &#34;object&#34;
+        means a JSON-like object.
+        
+        Handler will be called when it changes.
+        self.datapoints[name] will start out with tha value of None
+
+        Interval annotates the default data rate the point will produce, for use in setting default poll
+        rates by the host, if the host wants to poll.
+
+        Most fields are just extra annotations to the host.
+
+        Args:
+            description: Free text
+            
+            handler: A function taking the value,timestamp, and annotation on changes
+
+            interval :annotates the default data rate the point will produce, for use in setting default poll
+                rates by the host, if the host wants to poll.  It does not mean the host SHOULD poll this, 
+                it only suggest a rate to poll at if the host has an interest in this data.
+
+            writable:  is purely for a host that might subclass this, to determine if it should allow writing to the point.
+
+            subtype: A string further describing the data type of this value, as a hint to UI generation.
+
+
+        &#34;&#34;&#34;
+
+        self.datapoints[name] = None
+
+        def onChangeAttempt(v: Optional[str], t, a):
+            if v is None:
+                return
+            if callable(v):
+                v = v()
+
+            # Validate
+            json.dumps(v)
+
+            # Mutability trouble
+            v = copy.deepcopy(v)
+
+            t = t or time.monotonic()
+
+            if self.datapoints[name] == v:
+                return
+
+            self.datapoints[name] = v
+
+            #Handler used by the device
+            if handler:
+                handler(v, t, a)
+
+            self.on_data_change(name, v, t, a)
+
+        self.__datapointhandlers[name] = onChangeAttempt
+
+
+
+    def bytestream_data_point(self,
+                           name: str,
+                           description: str = &#34;&#34;,
+                           unit: str = &#39;&#39;,
+                           handler: Optional[Callable[[Dict,float,Any], Any]] = None,
+                            writable=True,
+                           **kwargs):
+        &#34;&#34;&#34;register a new bytestream data point with the given properties. handler will be called when it changes.
+        only meant to be called from within __init__.
+        
+        Bytestream data points do not store data, they only push it through.
+
+        Despite the name, buffers of bytes may not be broken up or combined, this is buffer oriented,
+        &#34;&#34;&#34;
+
+        self.datapoints[name] = None
+
+        def onChangeAttempt(v: Optional[str], t, a):
+            t = t or time.monotonic()
+            self.datapoints[name] = v
+
+            #Handler used by the device
+            if handler:
+                handler(v, t, a)
+
+            self.on_data_change(name, v, t, a)
+
+        self.__datapointhandlers[name] = onChangeAttempt
+
+
+    def push_bytes(self,name:str,value:bytes):
+        &#34;&#34;&#34;Same as set_data_point but for bytestream data&#34;&#34;&#34;
+        self.set_data_point(name, value)
+
+
+    def set_data_point(self,
+                       name: str,
+                       value,
+                       timestamp: Optional[float] = None,
+                       annotation: Optional[float] = None):
+        &#34;&#34;&#34;
+        Set a data point of the device. may be called by the device itself or by user code. 
+        
+        This is the primary api and we try to funnel as much as absolutely possible into it.
+        
+        things like button presses that are not actually &#34;data points&#34; can be represented as things like
+        (button_event_name, timestamp) tuples in object_tags.
+        
+        things like autodiscovered ui can be done just by adding more descriptive metadata to a data point.
+        
+        Args:
+            name: The data point to set
+
+            timestamp: if present is a time.monotonic() time.  
+
+            annotation: is an arbitrary object meant to be compared for identity,
+                for various uses, such as loop prevention when dealting with network sync, when you need to know where a value came from.
+
+
+        This must be thread safe, but the change detection could glitch out and discard if you go from A to B and back to A again.
+        
+        When there is multiple writers you will want to aither do your own lock or ensure that you use unique values, 
+        like with an event counter.
+        
+        &#34;&#34;&#34;
+
+
+        self.__datapointhandlers[name](value, timestamp, annotation)
+
+    
+    def set_data_point_getter(self,name:str, getter: Callable):
+        &#34;&#34;&#34;Set the Getter of a datapoint, making it into an on-request point.
+        The callable may return either the new value, or None if it has no new data.
+        &#34;&#34;&#34;
+        self.__datapoint_getters[name] = getter
+
+    def on_data_change(self, name: str, value, timestamp: float, annotation):
+        &#34;Used for subclassing, this is how you watch for data changes&#34;
+        pass
+
+    def request_data_point(self, name: str):
+        &#34;&#34;&#34;Rather than just passively read, actively request a data point&#39;s new value.
+
+        Meant to be called by external host code.
+        
+        &#34;&#34;&#34;
+        if name in self.__datapoint_getters:
+            x = self.__datapoint_getters[name]()
+            if not x is None:
+                # there has been a change! Maybe!  call a handler
+                self.__datapointhandlers[name](x, time.monotonic(), &#34;From getter&#34;)
+                self.datapoints[name] = x
+                return x
+
+        return self.datapoints[name]
+
+    def set_alarm(self, name:str, datapoint:str, 
+            expression:str, priority:str=&#34;info&#34; ,
+            trip_delay:float=0, auto_ack:bool=False,
+             release_condition:Optional[str]=None, **kw):
+        &#34;&#34;&#34; declare an alarm on a certain data point.   this means we should consider the data point to be in an
+            alarm state whenever the expression is true.  
+            
+            used by the device itself to tell the host what it considers to be an alarm condition.
+            
+            the expression must look like &#34;value &gt; 90&#34;, where the operator can be any of the common comparision operators.
+            
+            you may set the trip delay to require it to stay tripped for a certain time,
+            polling during that time and resettig if it is not tripped.
+            
+            the alarm remains in the alarm state till the release condition is met, by default it&#39;s just when the trip
+            condition is inactive.  at which point it will need to be acknowledged by the user.
+            
+            
+            these alarms should be considered &#34;presets&#34; that the user can override if possible.   
+            by default this function could just be a no-op, it&#39;s here because of kaithem_automation&#39;s alarm support,
+            but many applications may be better off with full manual alarming.  
+            
+            in kaithem the expression is arbitrary, but for this lowest common denominator definition it&#39;s likely best to
+            limit it to easily semantically parsible strings.
+        
+        &#34;&#34;&#34;
+        pass
+
+
+    def close(self):
+        &#34;Release all resources and clean up&#34;
+
+    def on_delete(self):
+        &#34;&#34;&#34;
+        release all persistent resources, used by the host app to tell the user the device is being permanently deleted.
+        may be used to delete any files automatically created.
+        &#34;&#34;&#34;
+
+
+    # optional ui integration features
+    # these are here so that device drivers can device fully custom u_is.
+
+
+    def on_ui_message(self,msg:Union[float, int, str, bool, None, dict, list],**kw):
+        &#34;&#34;&#34;recieve a json message from the ui page.  the host is responsible for providing a send_ui_message(msg)
+        function to the manage and create forms, and a set_ui_message_callback(f) function.
+        
+        these messages are not directed at anyone in particular, have no semantics, and will be recieved by all
+        manage forms including yourself.  they are only meant for very tiny amounts of general interest data and fast commands.
+        
+        this lowest common denominator approach is to ensure that the ui can be fully served over mqtt if desired.
+
+        The host page should provide a single JS function send_ui_message(m) to send this message.
+
+        Manage forms should stay with Vanilla JS as much as possible, or else use an iframe.
+    
+        &#34;&#34;&#34;
+
+    def send_ui_message(self, msg:Union[float, int, str, bool, None, dict, list]):
+        &#34;&#34;&#34;
+        send a message to everyone including yourself.  
+        The host page should provide a function set_ui_message_handler(f)
+        To set a JS callback to recieve these.
+        &#34;&#34;&#34;
+
+    def get_management_form(self,) -&gt; Optional[str]:
+        &#34;&#34;&#34;must return a snippet of html suitable for insertion into a form tag, but not the form tag itself.
+        the host application is responsible for implementing the post target, the authentication, etc.
+        
+        when the user posts the form, the config options will be used to first close the device, then build 
+        a completely new device.
+        
+        the host is responsible for the name and type parts of config, and everything other than the device.* keys.
+        &#34;&#34;&#34;
+
+    @classmethod
+    def get_create_form(cls, **kwargs) -&gt; Optional[str]:
+        &#34;&#34;&#34;must return a snippet of html used the same way as get_management_form, but for creating brand new devices&#34;&#34;&#34;
+
+    def handle_web_request(self,relpath,params,method,**kwargs):
+        &#34;&#34;&#34;To be called by the framework.  Security must be handled by the framework.
+           Frameworks may implement separate read and write permissions that apply separately
+           to GET and other requests.
+
+           For this reason you should always check that the method is a POST before accepting a write operation.   
+        &#34;&#34;&#34;
+        return &#34;No web content here&#34;
+
+    def web_serve_file(self,path,filename=None,mime=None):
+        &#34;&#34;&#34;
+        From within your web handler, you can return the result of this to serve that file
+        &#34;&#34;&#34;
+        raise NotImplementedError(&#34;This host framework does not support this feature&#34;)</code></pre>
+</details>
+<h3>Class variables</h3>
+<dl>
+<dt id="iot_devices.device.Device.config_secrets"><code class="name">var <span class="ident">config_secrets</span></code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt id="iot_devices.device.Device.default_config"><code class="name">var <span class="ident">default_config</span></code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt id="iot_devices.device.Device.device_type"><code class="name">var <span class="ident">device_type</span> : str</code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+</dl>
+<h3>Static methods</h3>
+<dl>
+<dt id="iot_devices.device.Device.discover_devices"><code class="name flex">
+<span>def <span class="ident">discover_devices</span></span>(<span>config: Dict[str, str] = {}, current_device: Optional[object] = None, intent='', **kwargs) ‑> Dict[str, Dict[~KT, ~VT]]</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Discover a set of suggested configs that could be used to build a new device.
+</p>
+<p>Not required to be implemented and may just return {}
+</p>
+<hr>
+<p>Discovered suggestions MUST NOT have any passwords or secrets if the suggestion would cause them to be tried somewhere
+other than what the user provided them for, unless the protocol does not actually reveal the secrets to the server.</p>
+<p>You do not want to autosuggest trying the same credentials at bad.com that the user gave for example.com.</p>
+<p>The suggested UI semantics for discover commands is "Add a similar device" and "Reconfigure this device".</p>
+<p>Reconfiguration should always be available as the user might always want to take an existing device object and
+swap out the actual physical device it connects to.</p>
+<p>Kwargs is reserved for further hints on what kinds of devices should be discovered.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>config</code></strong></dt>
+<dd>You may pass a partial config, or a completed config to find other
+similar devices. The device should reuse as much of the given config as possible and logical,
+discarding anything that wouldn't
+work with the selected device.</dd>
+<dt><strong><code>current_device</code></strong></dt>
+<dd>May be set to the current version of a device, if it is being used in a UI along the lines of
+suggesting how to further set up a partly configured device, or suggesting ways to add another similar device.</dd>
+<dt><strong><code>kwargs</code></strong></dt>
+<dd>is reserved for further hints on what kinds of devices should be discovered.</dd>
+<dt><strong><code>intent</code></strong></dt>
+<dd>
+<p>may be a hint as to what kind of config you are looking for.<br>
+If it is "new", that means the host wants to add another
+similar device.
+If it is "replace", the host wants to keep the same config
+but point at a different physical device.
+If it is
+"configure",
+the host wants to look for alternate configurations available for the same exact device.</p>
+<p>If it is "step", the user wants to refine the existing config.</p>
+</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<p>A dict of device data dicts that could be used to create a new device, indexed by a descriptive name.
+UI:</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@staticmethod
+def discover_devices(config:Dict[str, str] = {}, current_device: Optional[object]=None, intent=&#34;&#34;, **kwargs) -&gt; Dict[str, Dict]:
+    &#34;&#34;&#34; 
+    Discover a set of suggested configs that could be used to build a new device.        
+    
+    Not required to be implemented and may just return {}  
+
+    ***********************
+    Discovered suggestions MUST NOT have any passwords or secrets if the suggestion would cause them to be tried somewhere
+    other than what the user provided them for, unless the protocol does not actually reveal the secrets to the server.
+    
+    You do not want to autosuggest trying the same credentials at bad.com that the user gave for example.com.
+
+
+    The suggested UI semantics for discover commands is &#34;Add a similar device&#34; and &#34;Reconfigure this device&#34;.
+    
+    Reconfiguration should always be available as the user might always want to take an existing device object and
+    swap out the actual physical device it connects to.
+
+    Kwargs is reserved for further hints on what kinds of devices should be discovered.
+
+    Args:
+        config: You may pass a partial config, or a completed config to find other
+            similar devices. The device should reuse as much of the given config as possible and logical,
+            discarding anything that wouldn&#39;t  work with the selected device.
+
+        current_device: May be set to the current version of a device, if it is being used in a UI along the lines of
+            suggesting how to further set up a partly configured device, or suggesting ways to add another similar device.
+
+        kwargs: is reserved for further hints on what kinds of devices should be discovered.
+
+    
+        intent: may be a hint as to what kind of config you are looking for.  
+            If it is &#34;new&#34;, that means the host wants to add another
+            similar device.  If it is &#34;replace&#34;, the host wants to keep the same config 
+            but point at a different physical device.  If it is
+            &#34;configure&#34;,  the host wants to look for alternate configurations available for the same exact device.
+
+            If it is &#34;step&#34;, the user wants to refine the existing config.
+
+    Returns:
+        A dict of device data dicts that could be used to create a new device, indexed by a descriptive name.
+
+
+    
+    UI:
+
+  
+
+    &#34;&#34;&#34;
+
+    return {}</code></pre>
+</details>
+</dd>
+<dt id="iot_devices.device.Device.get_create_form"><code class="name flex">
+<span>def <span class="ident">get_create_form</span></span>(<span>**kwargs) ‑> Optional[str]</span>
+</code></dt>
+<dd>
+<div class="desc"><p>must return a snippet of html used the same way as get_management_form, but for creating brand new devices</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@classmethod
+def get_create_form(cls, **kwargs) -&gt; Optional[str]:
+    &#34;&#34;&#34;must return a snippet of html used the same way as get_management_form, but for creating brand new devices&#34;&#34;&#34;</code></pre>
+</details>
+</dd>
+</dl>
+<h3>Methods</h3>
+<dl>
+<dt id="iot_devices.device.Device.bytestream_data_point"><code class="name flex">
+<span>def <span class="ident">bytestream_data_point</span></span>(<span>self, name: str, description: str = '', unit: str = '', handler: Optional[Callable[[Dict[~KT, ~VT], float, Any], Any]] = None, writable=True, **kwargs)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>register a new bytestream data point with the given properties. handler will be called when it changes.
+only meant to be called from within <strong>init</strong>.</p>
+<p>Bytestream data points do not store data, they only push it through.</p>
+<p>Despite the name, buffers of bytes may not be broken up or combined, this is buffer oriented,</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def bytestream_data_point(self,
+                       name: str,
+                       description: str = &#34;&#34;,
+                       unit: str = &#39;&#39;,
+                       handler: Optional[Callable[[Dict,float,Any], Any]] = None,
+                        writable=True,
+                       **kwargs):
+    &#34;&#34;&#34;register a new bytestream data point with the given properties. handler will be called when it changes.
+    only meant to be called from within __init__.
+    
+    Bytestream data points do not store data, they only push it through.
+
+    Despite the name, buffers of bytes may not be broken up or combined, this is buffer oriented,
+    &#34;&#34;&#34;
+
+    self.datapoints[name] = None
+
+    def onChangeAttempt(v: Optional[str], t, a):
+        t = t or time.monotonic()
+        self.datapoints[name] = v
+
+        #Handler used by the device
+        if handler:
+            handler(v, t, a)
+
+        self.on_data_change(name, v, t, a)
+
+    self.__datapointhandlers[name] = onChangeAttempt</code></pre>
+</details>
+</dd>
+<dt id="iot_devices.device.Device.close"><code class="name flex">
+<span>def <span class="ident">close</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Release all resources and clean up</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def close(self):
+    &#34;Release all resources and clean up&#34;</code></pre>
+</details>
+</dd>
+<dt id="iot_devices.device.Device.get_management_form"><code class="name flex">
+<span>def <span class="ident">get_management_form</span></span>(<span>self) ‑> Optional[str]</span>
+</code></dt>
+<dd>
+<div class="desc"><p>must return a snippet of html suitable for insertion into a form tag, but not the form tag itself.
+the host application is responsible for implementing the post target, the authentication, etc.</p>
+<p>when the user posts the form, the config options will be used to first close the device, then build
+a completely new device.</p>
+<p>the host is responsible for the name and type parts of config, and everything other than the device.* keys.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def get_management_form(self,) -&gt; Optional[str]:
+    &#34;&#34;&#34;must return a snippet of html suitable for insertion into a form tag, but not the form tag itself.
+    the host application is responsible for implementing the post target, the authentication, etc.
+    
+    when the user posts the form, the config options will be used to first close the device, then build 
+    a completely new device.
+    
+    the host is responsible for the name and type parts of config, and everything other than the device.* keys.
+    &#34;&#34;&#34;</code></pre>
+</details>
+</dd>
+<dt id="iot_devices.device.Device.handle_error"><code class="name flex">
+<span>def <span class="ident">handle_error</span></span>(<span>self, s: str, title: str = '')</span>
+</code></dt>
+<dd>
+<div class="desc"><p>like print but specifically marked as error. may get special notification.
+should not be used for brief network loss</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def handle_error(self, s: str, title: str = &#34;&#34;):
+    &#34;&#34;&#34;like print but specifically marked as error. may get special notification.  should not be used for brief network loss
+    &#34;&#34;&#34;
+    logging.error(title + &#39;: &#39; + str(s))</code></pre>
+</details>
+</dd>
+<dt id="iot_devices.device.Device.handle_exception"><code class="name flex">
+<span>def <span class="ident">handle_exception</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Helper function that just calls handle_error with a traceback.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def handle_exception(self):
+    &#34;Helper function that just calls handle_error with a traceback.&#34;
+    self.handle_error(traceback.format_exc())</code></pre>
+</details>
+</dd>
+<dt id="iot_devices.device.Device.handle_web_request"><code class="name flex">
+<span>def <span class="ident">handle_web_request</span></span>(<span>self, relpath, params, method, **kwargs)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>To be called by the framework.
+Security must be handled by the framework.
+Frameworks may implement separate read and write permissions that apply separately
+to GET and other requests.</p>
+<p>For this reason you should always check that the method is a POST before accepting a write operation.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def handle_web_request(self,relpath,params,method,**kwargs):
+    &#34;&#34;&#34;To be called by the framework.  Security must be handled by the framework.
+       Frameworks may implement separate read and write permissions that apply separately
+       to GET and other requests.
+
+       For this reason you should always check that the method is a POST before accepting a write operation.   
+    &#34;&#34;&#34;
+    return &#34;No web content here&#34;</code></pre>
+</details>
+</dd>
+<dt id="iot_devices.device.Device.numeric_data_point"><code class="name flex">
+<span>def <span class="ident">numeric_data_point</span></span>(<span>self, name: str, min: Optional[float] = None, max: Optional[float] = None, hi: Optional[float] = None, lo: Optional[float] = None, description: str = '', unit: str = '', handler: Optional[Callable[[float, float, Any], Any]] = None, interval: float = 0, subtype: str = '', writable=True, **kwargs)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Register a new numeric data point with the given properties. </p>
+<p>Handler will be called when it changes.
+self.datapoints[name] will start out with tha value of None</p>
+<p>The intent is that you can subclass this and have your own implementation of data points,
+such as exposing an MQTT api or whatever else.</p>
+<p>Most fields are just extra annotations to the host.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>min</code></strong></dt>
+<dd>The min value the point can take on</dd>
+<dt><strong><code>max</code></strong></dt>
+<dd>The max value the point can take on</dd>
+<dt><strong><code>hi</code></strong></dt>
+<dd>A value the point can take on that would be considered excessive</dd>
+<dt><strong><code>lo</code></strong></dt>
+<dd>A value the point can take on that would be considered excessively low</dd>
+<dt><strong><code>description</code></strong></dt>
+<dd>Free text</dd>
+<dt><strong><code>unit</code></strong></dt>
+<dd>A unit of measure, such as "degC" or "MPH"</dd>
+<dt><strong><code>handler</code></strong></dt>
+<dd>A function taking the value,timestamp, and annotation on changes</dd>
+</dl>
+<p>interval :annotates the default data rate the point will produce, for use in setting default poll
+rates by the host, if the host wants to poll.
+It does not mean the host SHOULD poll this,
+it only suggest a rate to poll at if the host has an interest in this data.</p>
+<dl>
+<dt><strong><code>writable</code></strong></dt>
+<dd>is purely for a host that might subclass this, to determine if it should allow writing to the point.</dd>
+<dt><strong><code>subtype</code></strong></dt>
+<dd>A string further describing the data type of this value, as a hint to UI generation.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def numeric_data_point(self,
+                       name: str,
+                       min: Optional[float] = None,
+                       max: Optional[float] = None,
+                       hi: Optional[float] = None,
+                       lo: Optional[float] = None,
+                       description: str = &#34;&#34;,
+                       unit: str = &#39;&#39;,
+                       handler:  Optional[Callable[[float,float,Any], Any]] = None,
+                       interval: float = 0,
+                       subtype: str=&#39;&#39;,
+                       writable=True,
+                       **kwargs):
+    &#34;&#34;&#34;Register a new numeric data point with the given properties. 
+    
+    Handler will be called when it changes.
+    self.datapoints[name] will start out with tha value of None
+
+    The intent is that you can subclass this and have your own implementation of data points,
+    such as exposing an MQTT api or whatever else.
+
+    Most fields are just extra annotations to the host.
+
+    Args:
+        min: The min value the point can take on
+        max: The max value the point can take on
+
+        hi: A value the point can take on that would be considered excessive
+        lo: A value the point can take on that would be considered excessively low
+
+        description: Free text
+
+        unit: A unit of measure, such as &#34;degC&#34; or &#34;MPH&#34;
+        
+        handler: A function taking the value,timestamp, and annotation on changes
+
+        interval :annotates the default data rate the point will produce, for use in setting default poll
+            rates by the host, if the host wants to poll.  It does not mean the host SHOULD poll this, 
+            it only suggest a rate to poll at if the host has an interest in this data.
+
+        writable:  is purely for a host that might subclass this, to determine if it should allow writing to the point.
+
+        subtype: A string further describing the data type of this value, as a hint to UI generation.
+
+    &#34;&#34;&#34;
+
+    if min is None:
+        min = -10**24
+
+    if max is None:
+        max = 10**24
+
+    self.datapoints[name] = None
+
+    def onChangeAttempt(v: Optional[float], t, a):
+        if v is None:
+            return
+        if callable(v):
+            v = v()
+        v = float(v)
+        v = minimum(max, v)
+        v = maximum(min, v)
+        t = t or time.monotonic()
+
+        if self.datapoints[name] == v:
+            return
+
+        self.datapoints[name] = v
+
+        #Handler used by the device
+        if handler:
+            handler(v, t, a)
+
+        self.on_data_change(name, v, t, a)
+
+    self.__datapointhandlers[name] = onChangeAttempt</code></pre>
+</details>
+</dd>
+<dt id="iot_devices.device.Device.object_data_point"><code class="name flex">
+<span>def <span class="ident">object_data_point</span></span>(<span>self, name: str, description: str = '', unit: str = '', handler: Optional[Callable[[Dict[~KT, ~VT], float, Any], Any]] = None, interval: float = 0, writable=True, subtype: str = '', **kwargs)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Register a new object data point with the given properties.
+Here "object"
+means a JSON-like object.</p>
+<p>Handler will be called when it changes.
+self.datapoints[name] will start out with tha value of None</p>
+<p>Interval annotates the default data rate the point will produce, for use in setting default poll
+rates by the host, if the host wants to poll.</p>
+<p>Most fields are just extra annotations to the host.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>description</code></strong></dt>
+<dd>Free text</dd>
+<dt><strong><code>handler</code></strong></dt>
+<dd>A function taking the value,timestamp, and annotation on changes</dd>
+</dl>
+<p>interval :annotates the default data rate the point will produce, for use in setting default poll
+rates by the host, if the host wants to poll.
+It does not mean the host SHOULD poll this,
+it only suggest a rate to poll at if the host has an interest in this data.</p>
+<dl>
+<dt><strong><code>writable</code></strong></dt>
+<dd>is purely for a host that might subclass this, to determine if it should allow writing to the point.</dd>
+<dt><strong><code>subtype</code></strong></dt>
+<dd>A string further describing the data type of this value, as a hint to UI generation.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def object_data_point(self,
+                       name: str,
+                       description: str = &#34;&#34;,
+                       unit: str = &#39;&#39;,
+                       handler: Optional[Callable[[Dict,float,Any], Any]] = None,
+                       interval: float = 0,
+                        writable=True,
+                        subtype: str=&#39;&#39;,
+                       **kwargs):
+    &#34;&#34;&#34;Register a new object data point with the given properties.   Here &#34;object&#34;
+    means a JSON-like object.
+    
+    Handler will be called when it changes.
+    self.datapoints[name] will start out with tha value of None
+
+    Interval annotates the default data rate the point will produce, for use in setting default poll
+    rates by the host, if the host wants to poll.
+
+    Most fields are just extra annotations to the host.
+
+    Args:
+        description: Free text
+        
+        handler: A function taking the value,timestamp, and annotation on changes
+
+        interval :annotates the default data rate the point will produce, for use in setting default poll
+            rates by the host, if the host wants to poll.  It does not mean the host SHOULD poll this, 
+            it only suggest a rate to poll at if the host has an interest in this data.
+
+        writable:  is purely for a host that might subclass this, to determine if it should allow writing to the point.
+
+        subtype: A string further describing the data type of this value, as a hint to UI generation.
+
+
+    &#34;&#34;&#34;
+
+    self.datapoints[name] = None
+
+    def onChangeAttempt(v: Optional[str], t, a):
+        if v is None:
+            return
+        if callable(v):
+            v = v()
+
+        # Validate
+        json.dumps(v)
+
+        # Mutability trouble
+        v = copy.deepcopy(v)
+
+        t = t or time.monotonic()
+
+        if self.datapoints[name] == v:
+            return
+
+        self.datapoints[name] = v
+
+        #Handler used by the device
+        if handler:
+            handler(v, t, a)
+
+        self.on_data_change(name, v, t, a)
+
+    self.__datapointhandlers[name] = onChangeAttempt</code></pre>
+</details>
+</dd>
+<dt id="iot_devices.device.Device.on_data_change"><code class="name flex">
+<span>def <span class="ident">on_data_change</span></span>(<span>self, name: str, value, timestamp: float, annotation)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Used for subclassing, this is how you watch for data changes</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def on_data_change(self, name: str, value, timestamp: float, annotation):
+    &#34;Used for subclassing, this is how you watch for data changes&#34;
+    pass</code></pre>
+</details>
+</dd>
+<dt id="iot_devices.device.Device.on_delete"><code class="name flex">
+<span>def <span class="ident">on_delete</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>release all persistent resources, used by the host app to tell the user the device is being permanently deleted.
+may be used to delete any files automatically created.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def on_delete(self):
+    &#34;&#34;&#34;
+    release all persistent resources, used by the host app to tell the user the device is being permanently deleted.
+    may be used to delete any files automatically created.
+    &#34;&#34;&#34;</code></pre>
+</details>
+</dd>
+<dt id="iot_devices.device.Device.on_ui_message"><code class="name flex">
+<span>def <span class="ident">on_ui_message</span></span>(<span>self, msg: Union[float, int, str, bool, None, dict, list], **kw)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>recieve a json message from the ui page.
+the host is responsible for providing a send_ui_message(msg)
+function to the manage and create forms, and a set_ui_message_callback(f) function.</p>
+<p>these messages are not directed at anyone in particular, have no semantics, and will be recieved by all
+manage forms including yourself.
+they are only meant for very tiny amounts of general interest data and fast commands.</p>
+<p>this lowest common denominator approach is to ensure that the ui can be fully served over mqtt if desired.</p>
+<p>The host page should provide a single JS function send_ui_message(m) to send this message.</p>
+<p>Manage forms should stay with Vanilla JS as much as possible, or else use an iframe.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def on_ui_message(self,msg:Union[float, int, str, bool, None, dict, list],**kw):
+    &#34;&#34;&#34;recieve a json message from the ui page.  the host is responsible for providing a send_ui_message(msg)
+    function to the manage and create forms, and a set_ui_message_callback(f) function.
+    
+    these messages are not directed at anyone in particular, have no semantics, and will be recieved by all
+    manage forms including yourself.  they are only meant for very tiny amounts of general interest data and fast commands.
+    
+    this lowest common denominator approach is to ensure that the ui can be fully served over mqtt if desired.
+
+    The host page should provide a single JS function send_ui_message(m) to send this message.
+
+    Manage forms should stay with Vanilla JS as much as possible, or else use an iframe.
+
+    &#34;&#34;&#34;</code></pre>
+</details>
+</dd>
+<dt id="iot_devices.device.Device.print"><code class="name flex">
+<span>def <span class="ident">print</span></span>(<span>self, s: str, title: str = '')</span>
+</code></dt>
+<dd>
+<div class="desc"><p>used by the device to print to the hosts live device message feed, if such a thing should happen to exist</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def print(self, s: str, title: str = &#34;&#34;):
+    &#34;&#34;&#34;used by the device to print to the hosts live device message feed, if such a thing should happen to exist&#34;&#34;&#34;
+    logging.info(title + &#39;: &#39; + str(s))</code></pre>
+</details>
+</dd>
+<dt id="iot_devices.device.Device.push_bytes"><code class="name flex">
+<span>def <span class="ident">push_bytes</span></span>(<span>self, name: str, value: bytes)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Same as set_data_point but for bytestream data</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def push_bytes(self,name:str,value:bytes):
+    &#34;&#34;&#34;Same as set_data_point but for bytestream data&#34;&#34;&#34;
+    self.set_data_point(name, value)</code></pre>
+</details>
+</dd>
+<dt id="iot_devices.device.Device.request_data_point"><code class="name flex">
+<span>def <span class="ident">request_data_point</span></span>(<span>self, name: str)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Rather than just passively read, actively request a data point's new value.</p>
+<p>Meant to be called by external host code.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def request_data_point(self, name: str):
+    &#34;&#34;&#34;Rather than just passively read, actively request a data point&#39;s new value.
+
+    Meant to be called by external host code.
+    
+    &#34;&#34;&#34;
+    if name in self.__datapoint_getters:
+        x = self.__datapoint_getters[name]()
+        if not x is None:
+            # there has been a change! Maybe!  call a handler
+            self.__datapointhandlers[name](x, time.monotonic(), &#34;From getter&#34;)
+            self.datapoints[name] = x
+            return x
+
+    return self.datapoints[name]</code></pre>
+</details>
+</dd>
+<dt id="iot_devices.device.Device.send_ui_message"><code class="name flex">
+<span>def <span class="ident">send_ui_message</span></span>(<span>self, msg: Union[float, int, str, bool, None, dict, list])</span>
+</code></dt>
+<dd>
+<div class="desc"><p>send a message to everyone including yourself.<br>
+The host page should provide a function set_ui_message_handler(f)
+To set a JS callback to recieve these.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def send_ui_message(self, msg:Union[float, int, str, bool, None, dict, list]):
+    &#34;&#34;&#34;
+    send a message to everyone including yourself.  
+    The host page should provide a function set_ui_message_handler(f)
+    To set a JS callback to recieve these.
+    &#34;&#34;&#34;</code></pre>
+</details>
+</dd>
+<dt id="iot_devices.device.Device.set_alarm"><code class="name flex">
+<span>def <span class="ident">set_alarm</span></span>(<span>self, name: str, datapoint: str, expression: str, priority: str = 'info', trip_delay: float = 0, auto_ack: bool = False, release_condition: Optional[str] = None, **kw)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>declare an alarm on a certain data point.
+this means we should consider the data point to be in an
+alarm state whenever the expression is true.
+</p>
+<p>used by the device itself to tell the host what it considers to be an alarm condition.</p>
+<p>the expression must look like "value &gt; 90", where the operator can be any of the common comparision operators.</p>
+<p>you may set the trip delay to require it to stay tripped for a certain time,
+polling during that time and resettig if it is not tripped.</p>
+<p>the alarm remains in the alarm state till the release condition is met, by default it's just when the trip
+condition is inactive.
+at which point it will need to be acknowledged by the user.</p>
+<p>these alarms should be considered "presets" that the user can override if possible. <br>
+by default this function could just be a no-op, it's here because of kaithem_automation's alarm support,
+but many applications may be better off with full manual alarming.
+</p>
+<p>in kaithem the expression is arbitrary, but for this lowest common denominator definition it's likely best to
+limit it to easily semantically parsible strings.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def set_alarm(self, name:str, datapoint:str, 
+        expression:str, priority:str=&#34;info&#34; ,
+        trip_delay:float=0, auto_ack:bool=False,
+         release_condition:Optional[str]=None, **kw):
+    &#34;&#34;&#34; declare an alarm on a certain data point.   this means we should consider the data point to be in an
+        alarm state whenever the expression is true.  
+        
+        used by the device itself to tell the host what it considers to be an alarm condition.
+        
+        the expression must look like &#34;value &gt; 90&#34;, where the operator can be any of the common comparision operators.
+        
+        you may set the trip delay to require it to stay tripped for a certain time,
+        polling during that time and resettig if it is not tripped.
+        
+        the alarm remains in the alarm state till the release condition is met, by default it&#39;s just when the trip
+        condition is inactive.  at which point it will need to be acknowledged by the user.
+        
+        
+        these alarms should be considered &#34;presets&#34; that the user can override if possible.   
+        by default this function could just be a no-op, it&#39;s here because of kaithem_automation&#39;s alarm support,
+        but many applications may be better off with full manual alarming.  
+        
+        in kaithem the expression is arbitrary, but for this lowest common denominator definition it&#39;s likely best to
+        limit it to easily semantically parsible strings.
+    
+    &#34;&#34;&#34;
+    pass</code></pre>
+</details>
+</dd>
+<dt id="iot_devices.device.Device.set_config_default"><code class="name flex">
+<span>def <span class="ident">set_config_default</span></span>(<span>self, key: str, value: str)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>sets an option in self.config if it does not exist or is blank.
+<br>
+Calls into set_config_option, you should not need to subclass this.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def set_config_default(self, key: str, value: str):
+    &#34;&#34;&#34;sets an option in self.config if it does not exist or is blank.        
+     Calls into set_config_option, you should not need to subclass this.
+    &#34;&#34;&#34;
+
+    if not key in self.config or not self.config[key].strip():
+        self.set_config_option(key,value.strip())</code></pre>
+</details>
+</dd>
+<dt id="iot_devices.device.Device.set_config_option"><code class="name flex">
+<span>def <span class="ident">set_config_option</span></span>(<span>self, key: str, value: str)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>sets an option in self.config. used for subclassing as you may want to persist.
+<strong>init</strong> will automatically set the state.
+this is used by the device itself to set it's
+own persistent values at runtime, perhaps in response to a websocket message.</p>
+<p><strong>init</strong> will automatically set the state when passed the config dict, you don't have to do that part.</p>
+<p>this is used by the device itself to set it's own persistent values at runtime, perhaps in response to a websocket message.</p>
+<p>the host is responsible for subclassing this and actually saving the data somehow, should that feature be needed.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def set_config_option(self, key: str, value: str):
+    &#34;&#34;&#34;sets an option in self.config. used for subclassing as you may want to persist.
+    __init__ will automatically set the state.  this is used by the device itself to set it&#39;s 
+    own persistent values at runtime, perhaps in response to a websocket message.
+
+    __init__ will automatically set the state when passed the config dict, you don&#39;t have to do that part.
+    
+    this is used by the device itself to set it&#39;s own persistent values at runtime, perhaps in response to a websocket message.
+
+    
+    the host is responsible for subclassing this and actually saving the data somehow, should that feature be needed.
+    &#34;&#34;&#34;
+
+    if not isinstance(key,str):
+        raise TypeError(&#34;Key must be str&#34;)
+
+    value = str(value)
+    if len(value)&gt;8192:
+        logging.error(&#34;Excessively long param for &#34;+key+&#34; starting with &#34;+value[:128])
+
+    # Auto strip the values to clean them up
+    self.config[key] = value.strip()</code></pre>
+</details>
+</dd>
+<dt id="iot_devices.device.Device.set_data_point"><code class="name flex">
+<span>def <span class="ident">set_data_point</span></span>(<span>self, name: str, value, timestamp: Optional[float] = None, annotation: Optional[float] = None)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Set a data point of the device. may be called by the device itself or by user code. </p>
+<p>This is the primary api and we try to funnel as much as absolutely possible into it.</p>
+<p>things like button presses that are not actually "data points" can be represented as things like
+(button_event_name, timestamp) tuples in object_tags.</p>
+<p>things like autodiscovered ui can be done just by adding more descriptive metadata to a data point.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>name</code></strong></dt>
+<dd>The data point to set</dd>
+<dt><strong><code>timestamp</code></strong></dt>
+<dd>if present is a time.monotonic() time.
+</dd>
+<dt><strong><code>annotation</code></strong></dt>
+<dd>is an arbitrary object meant to be compared for identity,
+for various uses, such as loop prevention when dealting with network sync, when you need to know where a value came from.</dd>
+</dl>
+<p>This must be thread safe, but the change detection could glitch out and discard if you go from A to B and back to A again.</p>
+<p>When there is multiple writers you will want to aither do your own lock or ensure that you use unique values,
+like with an event counter.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def set_data_point(self,
+                   name: str,
+                   value,
+                   timestamp: Optional[float] = None,
+                   annotation: Optional[float] = None):
+    &#34;&#34;&#34;
+    Set a data point of the device. may be called by the device itself or by user code. 
+    
+    This is the primary api and we try to funnel as much as absolutely possible into it.
+    
+    things like button presses that are not actually &#34;data points&#34; can be represented as things like
+    (button_event_name, timestamp) tuples in object_tags.
+    
+    things like autodiscovered ui can be done just by adding more descriptive metadata to a data point.
+    
+    Args:
+        name: The data point to set
+
+        timestamp: if present is a time.monotonic() time.  
+
+        annotation: is an arbitrary object meant to be compared for identity,
+            for various uses, such as loop prevention when dealting with network sync, when you need to know where a value came from.
+
+
+    This must be thread safe, but the change detection could glitch out and discard if you go from A to B and back to A again.
+    
+    When there is multiple writers you will want to aither do your own lock or ensure that you use unique values, 
+    like with an event counter.
+    
+    &#34;&#34;&#34;
+
+
+    self.__datapointhandlers[name](value, timestamp, annotation)</code></pre>
+</details>
+</dd>
+<dt id="iot_devices.device.Device.set_data_point_getter"><code class="name flex">
+<span>def <span class="ident">set_data_point_getter</span></span>(<span>self, name: str, getter: Callable)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Set the Getter of a datapoint, making it into an on-request point.
+The callable may return either the new value, or None if it has no new data.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def set_data_point_getter(self,name:str, getter: Callable):
+    &#34;&#34;&#34;Set the Getter of a datapoint, making it into an on-request point.
+    The callable may return either the new value, or None if it has no new data.
+    &#34;&#34;&#34;
+    self.__datapoint_getters[name] = getter</code></pre>
+</details>
+</dd>
+<dt id="iot_devices.device.Device.string_data_point"><code class="name flex">
+<span>def <span class="ident">string_data_point</span></span>(<span>self, name: str, description: str = '', unit: str = '', handler: Optional[Callable[[str, float, Any], Any]] = None, interval: float = 0, writable=True, subtype: str = '', **kwargs)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Register a new string data point with the given properties. </p>
+<p>Handler will be called when it changes.
+self.datapoints[name] will start out with tha value of None</p>
+<p>Interval annotates the default data rate the point will produce, for use in setting default poll
+rates by the host, if the host wants to poll.</p>
+<p>Most fields are just extra annotations to the host.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>description</code></strong></dt>
+<dd>Free text</dd>
+<dt><strong><code>handler</code></strong></dt>
+<dd>A function taking the value,timestamp, and annotation on changes</dd>
+<dt><strong><code>interval</code></strong></dt>
+<dd>
+<p>annotates the default data rate the point will produce, for use in setting default poll
+rates by the host if the host wants to poll.
+</p>
+<p>It does not mean the host SHOULD poll this,
+it only suggest a rate to poll at if the host has an interest in this data.</p>
+</dd>
+<dt><strong><code>writable</code></strong></dt>
+<dd>is purely for a host that might subclass this, to determine if it should allow writing to the point.</dd>
+<dt><strong><code>subtype</code></strong></dt>
+<dd>A string further describing the data type of this value, as a hint to UI generation.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def string_data_point(self,
+                       name: str,
+                       description: str = &#34;&#34;,
+                       unit: str = &#39;&#39;,
+                       handler: Optional[Callable[[str,float,Any], Any]] = None,
+                       interval: float = 0,
+                       writable=True,
+                       subtype: str=&#39;&#39;,
+                       **kwargs):
+    &#34;&#34;&#34;Register a new string data point with the given properties. 
+    
+    Handler will be called when it changes.
+    self.datapoints[name] will start out with tha value of None
+
+    Interval annotates the default data rate the point will produce, for use in setting default poll
+    rates by the host, if the host wants to poll.
+
+    Most fields are just extra annotations to the host.
+
+
+    Args:
+        description: Free text
+        
+        handler: A function taking the value,timestamp, and annotation on changes
+
+        interval: annotates the default data rate the point will produce, for use in setting default poll
+            rates by the host if the host wants to poll.  
+            
+            It does not mean the host SHOULD poll this, 
+            it only suggest a rate to poll at if the host has an interest in this data.
+
+        writable:  is purely for a host that might subclass this, to determine if it should allow writing to the point.
+
+        subtype: A string further describing the data type of this value, as a hint to UI generation.
+
+    &#34;&#34;&#34;
+
+    self.datapoints[name] = None
+
+    def onChangeAttempt(v: Optional[str], t, a):
+        if v is None:
+            return
+        if callable(v):
+            v = v()
+        v = str(v)
+        t = t or time.monotonic()
+
+        if self.datapoints[name] == v:
+            return
+
+        self.datapoints[name] = v
+
+        #Handler used by the device
+        if handler:
+            handler(v, t, a)
+
+        self.on_data_change(name, v, t, a)
+
+    self.__datapointhandlers[name] = onChangeAttempt</code></pre>
+</details>
+</dd>
+<dt id="iot_devices.device.Device.web_serve_file"><code class="name flex">
+<span>def <span class="ident">web_serve_file</span></span>(<span>self, path, filename=None, mime=None)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>From within your web handler, you can return the result of this to serve that file</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def web_serve_file(self,path,filename=None,mime=None):
+    &#34;&#34;&#34;
+    From within your web handler, you can return the result of this to serve that file
+    &#34;&#34;&#34;
+    raise NotImplementedError(&#34;This host framework does not support this feature&#34;)</code></pre>
+</details>
+</dd>
+</dl>
+</dd>
+</dl>
+</section>
+</article>
+<nav id="sidebar">
+<h1>Index</h1>
+<div class="toc">
+<ul></ul>
+</div>
+<ul id="index">
+<li><h3>Super-module</h3>
+<ul>
+<li><code><a title="iot_devices" href="index.html">iot_devices</a></code></li>
+</ul>
+</li>
+<li><h3><a href="#header-classes">Classes</a></h3>
+<ul>
+<li>
+<h4><code><a title="iot_devices.device.Device" href="#iot_devices.device.Device">Device</a></code></h4>
+<ul class="">
+<li><code><a title="iot_devices.device.Device.bytestream_data_point" href="#iot_devices.device.Device.bytestream_data_point">bytestream_data_point</a></code></li>
+<li><code><a title="iot_devices.device.Device.close" href="#iot_devices.device.Device.close">close</a></code></li>
+<li><code><a title="iot_devices.device.Device.config_secrets" href="#iot_devices.device.Device.config_secrets">config_secrets</a></code></li>
+<li><code><a title="iot_devices.device.Device.default_config" href="#iot_devices.device.Device.default_config">default_config</a></code></li>
+<li><code><a title="iot_devices.device.Device.device_type" href="#iot_devices.device.Device.device_type">device_type</a></code></li>
+<li><code><a title="iot_devices.device.Device.discover_devices" href="#iot_devices.device.Device.discover_devices">discover_devices</a></code></li>
+<li><code><a title="iot_devices.device.Device.get_create_form" href="#iot_devices.device.Device.get_create_form">get_create_form</a></code></li>
+<li><code><a title="iot_devices.device.Device.get_management_form" href="#iot_devices.device.Device.get_management_form">get_management_form</a></code></li>
+<li><code><a title="iot_devices.device.Device.handle_error" href="#iot_devices.device.Device.handle_error">handle_error</a></code></li>
+<li><code><a title="iot_devices.device.Device.handle_exception" href="#iot_devices.device.Device.handle_exception">handle_exception</a></code></li>
+<li><code><a title="iot_devices.device.Device.handle_web_request" href="#iot_devices.device.Device.handle_web_request">handle_web_request</a></code></li>
+<li><code><a title="iot_devices.device.Device.numeric_data_point" href="#iot_devices.device.Device.numeric_data_point">numeric_data_point</a></code></li>
+<li><code><a title="iot_devices.device.Device.object_data_point" href="#iot_devices.device.Device.object_data_point">object_data_point</a></code></li>
+<li><code><a title="iot_devices.device.Device.on_data_change" href="#iot_devices.device.Device.on_data_change">on_data_change</a></code></li>
+<li><code><a title="iot_devices.device.Device.on_delete" href="#iot_devices.device.Device.on_delete">on_delete</a></code></li>
+<li><code><a title="iot_devices.device.Device.on_ui_message" href="#iot_devices.device.Device.on_ui_message">on_ui_message</a></code></li>
+<li><code><a title="iot_devices.device.Device.print" href="#iot_devices.device.Device.print">print</a></code></li>
+<li><code><a title="iot_devices.device.Device.push_bytes" href="#iot_devices.device.Device.push_bytes">push_bytes</a></code></li>
+<li><code><a title="iot_devices.device.Device.request_data_point" href="#iot_devices.device.Device.request_data_point">request_data_point</a></code></li>
+<li><code><a title="iot_devices.device.Device.send_ui_message" href="#iot_devices.device.Device.send_ui_message">send_ui_message</a></code></li>
+<li><code><a title="iot_devices.device.Device.set_alarm" href="#iot_devices.device.Device.set_alarm">set_alarm</a></code></li>
+<li><code><a title="iot_devices.device.Device.set_config_default" href="#iot_devices.device.Device.set_config_default">set_config_default</a></code></li>
+<li><code><a title="iot_devices.device.Device.set_config_option" href="#iot_devices.device.Device.set_config_option">set_config_option</a></code></li>
+<li><code><a title="iot_devices.device.Device.set_data_point" href="#iot_devices.device.Device.set_data_point">set_data_point</a></code></li>
+<li><code><a title="iot_devices.device.Device.set_data_point_getter" href="#iot_devices.device.Device.set_data_point_getter">set_data_point_getter</a></code></li>
+<li><code><a title="iot_devices.device.Device.string_data_point" href="#iot_devices.device.Device.string_data_point">string_data_point</a></code></li>
+<li><code><a title="iot_devices.device.Device.web_serve_file" href="#iot_devices.device.Device.web_serve_file">web_serve_file</a></code></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</nav>
+</main>
+<footer id="footer">
+<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.10.0</a>.</p>
+</footer>
+</body>
+</html>

@@ -109,7 +109,7 @@ You also have a unit for numeric types.   There should not ever be any kind of c
 #### Documentation
 This project uses google style docstrings with pdoc3.
 
-`pdoc3 --output-dir=docs --force iot_devices` is used to generate the docs.
+`pdoc3 --html --output-dir=docs --force iot_devices` is used to generate the docs.
 
 ### Device tips
 
