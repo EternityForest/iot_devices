@@ -15,7 +15,7 @@ Note: The included example devices all have their own dependencies.  Most need S
 
 ## Implement a device
 
-[Full device API docs](docs/iot_devices/device.md)
+[Full device API docs](https://eternityforest.github.io/iot_devices/docs/iot_devices/device.html)
 
 ```python
 from iot_devices import device
@@ -64,7 +64,7 @@ Note: We never have to import the module ourselves. It is imported on demand bas
 We automatically search sys.path and the demo device folder
 
 
-[Full host API docs](docs/iot_devices/host.md)
+[Full host API docs](https://eternityforest.github.io/iot_devices/docs/iot_devices/host.html)
 
 ``` python
 from iot_devices.host import get_class
