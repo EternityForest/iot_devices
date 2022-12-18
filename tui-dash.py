@@ -119,16 +119,6 @@ def customize(c):
                 Allows a device to create it's own subdevices.             
             """
 
-            originalName = name
-
-            name = self.name+'.'+name
-
-            config = copy.deepcopy(config)
-            config['name'] = name
-            config['is_subdevice'] = True
-            if not 'title' in config:
-                config['title'] = originalName
-
             # Mix in the config for the data
             try:
                 if name in all_device_data:
@@ -137,11 +127,9 @@ def customize(c):
                 logging.exception(
                     'Probably a race condition. Can probably ignore this one.')
 
-            cls = customize(cls)
-            m = cls(name, config)
+            # Customize the class we are given
 
-            m._kaithem_is_subdevice = True
-            pending_devices[name] = m
+            m = Device.create_subdevice(self,customize(cls), name, config, *a, **k)
 
             if loaded:
                 if not self.config.get('hidden', False):

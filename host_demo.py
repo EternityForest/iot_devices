@@ -1,4 +1,5 @@
 from iot_devices.host import get_class
+from iot_devices.device import Device
 
 data = {
     "type": "DemoDevice"
@@ -6,7 +7,7 @@ data = {
 
 
 # Get the class that would be able to construct a matching device given the data
-c = get_class(data)
+dev_cls = get_class(data)
 
 # DemoDevice makes a subdevice with the name "subdevice".
 # We will add some configuration.
@@ -19,20 +20,31 @@ subdevice_config={
 }
 
 # We pass a function that takes a name and returns config for that subdevice
-def f(device_name):
+def f(device_name, *a,**k):
     return subdevice_config.get(device_name, {})
 
 
 #Since subdevices are dynamic we want to be notified.
-class Wrapped(c):
-    def create_subdevice(self,*a,**k):
-        sd = c.create_subdevice(self, *a, **k)
-        print("Subdevice "+ sd.title + " was created")
-        return sd
 
+def wrap(c):
+    class Wrapped(c):
+        def create_subdevice(self, cls, *a,**k):
+
+            # Customize the subdevice class with the same host integrations
+            wrap(cls)
+
+            sd = Device.create_subdevice(self,cls, *a, **k)
+            print("Subdevice "+ sd.title + " was created")
+            return sd
+
+    return Wrapped
+
+
+# Wrapping is how the host customizes classes to integrate with host features
+wrapped = wrap(dev_cls)
 
 # Make an instance of that device
-device = Wrapped("Random Device", data, subdevice_config=f)
+device = wrapped("Random Device", data, subdevice_config=f)
 
 #One of the values this class exposes
 print(device.datapoints['random'])
