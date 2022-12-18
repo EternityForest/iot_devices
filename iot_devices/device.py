@@ -69,9 +69,6 @@ class Device():
     # This represents either a long text readme or an absolute path beginning with / to such
     readme: str = ''
 
-    # Subdevices made by this will be wrapped using the function provided
-    wrap_subdevice_class=None
-
     def __init__(self, name: str, config: Dict[str, str], subdevice_config=None, **kw):
         """ 
 
@@ -107,8 +104,6 @@ class Device():
                 A dict indexed by subdevice name(Either just the child name or the full parent) containing extra config override dicts to be applied
                 when this device creates subdevices.
 
-            wrap_subdevice_class:
-                a function that takes a class and wraps it.  The wrapped class will be used to create subdevices.
 
         Args:
             name: must be a special char free string.  
@@ -221,9 +216,6 @@ class Device():
         config['name'] = fn
         config['is_subdevice'] = True
         config['type'] = cls.device_type
-
-        if self.wrap_subdevice_class:
-            cls = self._wrap_subdevice_class(cls)
 
         if self._subdevice_config:
             c = self._subdevice_config(name)
