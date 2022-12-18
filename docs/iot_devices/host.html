@@ -129,7 +129,28 @@ def get_class(data) -&gt; Type:
     m = _known_device_types[t][&#39;importable&#39;]
     module  =  importlib.import_module(m)
     return module.__dict__[classname]
- </code></pre>
+
+
+def get_description(t:str) -&gt; str:
+    &#34;&#34;&#34;
+    Return the description for a device given it&#39;s type.  Automatically search all system paths.
+
+    &#34;&#34;&#34;
+
+    if not t in _known_device_types:
+        discover()
+
+    try:
+        return  _known_device_types[t].get(&#34;description&#34;,t)
+    except KeyError:
+        return &#34;No description&#34;
+
+
+def register_subdevice(parent: object, child: object):
+    &#34;&#34;&#34;
+    A device can create other devices.  This lets a host do something with them.
+    &#34;&#34;&#34;
+    pass</code></pre>
 </details>
 </section>
 <section>
@@ -147,7 +168,7 @@ def get_class(data) -&gt; Type:
 <h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
 <dt id="iot_devices.host.discover"><code class="name flex">
-<span>def <span class="ident">discover</span></span>(<span>) ‑> Dict[str, Dict[~KT, ~VT]]</span>
+<span>def <span class="ident">discover</span></span>(<span>) ‑> Dict[str, Dict]</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Search system paths for modules that have a devices manifest.</p>
@@ -223,7 +244,7 @@ Keys not documented here should be considered opaque.</p>
 </details>
 </dd>
 <dt id="iot_devices.host.get_class"><code class="name flex">
-<span>def <span class="ident">get_class</span></span>(<span>data) ‑> Type[+CT_co]</span>
+<span>def <span class="ident">get_class</span></span>(<span>data) ‑> Type</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Return the class that one would use to construct a device given it's data.
@@ -259,6 +280,48 @@ Automatically search all system paths.</p>
     return module.__dict__[classname]</code></pre>
 </details>
 </dd>
+<dt id="iot_devices.host.get_description"><code class="name flex">
+<span>def <span class="ident">get_description</span></span>(<span>t: str) ‑> str</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Return the description for a device given it's type.
+Automatically search all system paths.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def get_description(t:str) -&gt; str:
+    &#34;&#34;&#34;
+    Return the description for a device given it&#39;s type.  Automatically search all system paths.
+
+    &#34;&#34;&#34;
+
+    if not t in _known_device_types:
+        discover()
+
+    try:
+        return  _known_device_types[t].get(&#34;description&#34;,t)
+    except KeyError:
+        return &#34;No description&#34;</code></pre>
+</details>
+</dd>
+<dt id="iot_devices.host.register_subdevice"><code class="name flex">
+<span>def <span class="ident">register_subdevice</span></span>(<span>parent: object, child: object)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>A device can create other devices.
+This lets a host do something with them.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def register_subdevice(parent: object, child: object):
+    &#34;&#34;&#34;
+    A device can create other devices.  This lets a host do something with them.
+    &#34;&#34;&#34;
+    pass</code></pre>
+</details>
+</dd>
 </dl>
 </section>
 <section>
@@ -284,6 +347,8 @@ Automatically search all system paths.</p>
 <ul class="">
 <li><code><a title="iot_devices.host.discover" href="#iot_devices.host.discover">discover</a></code></li>
 <li><code><a title="iot_devices.host.get_class" href="#iot_devices.host.get_class">get_class</a></code></li>
+<li><code><a title="iot_devices.host.get_description" href="#iot_devices.host.get_description">get_description</a></code></li>
+<li><code><a title="iot_devices.host.register_subdevice" href="#iot_devices.host.register_subdevice">register_subdevice</a></code></li>
 </ul>
 </li>
 </ul>

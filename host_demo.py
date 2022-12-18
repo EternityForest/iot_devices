@@ -20,6 +20,7 @@ subdevice_config={
 }
 
 # We pass a function that takes a name and returns config for that subdevice
+# Only use for very simple cases, prefer doing the config right in create_subdevice in a wrapped class
 def f(device_name, *a,**k):
     return subdevice_config.get(device_name, {})
 
