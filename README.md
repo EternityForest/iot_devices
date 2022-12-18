@@ -26,7 +26,7 @@ to access YoLink's home automation devices via the TUI.
 Only one device is needed here, the top level service, all other devices are autodiscovered, but you 
 can add extra configuration on a per-device basis.  The YoLink device requires paho-mqtt to function.
 
-"""ini
+```ini
 [YoLinkService]
 device.key= Your UAC key here
 device.user_id=Your UAC password here
@@ -38,7 +38,7 @@ hidden = True
 [YoLinkService.Bedroom]
 title = Bedroom Sensor
 
-"""
+```
 
 
 
