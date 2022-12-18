@@ -1,6 +1,6 @@
 # iot_devices
 
-Very early draft of an ultra-simple, platform independent abstraction of the idea of a "device".
+Very early draft of a platform independent abstraction of the idea of a "device".
 
 The intent is that you can make plugins for automation frameworks that can also be trivially used as a standalone library.
 
@@ -13,6 +13,35 @@ It also aims to include a library of commonly used devices.
 
 Note: The included example devices all have their own dependencies.  Most need Scullery.
 
+
+## The tui-dash.py app
+
+Code quality may not be the best here, it's just a demo/testing platform.  You will need the urwid TUI library to run this.
+
+To use it, edit the tui-dash.conf file and run tui-dash.py  You'll get a nice text UI with all the devices.
+
+Each section represents a device that will be added.  For example, here is the configuration
+to access YoLink's home automation devices via the TUI.
+
+Only one device is needed here, the top level service, all other devices are autodiscovered, but you 
+can add extra configuration on a per-device basis.  The YoLink device requires paho-mqtt to function.
+
+"""ini
+[YoLinkService]
+device.key= Your UAC key here
+device.user_id=Your UAC password here
+type = YoLinkService
+
+# Hide this, it just creates the subdevices
+hidden = True
+
+[YoLinkService.Bedroom]
+title = Bedroom Sensor
+
+"""
+
+
+
 ## Implement a device
 
 [Full device API docs](https://eternityforest.github.io/iot_devices/docs/iot_devices/device.html)
@@ -24,8 +53,8 @@ import random
 
 class RandomDevice(device.Device):
     device_type = "RandomDevice"
-    def __init__(self,name, data):
-        device.Device.__init__(self,name, data)
+    def __init__(self,name, data, **kw):
+        device.Device.__init__(self,name, data, **kw)
 
         # Push type data point set by the device
         self.numeric_data_point("random")
@@ -88,12 +117,70 @@ print(device.datapoints['random'])
 # This explicitly calls the getter we set.
 # It also sets the key in device.datapoints
 print(device.request_data_point('dyn_random'))
+
+# clean up
+c.close()
 ```
+
+### Using subdevices
+
+See host_demo.py
+
+
+
+
+
+
+
+## Subdevices
+
+By far the most complicated part of the device API.
+
+Subdevices are devices created by another device, always having the name parent.child.
+
+You will have to reimpliment most of create_subdevice in your host to do anything with them,
+I did not think the architecture was really suitable for reuse.
+
+### Random tips
+
+They cannot be updated by the host the same way as normal devices.  
+
+Instead, you call update_config(c) with any new config.  By default, this just uses set_config_option for every key, but a device may subclass it to respond
+dynamically.
+
+Most subdevices should keep configurability to a minimum and be purely configured through the settings on the parent device, aside
+from things that the subdevice itself doesn't need to know about.
+
+Subdevice config is just a set of overrides for whatever config the parent passes.
+
+Subdevices are dynamic.  A device may call create_subdevice at any time, but it cannot currently delete them.
+
+Instead, closing a device always closes all subdevices. The main intent is for lists of autodiscovered devices. If you need to refresh the list,
+recreate the master device.
+
+
+You create a subdevice via device.create_subdevice(self, cls, name: str, config: Dict, *a, **k), passing ut the subdevice class, name(Just the nase name, not the parent name), and the config.
+
+This function will add is_subdevice to config, along with setting name to parentname.childname.
+
+It then adds the subdevice to parent.subdevices, listed under the child name.
+
+
+
+The host should override this to detect a new device and do whatever is needed with it.
+
+Only the host should call close() on a subdevice.
 
 
 ## Developing
 
+
 ### Misc
+
+#### Device.\_\_init\_\_
+
+This does nothing if called a second time, to simplify more complex inheritance patterns, as it is likely your device will need to call this before
+doing anything, and other mixin classes used by the host may need to do the same.
 
 #### Stateless services
 
@@ -105,6 +192,15 @@ You have a subtype parameter when declaring data types, as a hint to the GU gene
 
 You also have a unit for numeric types.   There should not ever be any kind of complex schema language!!
 
+#### Special Data Point Names
+
+If possible, use these names, hosts should know they are important and give them easy accessibility.
+
+"color" with subtype color for a lighting device, "switch", for the main way you turn something on or off,
+"start" and "stop" with subtype trigger for things you can control but do not generally remain on when turned on.
+
+"rssi" for the recieved signal strength, "battery" with unit percent for the battery, "open" for the status of doors,
+"on" for things with an on/off state but that you do not control manually, "powered" to indicate something has full power and is not running on backup batteries.
 
 #### Documentation
 This project uses google style docstrings with pdoc3.
@@ -112,10 +208,6 @@ This project uses google style docstrings with pdoc3.
 `pdoc3 --html --output-dir=docs --force iot_devices` is used to generate the docs.
 
 ### Device tips
-
-### Property names
-
-If the device has "subdevices",  the properties should be of the form "subdevicename.property"
 
 
 #### Interacting with the device.

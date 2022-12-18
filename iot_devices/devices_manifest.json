@@ -1,7 +1,7 @@
 {
     "devices":{
-        "RandomDevice": {
-            "submodule":"devices.random",
+        "DemoDevice": {
+            "submodule":"devices.demo",
             "description" : "Just a demo device that makes pseudorandom numbers on request"
             },
 
@@ -23,6 +23,20 @@
         "YeelightRGB":{
             "submodule":"devices.Yeelight",
             "description": "Requires YeeLight python module. This device represents a bulb.  You may want to disable autosave on these bulbs to save wear with complex effects."
+        },
+        "NVRChannel":{
+            "submodule":"devices.NVRPlugin",
+            "description": "NVR support for live streaming, recording, and live video analytics"
+        },
+        "RokuRemoteApp":{
+            "submodule":"devices.RokuRemoteApp",
+            "description": "Allow Roku ECP protocol remotes to discover this server and control a tag point."
+        },
+
+        "YoLinkService":{
+            "submodule":"devices.YoLink",
+            "description": "Access all devices on a YoLink cloud account. NOTE: YoLink has no local API yet, internet dependant.  Also note this uses the unencrypted web API"
         }
+
     }
 } 

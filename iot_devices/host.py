@@ -101,4 +101,25 @@ def get_class(data) -> Type:
     m = _known_device_types[t]['importable']
     module  =  importlib.import_module(m)
     return module.__dict__[classname]
- 
+
+
+def get_description(t:str) -> str:
+    """
+    Return the description for a device given it's type.  Automatically search all system paths.
+
+    """
+
+    if not t in _known_device_types:
+        discover()
+
+    try:
+        return  _known_device_types[t].get("description",t)
+    except KeyError:
+        return "No description"
+
+
+def register_subdevice(parent: object, child: object):
+    """
+    A device can create other devices.  This lets a host do something with them.
+    """
+    pass

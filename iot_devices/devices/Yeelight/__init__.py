@@ -89,9 +89,9 @@ def makeFlusher(wr):
     t.start()
 
 class YeelightDevice(iot_devices.device.Device):
-    def __init__(self, name, data):
+    def __init__(self, name, data, **kw):
         self.lock = threading.Lock()
-        iot_devices.device.Device.__init__(self, name, data)
+        iot_devices.device.Device.__init__(self, name, data, **kw)
 
         self.numeric_data_point("rssi",writable=False)
         self.set_alarm("Low Signal", 'rssi', "value < -90")
@@ -127,10 +127,6 @@ class YeelightDevice(iot_devices.device.Device):
 
             return self.datapoints['rssi'] or -75
 
-    @staticmethod
-    def getCreateForm():
-        return templateGetter.get_template("createform.html").render()
-
 
 class YeelightRGB(YeelightDevice):
     device_type = "YeelightRGB"
@@ -160,7 +156,10 @@ class YeelightRGB(YeelightDevice):
 
 
         color = colorzero.Color(self.datapoints['color'] or 'white')
-        hsv = color.hsv
+        rgb = color.rgb
+
+        # Very crappy color correction done by trial and error
+        hsv = colorzero.Color.from_rgb(rgb[0], max(0, rgb[1] - rgb[0]*0.1),  max(0, rgb[2] - rgb[0]*0.1)).hsv
 
         duration = self.datapoints['fade'] or 0
 
