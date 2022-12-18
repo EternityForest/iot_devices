@@ -302,7 +302,7 @@ class YoLinkSiren(YoLinkDevice):
             "on", min=0, max=1, subtype='bool', writable=False)
 
         self.numeric_data_point(
-            "powered", min=0, max=1, lo=0, subtype='bool')
+            "powered", min=0, max=1, lo=0, subtype='bool', writable=False)
 
         self.numeric_data_point("start", subtype='trigger',
                                 description="Trigger a momentary siren", handler=self.doSiren)
