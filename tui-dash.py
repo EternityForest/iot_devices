@@ -119,10 +119,11 @@ def customize(c):
                 Allows a device to create it's own subdevices.             
             """
 
+            fn = self.name + "." + name
             # Mix in the config for the data
             try:
-                if name in all_device_data:
-                    config.update(all_device_data[name])
+                if fn in all_device_data:
+                    config.update(all_device_data[fn])
             except KeyError:
                 logging.exception(
                     'Probably a race condition. Can probably ignore this one.')
