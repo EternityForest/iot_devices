@@ -235,7 +235,7 @@ devs = []
 for i in all_device_data:
     data = all_device_data[i]
 
-    if data.get("is_subdevice", False) or  'type' not in data:
+    if (data.get("is_subdevice", False) in (True,'true')) or  'type' not in data:
         # Name placeholder
         devs.append(i)
         continue
