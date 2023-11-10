@@ -1,6 +1,6 @@
 import collections
 import traceback
-from typing import Any, Callable, Dict, Optional, Union
+from typing import Any, Callable, Dict, Optional, Union, List
 import logging
 import time
 import json
@@ -125,7 +125,6 @@ class Device():
         # Due to complex inheritance patterns, this could be called more than once
         if not hasattr(self, "__initial_setup"):
 
-
             config = copy.deepcopy(config)
 
             if config.get("type", self.device_type) != self.device_type:
@@ -145,7 +144,6 @@ class Device():
             # would want to show them in a main listing, and nobody wants to see them clutter up anything
             # or slow down the system when they change.  Putting data here should have no side effects.
             self.metadata: Dict[str, Any] = {}
-
 
             # Raise error on bad data.
             json.dumps(config)
@@ -175,6 +173,11 @@ class Device():
                 name = self.name = config['name']
             else:
                 self.set_config_option('name', name)
+
+            self.text_config_files: List[str] = []
+            """
+                Expose files in the config dir for easy editing if the framework supports it.
+            """
 
             self.__initial_setup = True
 
@@ -220,10 +223,24 @@ class Device():
 
         k = copy.copy(k)
 
-        sd = cls(fn, config,*a,**k)
+        sd = cls(fn, config, *a, **k)
 
         self.subdevices[name] = sd
         return sd
+
+    def get_config_folder(self, create=True):
+        """
+        Devices may, in some frameworks, have their own folder in which they can place additional
+        configuration, allowing for advanced features that depend on user content.
+
+        Returns:
+            An absolute path
+        """
+
+        # Can still call with create false just to check
+        if create:
+            raise NotImplementedError(
+                "Your framework probably doesn't support this device")
 
     @staticmethod
     def discover_devices(config: Dict[str, str] = {}, current_device: Optional[object] = None, intent="", **kwargs) -> Dict[str, Dict]:
@@ -297,7 +314,7 @@ class Device():
             raise TypeError("Key must be str")
 
         value = str(value)
-        
+
         if len(value) > 8192:
             logging.error("Excessively long param for " +
                           key + " starting with " + value[:128])
@@ -312,6 +329,13 @@ class Device():
 
         if not key in self.config or not self.config[key].strip():
             self.set_config_option(key, value.strip())
+
+    
+    def wait_ready(self, timeout=15):
+        """Call this to block for up to timeout seconds for the device to be fully initialized.
+            Use this in quick scripts with a devices that readies itself asynchronously
+        """
+        return
 
     def print(self, s: str, title: str = ""):
         """used by the device to print to the hosts live device message feed, if such a thing should happen to exist"""
@@ -689,7 +713,6 @@ class Device():
                 self.set_config_option(i, config[i])
 
         self.title = self.config.get('title', '').strip() or self.name
-
 
     # optional ui integration features
     # these are here so that device drivers can device fully custom u_is.

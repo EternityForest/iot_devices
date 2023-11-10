@@ -24,10 +24,7 @@
             "submodule":"devices.Yeelight",
             "description": "Requires YeeLight python module. This device represents a bulb.  You may want to disable autosave on these bulbs to save wear with complex effects."
         },
-        "NVRChannel":{
-            "submodule":"devices.NVRPlugin",
-            "description": "NVR support for live streaming, recording, and live video analytics"
-        },
+    
         "RokuRemoteApp":{
             "submodule":"devices.RokuRemoteApp",
             "description": "Allow Roku ECP protocol remotes to discover this server and control a tag point."
@@ -36,6 +33,16 @@
         "YoLinkService":{
             "submodule":"devices.YoLink",
             "description": "Access all devices on a YoLink cloud account. NOTE: YoLink has no local API yet, internet dependant.  Also note this uses the unencrypted web API"
+        },
+
+        "WeatherClient":{
+            "submodule":"devices.WeatherPlugin",
+            "description": "Get current weather info. No API key needed, uses wttr.in at the moment"
+        },
+
+        "ESPHomeDevice":{
+            "submodule":"devices.ESPHomePlugin",
+            "description": "Represents one single ESPHome device.  Cannot flash or update the ESP, use the dashboard tool for that."
         }
 
     }

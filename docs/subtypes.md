@@ -38,6 +38,14 @@ Only deltas should be examined here, the real point is just to use it as a simpl
 
 Represents a setting that affects the duration of a light fade.
 
+### bool
+
+0 or 1.
+
+### tristate
+
+0,1 or -1 to indicate unset/no output/passive/no data yet/etc.
+
 
 ## Object
 
