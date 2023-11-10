@@ -11,19 +11,25 @@ that can be used to access any device using this spec.
 
 It also aims to include a library of commonly used devices.
 
+It can be installed with "pip3 install iot_devices".
+
+The Network Video Recorder device can be installed with "pip3 install NVRChannel".
+
 
 
 ## The tui-dash.py app
 
-Code quality may not be the best here, it's just a demo/testing platform.  You will need the urwid TUI library to run this.
+To use it, edit the tui-dash.conf file and run the tui-dash command after installing the app.  You'll get a nice text UI with all the devices in your file.
 
-To use it, edit the tui-dash.conf file and run tui-dash.py  You'll get a nice text UI with all the devices.
+You can either put the file in ~/.config/tui-dash/tui-dash.conf, or pass the filename
+as the first argument.
+
 
 Each section represents a device that will be added.  For example, here is the configuration
 to access YoLink's home automation devices via the TUI.
 
-Only one device is needed here, the top level service, all other devices are autodiscovered, but you 
-can add extra configuration on a per-device basis.  The YoLink device requires paho-mqtt to function.
+Only one device is needed here, the top level service, all other devices are autodiscovered, but you  can add extra configuration on a per-device basis.
+
 
 ```ini
 [YoLinkService]
@@ -88,8 +94,7 @@ The system will effectively do `from your_module.devices.random import RandomDev
 
 ## Using the device
 
-Note: We never have to import the module ourselves. It is imported on demand based on the data!
-We automatically search sys.path and the demo device folder
+Note: We never have to import the module ourselves. It is imported on demand based on the data!  We automatically search sys.path.
 
 
 [Full host API docs](https://eternityforest.github.io/iot_devices/docs/iot_devices/host.html)
