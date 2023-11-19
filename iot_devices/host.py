@@ -42,7 +42,8 @@ string keys, and use UUID, com.site.foo, or some other similar notation.
 Host functions should be very simple and not need changes later!
 """
 
-def app_exit_cleanup(*a,**k):
+
+def app_exit_cleanup(*a, **k):
     """
         Called by the host to clean up all devices and also close them.
     """
@@ -116,12 +117,12 @@ def discover() -> Dict[str, Dict]:
 
                             _known_device_types[dev]['importable'] = modulename
 
-                            if not 'description' in _known_device_types[dev]:
+                            if 'description' not in _known_device_types[dev]:
                                 _known_device_types[dev]['description'] = ''
 
-                            if not 'classname' in _known_device_types[dev]:
+                            if 'classname' not in _known_device_types[dev]:
                                 _known_device_types[dev]['classname'] = dev
-                    except:
+                    except Exception:
                         logging.exception(
                             "Error with devices manifest in: " + folder)
     return _known_device_types
@@ -142,7 +143,7 @@ def get_class(data) -> Type:
         except KeyError:
             pass
 
-    if not t in _known_device_types:
+    if t not in _known_device_types:
         discover()
 
     classname = _known_device_types[t].get("classname", t)
@@ -158,7 +159,7 @@ def get_description(t: str) -> str:
 
     """
 
-    if not t in _known_device_types:
+    if t not in _known_device_types:
         discover()
 
     try:

@@ -38,7 +38,8 @@ class ESPHomeDevice(iot_devices.device.Device):
             # ESPHome uses servicecall packet for both events and service calls
             # Ensure the user can only send events of form 'esphome.xyz'
             if domain != "esphome":
-                self.handle_error("Can't do non esphome domains, yours was: " + domain)
+                self.handle_error(
+                    "Can't do non esphome domains, yours was: " + domain)
 
                 return
 
@@ -52,16 +53,17 @@ class ESPHomeDevice(iot_devices.device.Device):
                         "scanned_tag", "RFID reading", writable=False
                     )
 
-                self.set_data_point("scanned_tag", [str(tag_id), time.time(), ""])
+                self.set_data_point(
+                    "scanned_tag", [str(tag_id), time.time(), ""])
                 return
 
     def update_wireless(self):
         pass
 
-    def handle_log(self, l):
-        self.print(l)
+    def handle_log(self, msg):
+        self.print(msg)
 
-    def add_bool(self, name, w=False):
+    def add_bool(self, name: str, w=False):
         self.numeric_data_point(name, min=0, max=1, subtype="bool", writable=w)
 
     def obj_to_tag(self, i):
@@ -94,12 +96,14 @@ class ESPHomeDevice(iot_devices.device.Device):
                 )
 
             elif isinstance(i, client.NumberInfo):
-                self.numeric_data_point(i.object_id, min=i.min_value, max=i.max_value)
+                self.numeric_data_point(
+                    i.object_id, min=i.min_value, max=i.max_value)
 
             elif isinstance(i, client.SensorInfo):
                 self.numeric_data_point(
                     i.object_id,
-                    unit=i.unit_of_measurement.replace("°", "deg").replace("³", "3"),
+                    unit=i.unit_of_measurement.replace(
+                        "°", "deg").replace("³", "3"),
                     writable=False,
                 )
 
@@ -138,7 +142,7 @@ class ESPHomeDevice(iot_devices.device.Device):
                 self.string_data_point(i.object_id)
 
             elif isinstance(i, client.AlarmControlPanelInfo):
-                self.string_data_point_data_point(i.object_id, writable=False)
+                self.string_data_point(i.object_id, writable=False)
                 self.set_alarm(
                     self.name + " " + i.object_id + "Triggered",
                     i.object_id,
@@ -211,7 +215,8 @@ class ESPHomeDevice(iot_devices.device.Device):
     def close(self):
         if self.api:
             try:
-                t = asyncio.run_coroutine_threadsafe(self.api.disconnect(), self.loop)
+                t = asyncio.run_coroutine_threadsafe(
+                    self.api.disconnect(), self.loop)
 
                 d = False
 
@@ -226,8 +231,9 @@ class ESPHomeDevice(iot_devices.device.Device):
                     self.handle_error("Timeout waiting for clean disconnect")
             except Exception:
                 self.handle_exception()
-                
-        asyncio.run_coroutine_threadsafe(self.loop.shutdown_asyncgens(), self.loop)
+
+        asyncio.run_coroutine_threadsafe(
+            self.loop.shutdown_asyncgens(), self.loop)
         self.loop.stop()
 
         for i in range(50):
@@ -235,7 +241,6 @@ class ESPHomeDevice(iot_devices.device.Device):
                 self.loop.close()
                 break
             time.sleep(0.1)
-
 
         return super().close()
 

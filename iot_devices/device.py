@@ -1,4 +1,3 @@
-import collections
 import traceback
 from typing import Any, Callable, Dict, Optional, Union, List
 import logging
@@ -11,14 +10,14 @@ import copy
 
 # submodule values are the submodule you would have to import to get access to that device type. blank is the root.
 # easy to read manually!
-"""
-"devices": {
-  "Device":{
-    "submodule": ""
-    "description": "Device base class
-  }
-}
-"""
+# """
+# "devices": {
+#   "Device":{
+#     "submodule": ""
+#     "description": "Device base class
+#   }
+# }
+# """
 
 
 def get_alerts(*a, **k):
@@ -27,9 +26,9 @@ def get_alerts(*a, **k):
     In an order suitable for display to humans.
 
     Args:
-        a: 
+        a:
             Reserved
-        k: 
+        k:
             Reserved
 
     Returns:
@@ -54,9 +53,10 @@ class Device():
     one instance per device.
 
 
-    Note that this is meant to be subclassed twice.  Once by the actual driver, and again by the 
-    host application, to detemine how to handle calls made by the driver.
-
+    Note that this is meant to be subclassed twice.
+    Once by the actual driver, and again by the 
+    host application, to detemine how to handle calls
+    made by the driver.
     """
 
     # this name must be the same as the name of the device itself
@@ -72,7 +72,9 @@ class Device():
     def __init__(self, name: str, config: Dict[str, str], subdevice_config=None, **kw):
         """ 
 
-        The base class __init__ does nothing if called a second time, to simplify the complex inheritance
+        The base class __init__ does nothing if 
+        called a second time, to simplify the complex
+        inheritance.
 
         Attributes:
 
@@ -101,8 +103,9 @@ class Device():
                         String is a path on the same folder as the device
 
             subdevice_config:
-                A dict indexed by subdevice name(Either just the child name or the full parent) containing extra config override dicts to be applied
-                when this device creates subdevices.
+                A dict indexed by subdevice name(Either just the child name or
+                the full name with parent) containing extra config
+                override dicts to be applied when this device creates subdevices.
 
 
         Args:
@@ -163,7 +166,7 @@ class Device():
             self.__datapoint_getters: Dict[str, Callable] = {}
 
             for i in self.default_config:
-                if not i in self.config:
+                if i not in self.config:
                     self.set_config_option(i, self.default_config[i])
 
             self.name = name
@@ -194,18 +197,25 @@ class Device():
 
             Allows a device to create it's own subdevices. 
 
-            The host implementation must take the class, make whatever subclass is needed based on it,
-            Then instantiate it as if the other parameters were given straight to the device.
+            The host implementation must take the class, make whatever subclass 
+            is needed based on it,
+            Then instantiate it as if the other parameters were given straight to
+            the device.
 
-            When the device is closed, the host must clean up all subdevices before cleaning up the master device.
-            The host will put the device object into the parent device's subdevice dict.
+            When the device is closed, the host must clean up all subdevices 
+            before cleaning up the master device.
+            The host will put the device object into the parent device's subdevice
+              dict.
 
-            The host will rename the device to reflect that it is a subdevice.  It's full name will be parent.basename.
+            The host will rename the device to reflect that it is a subdevice.  
+            It's full name will be parent.basename.
 
-            The host will allow configuration of the device like any other device.  It will override whatever config that you give this function
+            The host will allow configuration of the device like any other device.  
+            It will override whatever config that you give this function
             with the user config.
 
-            However the entry in self.subdevices will always be exactly as given to this function, referred to as the base name
+            However the entry in self.subdevices will always be exactly as given
+            to this function, referred to as the base name
 
             The host will add is_subdevice=True to the config dict.
         """
@@ -243,7 +253,7 @@ class Device():
                 "Your framework probably doesn't support this device")
 
     @staticmethod
-    def discover_devices(config: Dict[str, str] = {}, current_device: Optional[object] = None, intent="", **kwargs) -> Dict[str, Dict]:
+    def discover_devices(config: Dict[str, str], current_device: Optional[object] = None, intent="", **kwargs) -> Dict[str, Dict]:
         """ 
         Discover a set of suggested configs that could be used to build a new device.        
 
@@ -327,10 +337,9 @@ class Device():
          Calls into set_config_option, you should not need to subclass this.
         """
 
-        if not key in self.config or not self.config[key].strip():
+        if key not in self.config or not self.config[key].strip():
             self.set_config_option(key, value.strip())
 
-    
     def wait_ready(self, timeout=15):
         """Call this to block for up to timeout seconds for the device to be fully initialized.
             Use this in quick scripts with a devices that readies itself asynchronously
@@ -409,7 +418,7 @@ class Device():
 
         self.datapoints[name] = None
 
-        def onChangeAttempt(v1: Optional[float], t, a):
+        def on_change_attempt(v1: Optional[float], t, a):
             if v1 is None:
                 return
             if callable(v1):
@@ -438,7 +447,7 @@ class Device():
 
             self.on_data_change(name, v, t, a)
 
-        self.__datapointhandlers[name] = onChangeAttempt
+        self.__datapointhandlers[name] = on_change_attempt
 
     def string_data_point(self,
                           name: str,
@@ -540,11 +549,11 @@ class Device():
 
         self.datapoints[name] = None
 
-        def onChangeAttempt(v1: Optional[object], t, a):
+        def on_change_attempt(v1: Optional[Dict[str, Any]], t, a):
             if v1 is None:
                 return
 
-            v: object = v1
+            v: Dict[str, Any] = v1
 
             if callable(v):
                 v = v()
@@ -568,14 +577,14 @@ class Device():
 
             self.on_data_change(name, v, t, a)
 
-        self.__datapointhandlers[name] = onChangeAttempt
+        self.__datapointhandlers[name] = on_change_attempt
 
     def bytestream_data_point(self,
                               name: str,
                               description: str = "",
                               unit: str = '',
                               handler: Optional[Callable[[
-                                  Dict, float, Any], Any]] = None,
+                                  bytes, float, Any], Any]] = None,
                               writable=True,
                               **kwargs):
         """register a new bytestream data point with the given properties. handler will be called when it changes.
@@ -589,6 +598,8 @@ class Device():
         self.datapoints[name] = None
 
         def onChangeAttempt(v: Optional[bytes], t, a):
+            if not v:
+                return
             t = t or time.monotonic()
             self.datapoints[name] = v
 
@@ -608,7 +619,7 @@ class Device():
                        name: str,
                        value,
                        timestamp: Optional[float] = None,
-                       annotation: Optional[float] = None):
+                       annotation: Optional[Any] = None):
         """
         Set a data point of the device. may be called by the device itself or by user code. 
 
