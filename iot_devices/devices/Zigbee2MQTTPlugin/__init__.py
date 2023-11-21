@@ -30,7 +30,7 @@ class Zigbee2MQTT(iot_devices.device.Device):
     description = "Connects to a Zigbee2MQTT gateway and makes the devices accessible via a tags API"
 
     def pair(self, t=120):
-        #Enable pairing for 120 seconds
+        # Enable pairing for 120 seconds
         self.connection.publish('zigbee2mqtt/bridge/request/permit_join', {
             "value": True,
             "time": t
@@ -53,10 +53,10 @@ class Zigbee2MQTT(iot_devices.device.Device):
         try:
             from kaithem.src.scullery import mqtt
 
-            #Ensure a new real connection.  This makes sure we get any retained messages.
-            self.connection = mqtt.getConnection(
+            # Ensure a new real connection.  This makes sure we get any retained messages.
+            self.connection = mqtt.get_connection(
                 self.config['device.mqtt_server'],
-                connectionID=str(time.time()))
+                connection_id=str(time.time()))
 
             self.connection.subscribe('zigbee2mqtt/bridge/devices',
                                       self.onDevices)
@@ -82,9 +82,9 @@ class Zigbee2MQTT(iot_devices.device.Device):
                     self.connection.publish(
                         topic + "/set",
                         {j['property']: {
-                             'x': c[0],
-                             'y': c[1]
-                         }})
+                            'x': c[0],
+                            'y': c[1]
+                        }})
 
                 elif type == 'numeric' or type == 'string' or type == 'enum':
                     self.connection.publish(topic + "/set", {j['property']: v})
@@ -125,13 +125,13 @@ class Zigbee2MQTT(iot_devices.device.Device):
                             else:
                                 if not self.config[
                                         'device.friendly_name'].strip().lower(
-                                        ) == i['friendly_name'].lower():
+                                ) == i['friendly_name'].lower():
                                     continue
                                 tn = j['property']
                             zn = "zigbee2mqtt/" + i['friendly_name']
 
-                            #Internally we represent all colors as the standard but kinda mediocre CSS strings,
-                            #Since ZigBee seems to like to separate color and brightness, we will do the same thing here.
+                            # Internally we represent all colors as the standard but kinda mediocre CSS strings,
+                            # Since ZigBee seems to like to separate color and brightness, we will do the same thing here.
                             if j['name'] == 'color_xy' and isALight:
                                 self.string_data_point(
                                     "node/" + i['friendly_name'] + "." +
@@ -179,7 +179,7 @@ class Zigbee2MQTT(iot_devices.device.Device):
                                                        trip_delay=60)
 
                                     if j['name'] == 'battery':
-                                        #Timestamp means wait for at least one actual data point
+                                        # Timestamp means wait for at least one actual data point
                                         self.set_alarm(name="LowBattery",
                                                        datapoint=tn,
                                                        expression="value < 33",
@@ -249,7 +249,7 @@ class Zigbee2MQTT(iot_devices.device.Device):
 
                                 def f(t, v, tn=tn, j=j):
                                     if j['property'] in v:
-                                        #Convert back to proper true/false
+                                        # Convert back to proper true/false
                                         v = v[j['property']] == j['value_on']
                                         self.set_data_point(
                                             tn,
@@ -269,7 +269,7 @@ class Zigbee2MQTT(iot_devices.device.Device):
                                 self.connection.subscribe(zn, f)
                                 self.nameToHandler[tn] = f
 
-                            #Todo: Tag points need to support enums
+                            # Todo: Tag points need to support enums
                             elif j['type'] in ['enum', 'text']:
                                 self.string_data_point(tn, writable=isWritable)
 

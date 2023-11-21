@@ -21,5 +21,5 @@ class ConfigurableAlarm(device.Device):
                        "trigger",
                        expression="value>0.5",
                        priority=self.config['device.priority'],
-                       autoAck=self.config['device.auto_acknowledge'].lower()
+                       auto_ack=self.config['device.auto_acknowledge'].lower()
                        in ('yes', 'true'))

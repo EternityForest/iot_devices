@@ -1,6 +1,15 @@
-#Plugin that manages YeeLight devices.
+# Plugin that manages YeeLight devices.
 
-import os, mako, time, threading, logging, random, weakref, traceback
+import yeelight
+from mako.lookup import TemplateLookup
+import os
+import mako
+import time
+import threading
+import logging
+import random
+import weakref
+import traceback
 
 from yeelight import discover_bulbs
 
@@ -10,10 +19,8 @@ import colorzero
 
 logger = logging.Logger("plugins.yeelight")
 
-from mako.lookup import TemplateLookup
 templateGetter = TemplateLookup(os.path.dirname(__file__))
 
-import yeelight
 
 lookup = {}
 
@@ -88,12 +95,13 @@ def makeFlusher(wr):
     t = threading.Thread(daemon=True, name="YeelightFlusher", target=f)
     t.start()
 
+
 class YeelightDevice(iot_devices.device.Device):
     def __init__(self, name, data, **kw):
         self.lock = threading.Lock()
         iot_devices.device.Device.__init__(self, name, data, **kw)
 
-        self.numeric_data_point("rssi",writable=False)
+        self.numeric_data_point("rssi", writable=False)
         self.set_alarm("Low Signal", 'rssi', "value < -90")
 
         self.rssiCacheTime = 0
@@ -109,8 +117,8 @@ class YeelightDevice(iot_devices.device.Device):
             if time.monotonic() - self.rssiCacheTime < cacheFor:
                 return self.datapoints['rssi'] or -75
 
-            #Not ideal, but we really can't be retrying this too often.
-            #if it's disconnected. Way too much slowdown
+            # Not ideal, but we really can't be retrying this too often.
+            # if it's dis_connected. Way too much slowdown
             self.rssiCacheTime = time.monotonic()
 
             try:
@@ -121,7 +129,7 @@ class YeelightDevice(iot_devices.device.Device):
             except Exception:
                 self.set_data_point("rssi", -180)
                 if self.lastLoggedUnreachable < time.monotonic() - 30:
-                    self.handleError("Device was unreachable")
+                    self.handle_error("Device was unreachable")
                     self.lastLoggedUnreachable = time.monotonic()
                 raise
 
@@ -136,33 +144,30 @@ class YeelightRGB(YeelightDevice):
         "kaithem.device.powerswitch": 1,
     }
 
-
-
     def flush(self):
         if not self.hasData:
             return
-        
-        # Rate limits will prevent getting rejected
-        self.allowedOperations= min(self.allowedOperations+(time.monotonic()-self.lastRecalcedAllowed),40)
-        self.lastRecalcedAllowed=time.monotonic()
 
+        # Rate limits will prevent getting rejected
+        self.allowedOperations = min(
+            self.allowedOperations+(time.monotonic()-self.lastRecalcedAllowed), 40)
+        self.lastRecalcedAllowed = time.monotonic()
 
         # Drop frames randomly. This will look a lot better with flickery type effects.
         if (random.random()*20 + 1) > self.allowedOperations:
             return
 
-        self.allowedOperations-=1
+        self.allowedOperations -= 1
         self.hasData = False
-
 
         color = colorzero.Color(self.datapoints['color'] or 'white')
         rgb = color.rgb
 
         # Very crappy color correction done by trial and error
-        hsv = colorzero.Color.from_rgb(rgb[0], max(0, rgb[1] - rgb[0]*0.1),  max(0, rgb[2] - rgb[0]*0.1)).hsv
+        hsv = colorzero.Color.from_rgb(rgb[0], max(
+            0, rgb[1] - rgb[0]*0.1),  max(0, rgb[2] - rgb[0]*0.1)).hsv
 
         duration = self.datapoints['fade'] or 0
-
 
         if hsv.v < 0.0001:
             self.wasOff = True
@@ -170,8 +175,8 @@ class YeelightRGB(YeelightDevice):
         else:
             try:
                 self.getRawDevice().set_hsv(
-                    int(hsv.h* 359.9),
-                    int(hsv.s *100),
+                    int(hsv.h * 359.9),
+                    int(hsv.s * 100),
                     int(hsv.v * 100),
                     effect="smooth" if duration else 'sudden',
                     duration=int(duration * 1000) if not self.wasOff else 0)
@@ -179,12 +184,11 @@ class YeelightRGB(YeelightDevice):
                 # Assume turned off.  Turn on. Retry.
                 self.setSwitch(0, True, duration)
                 self.getRawDevice().set_hsv(
-                    int(hsv.h* 359.9),
-                    int(hsv.s *100),
+                    int(hsv.h * 359.9),
+                    int(hsv.s * 100),
                     int(hsv.v * 100),
                     effect="smooth" if duration else 'sudden',
                     duration=int(duration * 1000) if not self.wasOff else 0)
-
 
             if self.wasOff:
                 self.wasOff = False
@@ -196,16 +200,16 @@ class YeelightRGB(YeelightDevice):
 
     def __init__(self, name, data):
         YeelightDevice.__init__(self, name, data)
-        self.closed=False
+        self.closed = False
         self.lastHueChange = time.monotonic()
 
         self.allowedOperations = 60
         self.lastRecalcedAllowed = time.monotonic()
 
         # Has color data to flush
-        self.hasData=False
+        self.hasData = False
 
-        def swhandle(v,t,a):
+        def swhandle(v, t, a):
             try:
                 self.setSwitch(0, v >= 0.5)
             except:
@@ -216,22 +220,21 @@ class YeelightRGB(YeelightDevice):
                                 max=1,
                                 subtype='bool',
                                 interval=300, handler=swhandle)
-        self.numeric_data_point("fade", min=0, max=10, subtype="light_fade_duration")
+        self.numeric_data_point("fade", min=0, max=10,
+                                subtype="light_fade_duration")
 
         self.huesat = -1
         self.lastVal = -1
         self.wasOff = True
         self.oldTransitionRate = -1
 
-        def colorhandle(v,t,a):
-            self.hasData=True
+        def colorhandle(v, t, a):
+            self.hasData = True
             self.flush()
 
         self.string_data_point("color", subtype="color", handler=colorhandle)
 
         makeFlusher(weakref.ref(self))
-
-
 
     def getSwitch(self, channel, state):
         if channel > 0:
@@ -242,7 +245,7 @@ class YeelightRGB(YeelightDevice):
         logger.debug("Setting smartplug " + self.data.get("device.locator") +
                      "to state " + str(state))
         self.set_data_point('fade', duration)
-        self.set_data_point('switch', 1 if state else 0 )
+        self.set_data_point('switch', 1 if state else 0)
 
         duration = self.datapoints['fade'] or 0
 
@@ -266,7 +269,7 @@ class YeelightRGB(YeelightDevice):
                 self.oldTransitionRate = duration
             except:
                 if self.lastLoggedUnreachable < time.monotonic() - 30:
-                    self.handleError("Device was unreachable")
+                    self.handle_error("Device was unreachable")
                     self.lastLoggedUnreachable = time.monotonic()
                 self.set_data_point("rssi", -180)
                 raise
@@ -280,9 +283,8 @@ class YeelightRGB(YeelightDevice):
         self.set_data_point('color',
                             colorzero.Color.from_hsv(hue / 360, sat, val).html)
 
-
     @classmethod
-    def discover_devices(cls, config= {},current_device=None, intent=None, **kw):
+    def discover_devices(cls, config={}, current_device=None, intent=None, **kw):
         global lookup
         maybeRefresh()
         l = {}
@@ -292,16 +294,15 @@ class YeelightRGB(YeelightDevice):
             config2.update(
                 {
                     'type': cls.device_type,
-                    'device.locator': lookup[i]['capabilities'].get("name",'') or lookup[i]['ip']
+                    'device.locator': lookup[i]['capabilities'].get("name", '') or lookup[i]['ip']
                 }
             )
 
-            l[lookup[i]['capabilities'].get("name",'') or lookup[i]['ip']] = config2
+            l[lookup[i]['capabilities'].get(
+                "name", '') or lookup[i]['ip']] = config2
 
         return l
-
 
     def getManagementForm(self):
         return templateGetter.get_template("bulbpage.html").render(
             data=self.data, obj=self)
-

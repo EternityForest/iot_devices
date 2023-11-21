@@ -1,3 +1,9 @@
+import uuid
+import json
+from mako.lookup import TemplateLookup
+import iot_devices.host as host
+import iot_devices.device as devices
+from scullery import mqtt, messagebus
 import logging
 import time
 import threading
@@ -7,16 +13,14 @@ from collections import OrderedDict
 from weakref import WeakValueDictionary
 lock = threading.Lock()
 
-from scullery import mqtt, messagebus
 
 all_devs = weakref.WeakValueDictionary()
 
 
 mqttlock = threading.Lock()
 
-import iot_devices.device as devices
-import iot_devices.host as host
 stopFlag = [0]
+
 
 def scan():
     while 1:
@@ -28,7 +32,8 @@ def scan():
                 for i in all_devs:
                     # If the last signal was very strong, we don't need to wait as long before considering
                     # it gone, because packet loss will be less
-                    m = 3 if (all_devs[i].datapoints['rssi'] or -80) > -65 else 7
+                    m = 3 if (all_devs[i].datapoints['rssi']
+                              or -80) > -65 else 7
 
                     if all_devs[i].lastseen < time.monotonic() - (float(
                             all_devs[i].config.get('interval', 300) or 300) * m):
@@ -44,13 +49,13 @@ def scan():
 t = threading.Thread(target=scan, name="RTL433Task", daemon=True)
 t.start()
 
+
 def stop():
-    stopFlag[0]= 1
+    stopFlag[0] = 1
+
 
 host.app_exit_register(stop)
 
-
-from mako.lookup import TemplateLookup
 
 templateGetter = TemplateLookup(os.path.dirname(__file__))
 
@@ -58,9 +63,6 @@ defaultSubclassCode = """
 class CustomDeviceType(DeviceType):
     pass
 """
-
-import json
-import uuid
 
 
 class RTL433Client(devices.Device):
@@ -86,8 +88,7 @@ class RTL433Client(devices.Device):
                 min=-180,
                 max=12,
                 interval=float(self.config["device.interval"]),
-                description=
-                "-75 if recetly seen, otherwise -180, we don't have real RSSI data",
+                description="-75 if recetly seen, otherwise -180, we don't have real RSSI data",
                 writable=False)
 
             self.set_alarm("No Signal", 'rssi', "value<-110")
@@ -106,18 +107,18 @@ class RTL433Client(devices.Device):
             # This connection is actually  possibly shared
             # Scullery does the deduplication for us
 
-
-            self.connection = mqtt.getConnection(
+            self.connection = mqtt.get_connection(
                 self.config["device.server"],
                 int(self.config["device.port"].strip() or 1883),
                 password=self.config["device.password"].strip(),
-                connectionID=str("RTL433Connection"))
+                connection_id=str("RTL433Connection"))
 
             self.numeric_data_point("mqttStatus", writable=False)
-            self.connection.subscribeToStatus(self.onConnectionChange)
+            self.connection.subscribe_to_status(self.onConnectionChange)
             self.set_data_point("mqttStatus",
-                                1 if self.connection.isConnected else 0)
-            self.set_alarm("MQTT Lost","mqttStatus", "value < 0.5", auto_ack=True, trip_delay=10)
+                                1 if self.connection.is_connected else 0)
+            self.set_alarm("MQTT Lost", "mqttStatus",
+                           "value < 0.5", auto_ack=True, trip_delay=10)
 
             topic = data.get("device.mqtttopic", "home/rtl_433")
 
@@ -243,7 +244,8 @@ class RTL433Client(devices.Device):
 
                     # No real RSSI, we just use -75 to mean good and -180 to mean bad.
                     self.set_data_point("rssi", -75)
-                    self.set_alarm("Signal Lost","rssi", "value < -98", auto_ack=True)
+                    self.set_alarm("Signal Lost", "rssi",
+                                   "value < -98", auto_ack=True)
 
                     self.lastSeen = time.monotonic()
 

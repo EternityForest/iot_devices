@@ -127,8 +127,8 @@ class YoLinkMQTTClient(object):
 
         else:
             self.parent.handle_error(traceback.format_exc())
-    
-    def on_disconnect(self, *a,**k):
+
+    def on_disconnect(self, *a, **k):
         self.parent.set_data_point("connected", 0)
 
 
@@ -173,9 +173,9 @@ class YoLinkDevice(device.Device):
         self.numeric_data_point("rssi", min=-120, max=8,
                                 lo=-100, writable=False, default=-99)
 
-
         # Set a very long trip delay because of the slow updates
-        self.set_alarm('Low Signal', 'rssi', 'value < -99', trip_delay=(3600*6) if self.has_battery else (3600*4.5), auto_ack=True)
+        self.set_alarm('Low Signal', 'rssi', 'value < -99', trip_delay=(3600*6)
+                       if self.has_battery else (3600*4.5), auto_ack=True)
 
         if self.has_battery:
             self.numeric_data_point(
@@ -203,7 +203,7 @@ class YoLinkDevice(device.Device):
         sl = get_from_state_or_data(data, 'soundLevel')
 
         if sl is not None:
-            self.metadata['Sound Level Setting']= sl
+            self.metadata['Sound Level Setting'] = sl
 
     def downlink(self, d):
         d.update({'token': self.token, 'targetDevice': self.deviceId})
@@ -248,10 +248,11 @@ class YoLinkOutlet(YoLinkDevice):
 
         self.numeric_data_point("power", min=0, max=2500,
                                 unit="W", writable=False)
-        
-        self.set_alarm("High Power Device", "power", "value > 600", priority='info', auto_ack=True, trip_delay=10)
-        self.set_alarm("Overload", "power", "value > 1500", priority='critical', trip_delay=5)
 
+        self.set_alarm("High Power Device", "power", "value > 600",
+                       priority='info', auto_ack=True, trip_delay=10)
+        self.set_alarm("Overload", "power", "value > 1500",
+                       priority='critical', trip_delay=5)
 
     def onData(self, data):
         YoLinkDevice.onData(self, data)
@@ -370,9 +371,10 @@ class YoLinkTemperatureSensor(YoLinkDevice):
         self.numeric_data_point(
             "humidity", min=0, max=100, unit='%', writable=False)
 
-        self.set_alarm("Extreme high temperature", "temperature", "value > 85", priority="critical")
-        self.set_alarm("Very high humidity", "humidity", "value > 90", priority="info", auto_ack=True)
-
+        self.set_alarm("Extreme high temperature", "temperature",
+                       "value > 85", priority="critical")
+        self.set_alarm("Very high humidity", "humidity",
+                       "value > 90", priority="info", auto_ack=True)
 
     def onData(self, data):
         YoLinkDevice.onData(self, data)
@@ -498,7 +500,6 @@ class YoLinkService(device.Device):
                     time.sleep(60*10)
                     continue
 
-
                 time.sleep(60*10)
 
                 with self.connectLock:
@@ -515,8 +516,10 @@ class YoLinkService(device.Device):
             self.set_config_default("device.user_id", "")
             self.set_config_default("device.key", "")
 
-            self.numeric_data_point("connected",subtype="bool", writable=False)
-            self.set_alarm("Disconnected from YoLink API", 'connected', "value < 1", priority="warning", trip_delay=25)
+            self.numeric_data_point(
+                "connected", subtype="bool", writable=False)
+            self.set_alarm("Dis_connected from YoLink API", 'connected',
+                           "value < 1", priority="warning", trip_delay=25)
 
             self.dowlinkRateLimit = RateLimiter(60, 60 * 10)
 
