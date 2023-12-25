@@ -9,6 +9,7 @@ import logging
 import threading
 import traceback
 from typing import Dict, Type
+from . import device
 
 
 _known_device_types: Dict[str, Dict] = {}

@@ -138,7 +138,7 @@ type=DemoDevice
                 return m
 
             def on_data_change(self, point, value, timestamp, annotation):
-                if isinstance(value, float):
+                if isinstance(value, (int, float)):
                     value = round(value, 6)
 
                 with lock:

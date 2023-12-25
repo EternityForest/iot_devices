@@ -184,6 +184,8 @@ class ESPHomeDevice(iot_devices.device.Device):
             self.handle_exception()
 
     def __init__(self, name: str, config: Dict[str, str], subdevice_config=None, **kw):
+        super().__init__(name, config, subdevice_config, **kw)
+        
         self.name_to_key = {}
         self.key_to_name = {}
         self.input_units = {}
@@ -203,8 +205,11 @@ class ESPHomeDevice(iot_devices.device.Device):
 
         self.set_config_default("device.hostname", "")
         self.set_config_default("device.apikey", "")
-
-        super().__init__(name, config, subdevice_config, **kw)
+        
+        self.config_properties['device.apikey'] = {
+                'secret': True
+            }
+            
         self.thread.start()
 
     def asyncloop(self):

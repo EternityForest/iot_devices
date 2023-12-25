@@ -1,9 +1,12 @@
+from __future__ import annotations
 import traceback
 from typing import Any, Callable, Dict, Optional, Union, List
 import logging
 import time
 import json
 import copy
+import weakref
+import threading
 
 # example device_manifest.json file that should be in any module declaring devices. keys are device type names.
 
@@ -18,6 +21,29 @@ import copy
 #   }
 # }
 # """
+
+devices_list_lock = threading.RLock()
+
+all_devices: Dict[str, weakref.ref[Device]] = {}
+_all_devices: Dict[str, weakref.ref[Device]] = {}
+
+
+def new_notification(msg: str, title="Notification", priority='info'):
+    "Push a notification to every device"
+    with devices_list_lock:
+        for i in all_devices.values():
+            x = i()
+            if x:
+                x.handle_notification(msg, title, priority)
+
+
+def set_alert_state(state: Dict[str, Dict[str, Any]]):
+    "Push a notification to every device"
+    with devices_list_lock:
+        for i in all_devices.values():
+            x = i()
+            if x:
+                x.handle_alert_state(state)
 
 
 def get_alerts(*a, **k):
@@ -183,6 +209,10 @@ class Device():
             """
 
             self.__initial_setup = True
+
+            with devices_list_lock:
+                _all_devices[name] = weakref.ref(self)
+                all_devices = copy.deepcopy(_all_devices)
 
     def create_subdevice(self, cls, name: str, config: Dict, *a, **k) -> object:
         """
@@ -758,6 +788,31 @@ class Device():
         a completely new device.
 
         the host is responsible for the name and type parts of config, and everything other than the device.* keys.
+        """
+
+
+    def notification(self, message: str, title="Notification", priority="info"):
+        "Publish a notification"
+        pass
+        
+
+    def handle_notification(self, message: str, title="Notification", priority="info"):
+        """Handle a global system notification, of the sort that the device may want to present to the user in some manner.
+            Priority can be any alert priority including "important"
+         """
+
+    def handle_alert_state(self, state: Dict[str, Dict[str, Any]]):
+        """ Allows a device to stay informed about the state of alerts on the system,
+            Assuming that the host supports alerts.
+
+           State must map alarm IDs, which are arbitrary strings, to the following structure:
+
+           {
+            priority: 'error' # debug, info, warning, important, error
+            state: 'active',  # active, tripped, normal, cleared, acknowledged, error
+            description: '',
+            message: '',
+           }
         """
 
     @classmethod
