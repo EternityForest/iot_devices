@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='iot_devices',
-    version='0.1.14',
+    version='0.1.15',
     author="Daniel Dunn",
     author_email="dannydunn@eternityforest.com",
     packages=find_packages(),
