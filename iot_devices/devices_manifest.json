@@ -43,6 +43,11 @@
         "ESPHomeDevice":{
             "submodule":"devices.ESPHomePlugin",
             "description": "Represents one single ESPHome device.  Cannot flash or update the ESP, use the dashboard tool for that."
+        },
+
+        "ServerMonitor":{
+            "submodule":"devices.servermonitor",
+            "description": "Check that an externeral device is still reachable and functioning."
         }
 
     }

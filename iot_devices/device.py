@@ -94,7 +94,10 @@ class Device():
 
     # This represents either a long text readme or an absolute path beginning with / to such
     readme: str = ''
-
+    
+    # Used to store properties about config keys
+    config_properties: Dict[str, Dict[str, Any]] = {}
+    
     def __init__(self, name: str, config: Dict[str, str], subdevice_config=None, **kw):
         """ 
 
@@ -111,7 +114,9 @@ class Device():
                 The current configuration of the device
 
             config_properties:
-                For each key in config, there MAY be an option here that can contain any of these optional keys.
+
+                Class level property. For each key in config, there MAY be a
+                key in this dict, that can contain any of these optional keys.
 
                 secret:
                     Denotes that the key must be protected from shoulder surfing
@@ -183,9 +188,6 @@ class Device():
 
             self.__datapointhandlers: Dict[str, Callable] = {}
             self.datapoints = {}
-
-            # Used to store properties about config keys
-            self.config_properties: Dict[str, Dict[str, Any]] = {}
 
             # Functions that can be called to explicitly request a data point
             # That return the new value
@@ -790,11 +792,9 @@ class Device():
         the host is responsible for the name and type parts of config, and everything other than the device.* keys.
         """
 
-
     def notification(self, message: str, title="Notification", priority="info"):
         "Publish a notification"
         pass
-        
 
     def handle_notification(self, message: str, title="Notification", priority="info"):
         """Handle a global system notification, of the sort that the device may want to present to the user in some manner.
