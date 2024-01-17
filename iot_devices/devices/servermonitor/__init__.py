@@ -5,6 +5,8 @@ import platform
 import time
 import threading
 import requests
+import socket
+
 
 def ping_ok(sHost) -> bool:
     try:
@@ -21,9 +23,9 @@ class ServerMonitor(device.Device):
     device_type = "ServerMonitor"
 
     config_properties = {'device.target': {
-                        'description': "Hostname or URL to poll"
-                    }
-                }
+        'description': "Hostname or URL to ping.  If an http:// url is used, will poll with HTTP as well as ping."
+    }
+    }
 
     def __init__(self, name, data, **kw):
         device.Device.__init__(self, name, data, **kw)
@@ -39,9 +41,9 @@ class ServerMonitor(device.Device):
 
         self.stop_flag = id(self)
 
-        t = threading.Thread(target=self.work_loop, daemon=True, name="Monitor for "+self.config['device.target'])
+        t = threading.Thread(target=self.work_loop, daemon=True,
+                             name="Monitor for "+self.config['device.target'])
         t.start()
-
 
     def close(self):
         self.stop_flag = False
@@ -58,11 +60,17 @@ class ServerMonitor(device.Device):
             try:
                 reachable = 1
 
-                host = url.split(":", 1)[-1].split(':')[0].split("/")[0].split("?")[0].split("@")[-1]
-                
+                host = url.split(
+                    "://", 1)[-1].split(':')[0].split("/")[0].split("?")[0].split("@")[-1]
+
                 if not ping_ok(host):
                     reachable = 0
                     self.print("Unreachable host")
+
+                try:
+                    self.metadata['IP Address'] = socket.gethostbyname(host)
+                except Exception:
+                    self.handle_exception()
 
                 if reachable:
                     if url.startswith("http://") or url.startswith("https://"):
@@ -75,7 +83,6 @@ class ServerMonitor(device.Device):
 
                 self.set_data_point('status', reachable)
 
-                time.sleep(float(self.config['device.check_interval']))
-
             except Exception:
                 self.handle_exception()
+            time.sleep(float(self.config['device.check_interval']))

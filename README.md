@@ -49,6 +49,8 @@ title = Bedroom Sensor
 
 ## Implement a device
 
+Note: All devices must NOT do anything destructive when created with default arguments.
+
 [Full device API docs](https://eternityforest.github.io/iot_devices/docs/iot_devices/device.html)
 
 ```python
@@ -132,3 +134,7 @@ See host_demo.py
 
 
 
+### Docs for the included devices
+
+See devicedocs.md.  Note these are generated with tui-dash inspect-deep, an experimental
+command that actually creates an instance of every device.

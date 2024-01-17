@@ -15,14 +15,94 @@ import threading
 import logging
 import urwid
 import urwid.numedit
+import traceback
+import copy
 
-from iot_devices.host import get_class
+from iot_devices.host import get_class, discover
 from iot_devices.device import Device
 
 from typing import Dict
 
+sys.argv[-1] = 'inspect-deep'
+
 
 def main():
+    if sys.argv[-1] in ('inspect', 'inspect-deep'):
+        print("# Known Device Plugins\n")
+        print("All devices shown, some config params may be unlisted.\n")
+
+        d = discover()
+        for i in d:
+            try:
+                c1 = get_class({'type': i})
+
+                dpi = {}
+                props = copy.deepcopy(c1.config_properties)
+
+                class c(c1):
+                    def string_data_point(self,
+                                          name: str,
+                                          description: str = "",
+                                          unit: str = '',
+                                          handler=None,
+                                          interval: float = 0,
+                                          writable=True,
+                                          subtype: str = '',
+                                          **kwargs):
+                        Device.string_data_point(self, name, description=description, unit=unit,
+                                                 handler=handler, interval=interval, writable=writable,
+                                                 subtype=subtype)
+                        dpi[name] = f"## {name} {subtype} {unit} {('writable' if writable else 'readonly')}\n{description}"
+
+                    def numeric_data_point(self,
+                                           name: str,
+                                           description: str = "",
+                                           unit: str = '',
+                                           handler=None,
+                                           interval: float = 0,
+                                           writable=True,
+                                           subtype: str = '',
+                                           **kwargs):
+                        Device.numeric_data_point(self, name, description=description, unit=unit,
+                                                  handler=handler, interval=interval, writable=writable,
+                                                  subtype=subtype)
+                        dpi[name] = f"### (data) {name} {subtype} {unit} {('writable' if writable else 'readonly')}\n{description}"
+
+                print("## " + i+"\n")
+                print("From: " + d[i]['importable'] + "/n")
+
+                defaults = {}
+                tags = {}
+
+                if sys.argv[-1] == 'inspect-deep':
+                    try:
+                        inst = c('DeviceName', {'type': i})
+                        props.update(c.config_properties)
+
+                        for j in inst.config:
+                            if not j in props:
+                                props[j] = {}
+
+                        tags.update(inst.datapoints)
+
+                    except Exception:
+                        print(traceback.format_exc())
+
+                for j in props:
+                    if j.startswith("device."):
+                        print("### (config) " + j)
+                        print(props[j].get('description', '')+"\n")
+
+                for j in dpi:
+                    print(dpi[j])
+
+            except Exception:
+                print("## Error getting data for " + i)
+                print(traceback.format_exc())
+
+            print("")
+
+        return
 
     user_conf_dir = os.path.expanduser("~/.config/tui-dash")
     os.makedirs(user_conf_dir, exist_ok=True)

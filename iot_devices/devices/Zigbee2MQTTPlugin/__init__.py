@@ -54,14 +54,14 @@ class Zigbee2MQTT(iot_devices.device.Device):
             from kaithem.src.scullery import mqtt
 
             # Ensure a new real connection.  This makes sure we get any retained messages.
-            self.connection = mqtt.get_connection(
+            self.connection = mqtt.getConnection(
                 self.config['device.mqtt_server'],
                 connection_id=str(time.time()))
 
             self.connection.subscribe('zigbee2mqtt/bridge/devices',
                                       self.onDevices)
         except Exception:
-            self.handleException()
+            self.handle_exception()
 
     def on_data_point_change(self, tn, v, t, a):
         if not a == 'ZigBee':
@@ -302,4 +302,4 @@ class Zigbee2MQTT(iot_devices.device.Device):
                     "New ZigBee devices will be accepted for 120 seconds")
 
         except Exception:
-            self.handleException()
+            self.handle_exception()
