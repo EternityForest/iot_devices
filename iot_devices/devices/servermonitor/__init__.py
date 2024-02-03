@@ -65,26 +65,28 @@ class ServerMonitor(device.Device):
         if not url:
             return
 
-        # When booting up, let everything get to a steady state first so we don't
-        # get spurious alerts
-        if (time.monotonic() - imported_time) < 300:
-            time.sleep(300 - (time.monotonic() - imported_time))
+        first = False
+
+        if ((time.monotonic() - imported_time) < 15):
+            time.sleep(min(15 - (time.monotonic() - imported_time), 2))
 
         while self.stop_flag == val:
-            try:
-                reachable = 1
+            reachable = 1
 
+            try:
                 host = url.split(
                     "://", 1)[-1].split(':')[0].split("/")[0].split("?")[0].split("@")[-1]
 
                 if not ping_ok(host):
                     reachable = 0
-                    self.print("Unreachable host")
+                    if ((time.monotonic() - imported_time) > 100):
+                        self.print("Unreachable host")
 
                 try:
                     self.metadata['IP Address'] = socket.gethostbyname(host)
                 except Exception:
-                    self.handle_exception()
+                    if ((time.monotonic() - imported_time) > 100):
+                        self.handle_exception()
 
                 if reachable:
                     if url.startswith("http://") or url.startswith("https://"):
@@ -101,11 +103,21 @@ class ServerMonitor(device.Device):
                                     "Server response does not match regex pattern")
 
                         except Exception:
-                            self.handle_exception()
+                            if ((time.monotonic() - imported_time) > 100):
+                                self.handle_exception()
                             reachable = 0
 
-                self.set_data_point('status', reachable)
+                # When booting up, let everything get to a steady state first so we don't
+                # get spurious alerts. Until the ready point we can set it true but not false.
+                if reachable or ((time.monotonic() - imported_time) > 300):
+                    self.set_data_point('status', reachable)
 
             except Exception:
                 self.handle_exception()
-            time.sleep(float(self.config['device.check_interval']))
+
+            if reachable or first:
+                time.sleep(float(self.config['device.check_interval']))
+            else:
+                # Retry faster at first, try to get good data as soon as possible
+                first = True
+                time.sleep(30)
