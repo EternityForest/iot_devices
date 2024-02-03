@@ -94,10 +94,10 @@ class Device():
 
     # This represents either a long text readme or an absolute path beginning with / to such
     readme: str = ''
-    
+
     # Used to store properties about config keys
     config_properties: Dict[str, Dict[str, Any]] = {}
-    
+
     def __init__(self, name: str, config: Dict[str, str], subdevice_config=None, **kw):
         """ 
 
@@ -390,6 +390,10 @@ class Device():
     def handle_exception(self):
         "Helper function that just calls handle_error with a traceback."
         self.handle_error(traceback.format_exc())
+
+    def handle_event(self, event: str, data: Optional[Any]):
+        "Handle arbitrary messages from the host"
+        pass
 
     def numeric_data_point(self,
                            name: str,

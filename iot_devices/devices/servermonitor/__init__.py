@@ -6,6 +6,9 @@ import time
 import threading
 import requests
 import socket
+import re
+
+imported_time = time.monotonic()
 
 
 def ping_ok(sHost) -> bool:
@@ -22,16 +25,22 @@ def ping_ok(sHost) -> bool:
 class ServerMonitor(device.Device):
     device_type = "ServerMonitor"
 
-    config_properties = {'device.target': {
-        'description': "Hostname or URL to ping.  If an http:// url is used, will poll with HTTP as well as ping."
-    }
+    config_properties = {
+        'device.target': {
+            'description': "Hostname or URL to ping.  If an http:// url is used, will poll with HTTP as well as ping."
+        },
+
+        'device.expect_pattern': {
+            'description': "With HTTP URLs, expects to find string matching this regex in the returned data"
+        }
+
     }
 
     def __init__(self, name, data, **kw):
         device.Device.__init__(self, name, data, **kw)
 
         self.set_config_default("device.target", "")
-
+        self.set_config_default("device.expect_pattern", "")
         self.set_config_default("device.check_interval", "300")
 
         # Push type data point set by the device
@@ -56,6 +65,11 @@ class ServerMonitor(device.Device):
         if not url:
             return
 
+        # When booting up, let everything get to a steady state first so we don't
+        # get spurious alerts
+        if (time.monotonic() - imported_time) < 300:
+            time.sleep(300 - (time.monotonic() - imported_time))
+
         while self.stop_flag == val:
             try:
                 reachable = 1
@@ -77,6 +91,15 @@ class ServerMonitor(device.Device):
                         try:
                             r = requests.get(url, timeout=5)
                             r.raise_for_status()
+
+                            if self.config['device.expect_pattern']:
+                                r = re.search(
+                                    self.config['device.expect_pattern'], r.text)
+
+                            if not r:
+                                raise ValueError(
+                                    "Server response does not match regex pattern")
+
                         except Exception:
                             self.handle_exception()
                             reachable = 0
