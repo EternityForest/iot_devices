@@ -80,9 +80,16 @@ class YoLinkMQTTClient(object):
         self.key = key
         self.parent = parent
 
-        self.client = mqtt.Client(client_id=str(__name__ + str(client_id)),
-                                  clean_session=True, userdata=None,
-                                  protocol=mqtt.MQTTv311, transport="tcp")
+        try:
+            self.client = mqtt.Client(client_id=str(__name__ + str(client_id)),
+                                      clean_session=True, userdata=None,
+                                      protocol=mqtt.MQTTv311, transport="tcp")
+        except TypeError:
+            self.client = mqtt.Client(callback_api_version=mqtt.CallbackAPIVersion.VERSION1,
+                                      client_id=str(__name__ + str(client_id)),
+                                      clean_session=True, userdata=None,
+                                      protocol=mqtt.MQTTv311, transport="tcp")
+
         self.client.reconnect_delay_set(60, 30*60)
         self.client.on_connect = self.on_connect
         self.client.on_message = self.on_message

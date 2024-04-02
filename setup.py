@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='iot_devices',
-    version='0.1.16',
+    version='0.1.17',
     author="Daniel Dunn",
     author_email="dannydunn@eternityforest.com",
     packages=find_packages(),
@@ -17,10 +17,11 @@ setup(
         ],
     },
     install_requires=[
-        "paho.mqtt",
+        "paho-mqtt",
         "urwid",
         "scullery",
         "yeelight",
-        "colorzero"
+        "colorzero",
+        "gpiozero"
     ]
 )

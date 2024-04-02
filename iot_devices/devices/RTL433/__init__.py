@@ -299,6 +299,3 @@ class RTL433Client(devices.Device):
     def close(self):
         return super().close()
         self.connection.unsubscribe(self.noGarbage[0])
-
-    def getManagementForm(self):
-        return ""

@@ -189,6 +189,9 @@ class Device():
             self.__datapointhandlers: Dict[str, Callable] = {}
             self.datapoints = {}
 
+            # Used mostly to determine if the data is still the default.
+            self.__datapoint_timestamps = {}
+
             # Functions that can be called to explicitly request a data point
             # That return the new value
             self.__datapoint_getters: Dict[str, Callable] = {}
@@ -401,6 +404,7 @@ class Device():
                            max: Optional[float] = None,
                            hi: Optional[float] = None,
                            lo: Optional[float] = None,
+                           default: Optional[float] = None,
                            description: str = "",
                            unit: str = '',
                            handler: Optional[Callable[[
@@ -430,7 +434,9 @@ class Device():
 
             unit: A unit of measure, such as "degC" or "MPH"
 
-            handler: A function taking the value,timestamp, and annotation on changes
+            default: If unset default value is None, or may be framework defined. Default does not trigger handler.
+
+            handler: A function taking the value,timestamp, and annotation on changes.
 
             interval :annotates the default data rate the point will produce, for use in setting default poll
                 rates by the host, if the host wants to poll.  It does not mean the host SHOULD poll this, 
@@ -473,7 +479,10 @@ class Device():
             t = t or time.monotonic()
 
             if self.datapoints[name] == v:
-                return
+                # It's still considered a change if the previous value
+                # was the default.
+                if self.__datapoint_timestamps.get(name, 0):
+                    return
 
             self.datapoints[name] = v
 
@@ -491,6 +500,7 @@ class Device():
                           unit: str = '',
                           handler: Optional[Callable[[
                               str, float, Any], Any]] = None,
+                          default: Optional[str] = None,
                           interval: float = 0,
                           writable=True,
                           subtype: str = '',
@@ -509,7 +519,9 @@ class Device():
         Args:
             description: Free text
 
-            handler: A function taking the value,timestamp, and annotation on changes
+            default: If unset default value is None, or may be framework defined. Default does not trigger handler.
+
+            handler: A function taking the value,timestamp, and annotation on changes.
 
             interval: annotates the default data rate the point will produce, for use in setting default poll
                 rates by the host if the host wants to poll.  
@@ -523,9 +535,10 @@ class Device():
 
         """
 
-        self.datapoints[name] = None
+        self.datapoints[name] = default
 
         def onChangeAttempt(v: Optional[str], t, a):
+            "This function handles the change detection by itself"
             if v is None:
                 return
             if callable(v):
@@ -534,7 +547,10 @@ class Device():
             t = t or time.monotonic()
 
             if self.datapoints[name] == v:
-                return
+                # It's still considered a change if the previous value
+                # was the default.
+                if self.__datapoint_timestamps.get(name, 0):
+                    return
 
             self.datapoints[name] = v
 
@@ -603,7 +619,10 @@ class Device():
             t = t or time.monotonic()
 
             if self.datapoints[name] == v:
-                return
+                # It's still considered a change if the previous value
+                # was the default.
+                if self.__datapoint_timestamps.get(name, 0):
+                    return
 
             self.datapoints[name] = v
 
@@ -684,6 +703,7 @@ class Device():
 
         """
 
+        self.__datapoint_timestamps[name] = timestamp
         self.__datapointhandlers[name](value, timestamp, annotation)
 
     def set_data_point_getter(self, name: str, getter: Callable):
@@ -705,9 +725,12 @@ class Device():
         if name in self.__datapoint_getters:
             x = self.__datapoint_getters[name]()
             if x is not None:
+                timestamp = time.monotonic()
                 # there has been a change! Maybe!  call a handler
                 self.__datapointhandlers[name](
-                    x, time.monotonic(), "From getter")
+                    x, timestamp, "From getter")
+
+                self.__datapoint_timestamps[name] = timestamp
                 self.datapoints[name] = x
                 return x
 

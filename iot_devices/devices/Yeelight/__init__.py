@@ -302,7 +302,3 @@ class YeelightRGB(YeelightDevice):
                 "name", '') or lookup[i]['ip']] = config2
 
         return l
-
-    def getManagementForm(self):
-        return templateGetter.get_template("bulbpage.html").render(
-            data=self.data, obj=self)

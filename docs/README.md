@@ -62,6 +62,25 @@ You have a subtype parameter when declaring data types, as a hint to the GU gene
 
 You also have a unit for numeric types.   There should not ever be any kind of complex schema language!!
 
+
+#### Describing your config options
+
+Config options are stringly typed, however you can add metadata to them to give a nicer UI in hosts that support it.
+
+Type can be bool(Value should be 'true' or 'false'), local_fs_dr(Value should be folder path).
+
+Other keys are also supported. Set 'secret'=True to hide it with a password input.
+
+
+```
+self.config_properties['device.active_high'] = {
+    'type': 'bool'
+}
+```
+
+
+
+
 #### Special Data Point Names
 
 If possible, use these names, hosts should know they are important and give them easy accessibility.
