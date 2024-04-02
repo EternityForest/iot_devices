@@ -55,8 +55,7 @@ class Zigbee2MQTT(iot_devices.device.Device):
 
             # Ensure a new real connection.  This makes sure we get any retained messages.
             self.connection = mqtt.getConnection(
-                self.config['device.mqtt_server'],
-                connection_id=str(time.time()))
+                self.config['device.mqtt_server'])
 
             self.connection.subscribe('zigbee2mqtt/bridge/devices',
                                       self.onDevices)

@@ -89,14 +89,8 @@ class Device():
     device_type: str = "Device"
     default_config = {}
 
-    # Iterable of config keys that should be considered secret, and hidden behind asterisks and such.
-    config_secrets = {}
-
     # This represents either a long text readme or an absolute path beginning with / to such
     readme: str = ''
-
-    # Used to store properties about config keys
-    config_properties: Dict[str, Dict[str, Any]] = {}
 
     def __init__(self, name: str, config: Dict[str, str], subdevice_config=None, **kw):
         """ 
@@ -115,7 +109,7 @@ class Device():
 
             config_properties:
 
-                Class level property. For each key in config, there MAY be a
+                For each key in config, there MAY be a
                 key in this dict, that can contain any of these optional keys.
 
                 secret:
@@ -155,6 +149,10 @@ class Device():
 
                 Subdevice configuration must have is_subdevice: True in save files so the host does not try to create it by itself.
         """
+
+        if not hasattr(self, "config_properties"):
+            # Used to store properties about config keys
+            self.config_properties: Dict[str, Dict[str, Any]] = {}
 
         # Due to complex inheritance patterns, this could be called more than once
         if not hasattr(self, "__initial_setup"):
@@ -458,7 +456,7 @@ class Device():
         else:
             maxval = max
 
-        self.datapoints[name] = None
+        self.datapoints[name] = default
 
         def on_change_attempt(v1: Optional[float], t, a):
             if v1 is None:

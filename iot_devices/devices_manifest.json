@@ -43,6 +43,10 @@
         "GPIOOutput": {
             "submodule": "devices.GPIODevice",
             "description": "Represents a hardware output pin, possibly with PWM.  Supports RasPi and mocked fake pins."
+        },
+        "GPIOInput": {
+            "submodule": "devices.GPIODevice",
+            "description": "Represents a hardware input pin. Supports RasPi and mocked fake pins."
         }
     }
 }

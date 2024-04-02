@@ -136,5 +136,4 @@ See host_demo.py
 
 ### Docs for the included devices
 
-See devicedocs.md.  Note these are generated with tui-dash inspect-deep, an experimental
-command that actually creates an instance of every device.
+See devicedocs.md for a code example of each one.  Note these are generated with iot_devices_scan.py.

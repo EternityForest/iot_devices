@@ -67,7 +67,7 @@ You also have a unit for numeric types.   There should not ever be any kind of c
 
 Config options are stringly typed, however you can add metadata to them to give a nicer UI in hosts that support it.
 
-Type can be bool(Value should be 'true' or 'false'), local_fs_dr(Value should be folder path).
+Type can be bool(Value should be 'yes' or 'no'), local_fs_dr(Value should be folder path).
 
 Other keys are also supported. Set 'secret'=True to hide it with a password input.
 
