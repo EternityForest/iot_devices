@@ -1,3 +1,9 @@
+import os.path
+import os
+import asyncio
+from contextlib import closing
+import socket
+import time
 from re import L
 import uuid
 from iot_devices import device
@@ -64,18 +70,14 @@ x = """<?xml version="1.0" encoding="UTF-8" ?>
 </root>"""
 
 
-def ssdpxml(name,uuid):
-    return x.replace("FN", name).replace('XXXX',uuid.replace('-','').upper())
+def ssdpxml(name, uuid):
+    return x.replace("FN", name).replace('XXXX', uuid.replace('-', '').upper())
 
 
 logger = logging.Logger("plugins.pyremote")
 
-import time
-import socket
 
 # Attr: https://stackoverflow.com/questions/1365265/on-localhost-how-do-i-pick-a-free-port-number
-import socket
-from contextlib import closing
 
 
 def find_free_port():
@@ -177,7 +179,7 @@ class HTTPUServer():
 
                 s['Location'] = s['Location'].replace(
                     'localhost', getLocalIPForRemoteClient(a))
-                
+
                 s['LOCATION'] = s['LOCATION'].replace(
                     'localhost', getLocalIPForRemoteClient(a))
                 if not 'USN' in s:
@@ -225,14 +227,6 @@ def parse_httpu(data):
         if len(tokens) > 1:
             d[tokens[0]] = tokens[1].strip()
     return d
-
-
-import logging
-import asyncio
-
-
-import os
-import os.path
 
 
 def tzget():
@@ -312,10 +306,6 @@ def fakeroku(name):
     </device-info>"""
 
 
-import logging
-import asyncio
-
-
 class RokuRemoteApp(device.Device):
     device_type = 'RokuRemoteApp'
     readme = """
@@ -352,13 +342,14 @@ The battery tag represents the most recently connected remote that decided to se
         self.object_data_point("command", subtype='event')
         self.set_data_point('command', [None, time.monotonic(), None])
 
-        self.numeric_data_point("battery", min=0, max=100, unit="%")
+        self.numeric_data_point(
+            "battery", min=0, max=100, unit="%", writable=False)
         self.set_alarm('LowBattery', datapoint='battery', expression='value < 20',
                        priority='warning', release_condition='value > 35')
 
         try:
             self.set_config_default("device.serial", "P0A070000007")
-            self.set_config_default("device.uuid",str(uuid.uuid4()))
+            self.set_config_default("device.uuid", str(uuid.uuid4()))
             self.set_config_default(
                 "device.bind", "0.0.0.0:" + str(find_free_port()))
 
@@ -374,8 +365,8 @@ The battery tag represents the most recently connected remote that decided to se
 
             self.ssdp = HTTPUServer()
             self.ssdp.services = {'roku:ecp': {'Location': "http://" + self.bind.replace('0.0.0.0', 'localhost'),
-                                                'LOCATION': "http://" + self.bind.replace('0.0.0.0', 'localhost'),
-                                               'USN': 'uuid:roku:ecp:'+self.config['device.uuid'].replace('-','').upper(),
+                                               'LOCATION': "http://" + self.bind.replace('0.0.0.0', 'localhost'),
+                                               'USN': 'uuid:roku:ecp:'+self.config['device.uuid'].replace('-', '').upper(),
                                                'Cache-Control': 'max-age=3600'
                                                }}
 
@@ -386,17 +377,18 @@ The battery tag represents the most recently connected remote that decided to se
                     s.end_headers()
 
                 def do_GET(s):
-                    if not s.path.endswith('.png'):                               
+                    if not s.path.endswith('.png'):
                         s.send_response(200)
-                        s.send_header('Content-Type', 'text/xml; charset=utf-8')
+                        s.send_header('Content-Type',
+                                      'text/xml; charset=utf-8')
                         s.end_headers()
-                    else:                        
+                    else:
                         s.send_response(200)
                         s.send_header("Content-type", "image/png")
                         s.end_headers()
-        
-                    if s.path=='/query/apps':
-                        x="""<apps>
+
+                    if s.path == '/query/apps':
+                        x = """<apps>
                         <app id="11">Roku Channel Store</app>
                         <app id="12">Netflix</app>
                         <app id="13">Amazon Video on Demand</app>
@@ -415,13 +407,14 @@ The battery tag represents the most recently connected remote that decided to se
                         s.wfile.write(fakeroku(self.name).encode())
 
                     elif s.path == "/":
-                        s.wfile.write(ssdpxml(self.name, self.config['device.uuid']).encode())
+                        s.wfile.write(
+                            ssdpxml(self.name, self.config['device.uuid']).encode())
 
                     elif s.path == '/unixtime':
                         s.wfile.write(str(time.time()).encode())
 
                     elif s.path == '/device-image.png':
-                        with open(os.path.join(os.path.dirname(__file__), "placeholder.png"),'rb') as f:
+                        with open(os.path.join(os.path.dirname(__file__), "placeholder.png"), 'rb') as f:
                             s.wfile.write(f.read())
 
                 def do_HEAD(s):

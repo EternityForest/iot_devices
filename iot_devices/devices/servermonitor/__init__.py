@@ -44,7 +44,7 @@ class ServerMonitor(device.Device):
         self.set_config_default("device.check_interval", "300")
 
         # Push type data point set by the device
-        self.numeric_data_point("status", subtype='bool')
+        self.numeric_data_point("status", subtype='bool', writable=False)
         self.set_alarm("External Server Down", 'status',
                        "value<1", priority="error")
 

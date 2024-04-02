@@ -8,7 +8,7 @@ import copy
 import logging
 import threading
 import traceback
-from typing import Dict, Type
+from typing import Dict, Type, TypeVar, Generic
 from . import device
 
 
@@ -174,3 +174,13 @@ def register_subdevice(parent: object, child: object):
     A device can create other devices.  This lets a host do something with them.
     """
     pass
+
+
+def create_device(cls: Type[device.Device], name: str, data: Dict) -> device.Device:
+    """
+    Create a new device from it's data, given the device class,
+    and add any framework specific hooks.
+    This function is meant to be overriden by the host app,
+    to add framework specific functionality
+    """
+    return cls(name, data)

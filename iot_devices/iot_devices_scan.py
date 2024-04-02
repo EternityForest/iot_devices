@@ -71,9 +71,10 @@ for i in sorted(d.keys()):
             print(traceback.format_exc())
 
         print("```python")
+        print("from iot_devices.host import create_device")
         print("from " + d[i]['importable'] + " import " + i + "\n")
 
-        print("dev = " + i+'("name",{')
+        print("dev = " + 'create_device(' + i + ', "name", {')
         count = 0
         for j in props:
             count += 1

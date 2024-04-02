@@ -102,18 +102,20 @@ Note: We never have to import the module ourselves. It is imported on demand bas
 [Full host API docs](https://eternityforest.github.io/iot_devices/docs/iot_devices/host.html)
 
 ``` python
-from iot_devices.host import get_class
+from iot_devices.host import get_class, create_device
 
 data = {
-    "type": "RandomDevice"
+    "type": "DemoDevice"
 }
 
 
 # Get the class that would be able to construct a matching device given the data
 c = get_class(data)
 
-# Make an instance of that device
-device = c("Random Device", data)
+# Make an instance of that device.
+# Create device is very simple, it just calls cls(name, data),
+# But you can override it to add hooks whenever a device is created.
+device = create_device(c ,"Random Device", data)
 
 #One of the values this class exposes.
 # Note that values here can be "None" if there is no data yet.
@@ -125,7 +127,7 @@ print(device.datapoints['random'])
 print(device.request_data_point('dyn_random'))
 
 # clean up
-c.close()
+device.close()
 ```
 
 ### Using subdevices
