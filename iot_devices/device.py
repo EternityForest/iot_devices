@@ -258,7 +258,7 @@ class Device:
         The host will add is_subdevice=True to the config dict.
         """
 
-        fn = self.name + "." + name
+        fn = f"{self.name}.{name}"
         config = copy.deepcopy(config)
 
         config["name"] = fn
@@ -371,7 +371,7 @@ class Device:
 
         if len(value) > 8192:
             logging.error(
-                "Excessively long param for " + key + " starting with " + value[:128]
+                f"Excessively long param for {key} starting with {value[:128]}"
             )
 
         # Auto strip the values to clean them up
@@ -393,11 +393,11 @@ class Device:
 
     def print(self, s: str, title: str = ""):
         """used by the device to print to the hosts live device message feed, if such a thing should happen to exist"""
-        logging.info(title + ": " + str(s))
+        logging.info(f"{title}: {str(s)}")
 
     def handle_error(self, s: str, title: str = ""):
         """like print but specifically marked as error. may get special notification.  should not be used for brief network loss"""
-        logging.error(title + ": " + str(s))
+        logging.error(f"{title}: {str(s)}")
 
     def handle_exception(self):
         "Helper function that just calls handle_error with a traceback."
