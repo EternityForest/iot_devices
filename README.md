@@ -90,7 +90,7 @@ The system will effectively do `from your_module.devices.random import RandomDev
             "submodule":"devices.random"
             }
         }
-} 
+}
 ```
 
 
@@ -121,7 +121,7 @@ device = create_device(c ,"Random Device", data)
 # Note that values here can be "None" if there is no data yet.
 print(device.datapoints['random'])
 
-# This is an on-demand getter.  
+# This is an on-demand getter.
 # This explicitly calls the getter we set.
 # It also sets the key in device.datapoints
 print(device.request_data_point('dyn_random'))
@@ -138,4 +138,27 @@ See host_demo.py
 
 ### Docs for the included devices
 
-See devicedocs.md for a code example of each one.  Note these are generated with iot_devices_scan.py.
+See devicedocs.md for a code example of each one.  Note these are generated with iot_devices_scan.py.  This script searches all of the python paths for any folder that contains devices,  creates
+an instance of each one, and inspects the object to generate report, including a usable code example.
+
+For example, here's an auto-generated example of using a GPIO input, powered by the GPIOZero library.
+
+```python
+from iot_devices.host import create_device
+from iot_devices.devices.GPIODevice import GPIOInput
+
+dev = create_device(GPIOInput, "name", {
+    'device.active_high': 'true',
+    'device.pull_up': 'false',
+    'device.pull_down': 'false',
+    'device.pin': 'MOCK1',
+    'device.debounce_time_ms': '0'
+})
+
+
+
+# boolean
+print(dev.datapoints['value'])
+# >>> 0
+
+```
