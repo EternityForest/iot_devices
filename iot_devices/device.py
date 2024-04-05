@@ -46,7 +46,7 @@ def set_alert_state(state: Dict[str, Dict[str, Any]]):
                 x.handle_alert_state(state)
 
 
-def get_alerts(*a, **k):
+def get_alerts(*a, **k):  # pylint: disable=unused-argument
     """
     Return a list of currently active "alerts", if the framework supports such a concept,
     In an order suitable for display to humans.
@@ -92,7 +92,7 @@ class Device:
     # This represents either a long text readme or an absolute path beginning with / to such
     readme: str = ""
 
-    def __init__(self, name: str, config: Dict[str, str], subdevice_config=None, **kw):
+    def __init__(self, name: str, config: Dict[str, str], subdevice_config=None, **kw):  # pylint: disable=unused-argument
         """
 
         The base class __init__ does nothing if
@@ -197,9 +197,9 @@ class Device:
             # That return the new value
             self.__datapoint_getters: Dict[str, Callable] = {}
 
-            for i in self.default_config:
+            for i, v in self.default_config.items():
                 if i not in self.config:
-                    self.set_config_option(i, self.default_config[i])
+                    self.set_config_option(i, v)
 
             self.name = name
             if "name" in self.config:
@@ -214,9 +214,11 @@ class Device:
                 Expose files in the config dir for easy editing if the framework supports it.
             """
 
-            self.__initial_setup = True
+            # hasattr checked later
+            self.__initial_setup = True  # pylint: disable=unused-private-member
 
             with devices_list_lock:
+                global all_devices
                 _all_devices[name] = weakref.ref(self)
                 all_devices = copy.deepcopy(_all_devices)
 
@@ -291,10 +293,10 @@ class Device:
 
     @staticmethod
     def discover_devices(
-        config: Dict[str, str],
-        current_device: Optional[object] = None,
-        intent="",
-        **kwargs,
+        config: Dict[str, str],  # pylint: disable=unused-argument
+        current_device: Optional[object] = None,  # pylint: disable=unused-argument
+        intent="",  # pylint: disable=unused-argument
+        **kwargs,  # pylint: disable=unused-argument
     ) -> Dict[str, Dict]:
         """
         Discover a set of suggested configs that could be used to build a new device.
@@ -383,7 +385,7 @@ class Device:
         if key not in self.config or not self.config[key].strip():
             self.set_config_option(key, value.strip())
 
-    def wait_ready(self, timeout=15):
+    def wait_ready(self, timeout=15):  # pylint: disable=unused-argument
         """Call this to block for up to timeout seconds for the device to be fully initialized.
         Use this in quick scripts with a devices that readies itself asynchronously
         """
@@ -409,16 +411,16 @@ class Device:
         name: str,
         min: Optional[float] = None,
         max: Optional[float] = None,
-        hi: Optional[float] = None,
-        lo: Optional[float] = None,
+        hi: Optional[float] = None,  # pylint: disable=unused-argument
+        lo: Optional[float] = None,  # pylint: disable=unused-argument
         default: Optional[float] = None,
-        description: str = "",
-        unit: str = "",
+        description: str = "",  # pylint: disable=unused-argument
+        unit: str = "",  # pylint: disable=unused-argument
         handler: Optional[Callable[[float, float, Any], Any]] = None,
-        interval: float = 0,
-        subtype: str = "",
-        writable=True,
-        **kwargs,
+        interval: float = 0,  # pylint: disable=unused-argument
+        subtype: str = "",  # pylint: disable=unused-argument
+        writable=True,  # pylint: disable=unused-argument
+        **kwargs,  # pylint: disable=unused-argument
     ):
         """Register a new numeric data point with the given properties.
 
@@ -504,14 +506,14 @@ class Device:
     def string_data_point(
         self,
         name: str,
-        description: str = "",
-        unit: str = "",
+        description: str = "",  # pylint: disable=unused-argument
+        unit: str = "",  # pylint: disable=unused-argument
         handler: Optional[Callable[[str, float, Any], Any]] = None,
         default: Optional[str] = None,
-        interval: float = 0,
-        writable=True,
-        subtype: str = "",
-        **kwargs,
+        interval: float = 0,  # pylint: disable=unused-argument
+        writable=True,  # pylint: disable=unused-argument
+        subtype: str = "",  # pylint: disable=unused-argument
+        **kwargs,  # pylint: disable=unused-argument
     ):
         """Register a new string data point with the given properties.
 
@@ -545,7 +547,7 @@ class Device:
 
         self.datapoints[name] = default
 
-        def onChangeAttempt(v: Optional[str], t, a):
+        def on_change_attempt(v: Optional[str], t, a):
             "This function handles the change detection by itself"
             if v is None:
                 return
@@ -568,18 +570,18 @@ class Device:
 
             self.on_data_change(name, v, t, a)
 
-        self.__datapointhandlers[name] = onChangeAttempt
+        self.__datapointhandlers[name] = on_change_attempt
 
     def object_data_point(
         self,
         name: str,
-        description: str = "",
-        unit: str = "",
+        description: str = "",  # pylint: disable=unused-argument
+        unit: str = "",  # pylint: disable=unused-argument
         handler: Optional[Callable[[Dict, float, Any], Any]] = None,
-        interval: float = 0,
-        writable=True,
-        subtype: str = "",
-        **kwargs,
+        interval: float = 0,  # pylint: disable=unused-argument
+        writable=True,  # pylint: disable=unused-argument
+        subtype: str = "",  # pylint: disable=unused-argument
+        **kwargs,  # pylint: disable=unused-argument
     ):
         """Register a new object data point with the given properties.   Here "object"
         means a JSON-like object.
@@ -646,11 +648,11 @@ class Device:
     def bytestream_data_point(
         self,
         name: str,
-        description: str = "",
-        unit: str = "",
+        description: str = "",  # pylint: disable=unused-argument
+        unit: str = "",  # pylint: disable=unused-argument
         handler: Optional[Callable[[bytes, float, Any], Any]] = None,
-        writable=True,
-        **kwargs,
+        writable=True,  # pylint: disable=unused-argument
+        **kwargs,  # pylint: disable=unused-argument
     ):
         """register a new bytestream data point with the given properties. handler will be called when it changes.
         only meant to be called from within __init__.
@@ -662,7 +664,7 @@ class Device:
 
         self.datapoints[name] = None
 
-        def onChangeAttempt(v: Optional[bytes], t, a):
+        def on_change_attempt(v: Optional[bytes], t, a):
             if not v:
                 return
             t = t or time.monotonic()
@@ -674,7 +676,7 @@ class Device:
 
             self.on_data_change(name, v, t, a)
 
-        self.__datapointhandlers[name] = onChangeAttempt
+        self.__datapointhandlers[name] = on_change_attempt
 
     def push_bytes(self, name: str, value: bytes):
         """Same as set_data_point but for bytestream data"""
@@ -863,7 +865,7 @@ class Device:
     def get_create_form(cls, **kwargs) -> Optional[str]:
         """must return a snippet of html used the same way as get_management_form, but for creating brand new devices"""
 
-    def handle_web_request(self, relpath, params, method, **kwargs):
+    def handle_web_request(self, relpath, params, method, **kwargs):  # pylint: disable=unused-argument
         """To be called by the framework.  Security must be handled by the framework.
         Frameworks may implement separate read and write permissions that apply separately
         to GET and other requests.
