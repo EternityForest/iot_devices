@@ -14,18 +14,18 @@ import logging
 """
 httpserver code:
 Copyright 2021 Brad Montgomery
-Permission is hereby granted, free of charge, to any person obtaining a copy of this software and 
-associated documentation files (the "Software"), to deal in the Software without restriction, 
-including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, 
-and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, 
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+associated documentation files (the "Software"), to deal in the Software without restriction,
+including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so,
 subject to the following conditions:
-The above copyright notice and this permission notice shall be included in all copies or substantial 
+The above copyright notice and this permission notice shall be included in all copies or substantial
 portions of the Software.
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT 
-LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. 
-IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, 
-WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE 
-OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.    
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT
+LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE
+OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 """
 import argparse
 from http.server import HTTPServer, BaseHTTPRequestHandler
@@ -71,7 +71,7 @@ x = """<?xml version="1.0" encoding="UTF-8" ?>
 
 
 def ssdpxml(name, uuid):
-    return x.replace("FN", name).replace('XXXX', uuid.replace('-', '').upper())
+    return x.replace("FN", name).replace("XXXX", uuid.replace("-", "").upper())
 
 
 logger = logging.Logger("plugins.pyremote")
@@ -82,7 +82,7 @@ logger = logging.Logger("plugins.pyremote")
 
 def find_free_port():
     with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as s:
-        s.bind(('0.0.0.0', 0))
+        s.bind(("0.0.0.0", 0))
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         return s.getsockname()[1]
 
@@ -90,7 +90,7 @@ def find_free_port():
 def check_port(p):
     try:
         with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as s:
-            s.bind(('0.0.0.0', p))
+            s.bind(("0.0.0.0", p))
             return True
     except Exception:
         return False
@@ -98,7 +98,7 @@ def check_port(p):
 
 try:
     import network
-except:
+except Exception:
     pass
 
 # https://github.com/FRC4564/HueBridge/blob/master/hue.py used as reference
@@ -108,22 +108,27 @@ except:
 try:
     ms = time.ticks_ms
     tickdiff = time.ticks_diff
-except:
+except Exception:
+
     def ms():
         return int(time.monotonic() * 1000)
 
     def tickdiff(a, b):
         return a - b
 
+
 mxsearch = {
-    'method': 'M-SEARCH',
-    'HOST': '239.255.255.250:1900',
-    'MAN': '"ssdp:discover"',
-    "MX": "3"
+    "method": "M-SEARCH",
+    "HOST": "239.255.255.250:1900",
+    "MAN": '"ssdp:discover"',
+    "MX": "3",
 }
 
-reply = {'SERVER': 'Unspecified, UPnP/1.0, Unspecified',
-         'EXT': '', 'CACHE-CONTROL': 'max-age=601'}
+reply = {
+    "SERVER": "Unspecified, UPnP/1.0, Unspecified",
+    "EXT": "",
+    "CACHE-CONTROL": "max-age=601",
+}
 
 
 # Local service definition:
@@ -131,9 +136,10 @@ def getUID():
     try:
         import network
         import ubinascii
-        mac = ubinascii.hexlify(network.WLAN().config('mac'), ':').decode()
-        return (mac.replace(':', '').upper())
-    except:
+
+        mac = ubinascii.hexlify(network.WLAN().config("mac"), ":").decode()
+        return mac.replace(":", "").upper()
+    except Exception:
         return socket.gethostname()
 
 
@@ -143,13 +149,13 @@ def getLocalIPForRemoteClient(addr):
         sock.connect(addr)
         ip = sock.getsockname()[0]
         sock.close()
-    except:
+    except Exception:
         ip = network.WLAN().ifconfig()[0]
 
     return ip
 
 
-class HTTPUServer():
+class HTTPUServer:
     def __init__(self):
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.settimeout(2)
@@ -171,41 +177,43 @@ class HTTPUServer():
 
     def _replyServices(self, st, a):
         for i in self.services:
-            if st == 'ssdp:all' or st == i:
+            if st == "ssdp:all" or st == i:
                 s = {}
                 s.update(self.services[i])
                 s.update(reply)
-                s['ST'] = s.get('ST', i)
+                s["ST"] = s.get("ST", i)
 
-                s['Location'] = s['Location'].replace(
-                    'localhost', getLocalIPForRemoteClient(a))
+                s["Location"] = s["Location"].replace(
+                    "localhost", getLocalIPForRemoteClient(a)
+                )
 
-                s['LOCATION'] = s['LOCATION'].replace(
-                    'localhost', getLocalIPForRemoteClient(a))
-                if not 'USN' in s:
-                    s['USN'] = 'uuid:' + getUID() + "::" + s['ST']
+                s["LOCATION"] = s["LOCATION"].replace(
+                    "localhost", getLocalIPForRemoteClient(a)
+                )
+                if not "USN" in s:
+                    s["USN"] = "uuid:" + getUID() + "::" + s["ST"]
                 s = make_httpu(s)
                 self.sock.sendto(s, a)
 
     def _onmsg(self, a, m):
-        if a[0].startswith('192.') or a[0].startswith('10.') or a[0].startswith('127.'):
-            if m.get('method', '') == 'M-SEARCH':
-                if m.get('Man', m.get('MAN', '')) == '"ssdp:discover"':
-                    st = m.get('ST', '')
+        if a[0].startswith("192.") or a[0].startswith("10.") or a[0].startswith("127."):
+            if m.get("method", "") == "M-SEARCH":
+                if m.get("Man", m.get("MAN", "")) == '"ssdp:discover"':
+                    st = m.get("ST", "")
                     self._replyServices(st, a)
 
 
 def make_httpu(d):
-    o = ''
-    if 'method' in d:
-        o += d['method'] + " * HTTP/1.1\r\n"
+    o = ""
+    if "method" in d:
+        o += d["method"] + " * HTTP/1.1\r\n"
     else:
         o += "HTTP/1.1 200 OK\r\n"
 
     for i in d:
-        if not i == 'method':
-            o += i + ': ' + d[i] + "\r\n"
-    o += '\r\n'
+        if not i == "method":
+            o += i + ": " + d[i] + "\r\n"
+    o += "\r\n"
 
     return o.encode()
 
@@ -215,32 +223,33 @@ def parse_httpu(data):
 
     d = {}
     # Compensate for any bad implementations that don't use \r\n
-    lines = data.replace('\r', '').split('\n')
+    lines = data.replace("\r", "").split("\n")
 
     l0 = lines.pop(0)
 
-    if '*' in l0:
-        d['method'] = l0.split('*')[0].strip()
+    if "*" in l0:
+        d["method"] = l0.split("*")[0].strip()
 
     for l in lines:
-        tokens = l.split(':', 1)
+        tokens = l.split(":", 1)
         if len(tokens) > 1:
             d[tokens[0]] = tokens[1].strip()
     return d
 
 
 def tzget():
-    tzname = os.environ.get('TZ')
+    tzname = os.environ.get("TZ")
     if tzname:
         return tzname
-    elif os.path.exists('/etc/timezone'):
-        with open('/etc/timezone') as f:
+    elif os.path.exists("/etc/timezone"):
+        with open("/etc/timezone") as f:
             return f.read().strip()
     return "US/Pacific"
 
 
 def fakeroku(name):
-    return """<device-info>
+    return (
+        """<device-info>
     <serial-number>X004000B231</serial-number>
     <device-id>S00820BB231</device-id>
     <vendor-name>Roku</vendor-name>
@@ -261,7 +270,9 @@ def fakeroku(name):
     <friendly-device-name>Roku LivingRoom</friendly-device-name>
     <friendly-model-name>Roku Express</friendly-model-name>
     <default-device-name>Roku Express - X004000AJDX1</default-device-name>
-    <user-device-name>""" + name + """</user-device-name>
+    <user-device-name>"""
+        + name
+        + """</user-device-name>
     <user-device-location>LivingRoom</user-device-location>
     <build-number>AEA.00E04209A</build-number>
     <software-version>10.0.0</software-version>
@@ -271,10 +282,18 @@ def fakeroku(name):
     <country>US</country>
     <locale>en_US</locale>
     <time-zone-auto>true</time-zone-auto>
-    <time-zone>""" + tzget() + """</time-zone>
-    <time-zone-name>""" + tzget() + """</time-zone>
-    <time-zone-tz>""" + tzget() + """</time-zone>
-    <time-zone-offset>""" + str(time.localtime().tm_gmtoff / 60) + """</time-zone-offset>
+    <time-zone>"""
+        + tzget()
+        + """</time-zone>
+    <time-zone-name>"""
+        + tzget()
+        + """</time-zone>
+    <time-zone-tz>"""
+        + tzget()
+        + """</time-zone>
+    <time-zone-offset>"""
+        + str(time.localtime().tm_gmtoff / 60)
+        + """</time-zone-offset>
     <clock-format>12-hour</clock-format>
     <uptime>2912968</uptime>
     <power-mode>PowerOn</power-mode>
@@ -304,10 +323,11 @@ def fakeroku(name):
     <trc-channel-version>4.2.3</trc-channel-version>
     <davinci-version>2.8.20</davinci-version>
     </device-info>"""
+    )
 
 
 class RokuRemoteApp(device.Device):
-    device_type = 'RokuRemoteApp'
+    device_type = "RokuRemoteApp"
     readme = """
 Implements an extended version of the (https://developer.roku.com/docs/developer-program/debugging/external-control-api.md)[Roku ECP protocol].  Does not currently work with most real Roku apps,
 intended mostly for use with DIY handheld remotes.
@@ -319,7 +339,7 @@ The battery tag represents the most recently connected remote that decided to se
     """
 
     def ssdploop(self):
-        while (1):
+        while 1:
             s = self.ssdp
             if s:
                 s.poll()
@@ -339,36 +359,43 @@ The battery tag represents the most recently connected remote that decided to se
         self.closed = False
         self.httpd = None
 
-        self.object_data_point("command", subtype='event')
-        self.set_data_point('command', [None, time.monotonic(), None])
+        self.object_data_point("command", subtype="event")
+        self.set_data_point("command", [None, time.monotonic(), None])
 
-        self.numeric_data_point(
-            "battery", min=0, max=100, unit="%", writable=False)
-        self.set_alarm('LowBattery', datapoint='battery', expression='value < 20',
-                       priority='warning', release_condition='value > 35')
+        self.numeric_data_point("battery", min=0, max=100, unit="%", writable=False)
+        self.set_alarm(
+            "LowBattery",
+            datapoint="battery",
+            expression="value < 20",
+            priority="warning",
+            release_condition="value > 35",
+        )
 
         try:
             self.set_config_default("device.serial", "P0A070000007")
             self.set_config_default("device.uuid", str(uuid.uuid4()))
-            self.set_config_default(
-                "device.bind", "0.0.0.0:" + str(find_free_port()))
+            self.set_config_default("device.bind", "0.0.0.0:" + str(find_free_port()))
 
-            if not self.config['device.bind'].strip():
+            if not self.config["device.bind"].strip():
                 raise RuntimeError("No address selected")
 
-            p = self.config['device.bind'].split(":")[1]
+            p = self.config["device.bind"].split(":")[1]
             p = int(p)
 
-            self.bind = self.config['device.bind']
+            self.bind = self.config["device.bind"]
             if not check_port(p):
                 self.bind = "0.0.0.0:" + str(find_free_port())
 
             self.ssdp = HTTPUServer()
-            self.ssdp.services = {'roku:ecp': {'Location': "http://" + self.bind.replace('0.0.0.0', 'localhost'),
-                                               'LOCATION': "http://" + self.bind.replace('0.0.0.0', 'localhost'),
-                                               'USN': 'uuid:roku:ecp:'+self.config['device.uuid'].replace('-', '').upper(),
-                                               'Cache-Control': 'max-age=3600'
-                                               }}
+            self.ssdp.services = {
+                "roku:ecp": {
+                    "Location": "http://" + self.bind.replace("0.0.0.0", "localhost"),
+                    "LOCATION": "http://" + self.bind.replace("0.0.0.0", "localhost"),
+                    "USN": "uuid:roku:ecp:"
+                    + self.config["device.uuid"].replace("-", "").upper(),
+                    "Cache-Control": "max-age=3600",
+                }
+            }
 
             class S(BaseHTTPRequestHandler):
                 def _set_headers(s):
@@ -377,18 +404,17 @@ The battery tag represents the most recently connected remote that decided to se
                     s.end_headers()
 
                 def do_GET(s):
-                    if not s.path.endswith('.png'):
+                    if not s.path.endswith(".png"):
                         s.send_response(200)
-                        s.send_header('Content-Type',
-                                      'text/xml; charset=utf-8')
+                        s.send_header("Content-Type", "text/xml; charset=utf-8")
                         s.end_headers()
                     else:
                         s.send_response(200)
                         s.send_header("Content-type", "image/png")
                         s.end_headers()
 
-                    if s.path == '/query/apps':
-                        x = """<apps>
+                    if s.path == "/query/apps":
+                        x = b"""<apps>
                         <app id="11">Roku Channel Store</app>
                         <app id="12">Netflix</app>
                         <app id="13">Amazon Video on Demand</app>
@@ -396,25 +422,29 @@ The battery tag represents the most recently connected remote that decided to se
                         <app id="2016">Crackle</app>
                         <app id="3423">Rdio</app>
                         <app id="21952">Blockbuster</app>
-                        <app id="31012">MGO</app>  
+                        <app id="31012">MGO</app>
                         <app id="43594">CinemaNow</app>
                         <app id="46041">Sling TV</app>
                         <app id="50025">GooglePlay</app>
-                        </apps>""".encode()
+                        </apps>"""
                         x.wfile.write(x.encode())
 
-                    if s.path == '/query/device-info':
+                    if s.path == "/query/device-info":
                         s.wfile.write(fakeroku(self.name).encode())
 
                     elif s.path == "/":
                         s.wfile.write(
-                            ssdpxml(self.name, self.config['device.uuid']).encode())
+                            ssdpxml(self.name, self.config["device.uuid"]).encode()
+                        )
 
-                    elif s.path == '/unixtime':
+                    elif s.path == "/unixtime":
                         s.wfile.write(str(time.time()).encode())
 
-                    elif s.path == '/device-image.png':
-                        with open(os.path.join(os.path.dirname(__file__), "placeholder.png"), 'rb') as f:
+                    elif s.path == "/device-image.png":
+                        with open(
+                            os.path.join(os.path.dirname(__file__), "placeholder.png"),
+                            "rb",
+                        ) as f:
                             s.wfile.write(f.read())
 
                 def do_HEAD(s):
@@ -422,29 +452,39 @@ The battery tag represents the most recently connected remote that decided to se
 
                 def do_POST(s):
                     s._set_headers()
-                    s.wfile.write(b'{}')
+                    s.wfile.write(b"{}")
 
                     if s.path.startswith("/keypress/"):
                         self.set_data_point(
-                            'command', [s.path[len('/keypress/'):], time.monotonic(), None])
+                            "command",
+                            [s.path[len("/keypress/") :], time.monotonic(), None],
+                        )
                     if s.path.startswith("/launch/"):
                         self.set_data_point(
-                            'command', ["launch:" + s.path[len('/launch/'):], time.monotonic(), None])
+                            "command",
+                            [
+                                "launch:" + s.path[len("/launch/") :],
+                                time.monotonic(),
+                                None,
+                            ],
+                        )
 
             def f():
                 try:
-                    ip, port = self.bind.split(':')
+                    ip, port = self.bind.split(":")
                     self.httpd = HTTPServer((ip, int(port)), S)
                     self.httpd.serve_forever()
                 except Exception:
                     self.handle_exception()
 
             self.thread = threading.Thread(
-                target=f, name="HTTPRemoteServer" + self.name, daemon=True)
+                target=f, name="HTTPRemoteServer" + self.name, daemon=True
+            )
             self.thread.start()
 
             self.thread2 = threading.Thread(
-                target=self.ssdploop, name='pyremotessdp' + self.name, daemon=True)
+                target=self.ssdploop, name="pyremotessdp" + self.name, daemon=True
+            )
             self.thread2.start()
 
         except Exception:

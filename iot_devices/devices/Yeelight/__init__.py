@@ -40,25 +40,26 @@ def maybeRefresh(t=30):
 def refresh(timeout=8):
     global lastRefreshed, lookup
     from yeelight import discover_bulbs
+
     lastRefreshed = time.time()
 
     d = discover_bulbs()
     l = {}
 
     for i in d:
-        if 'name' in i['capabilities']:
-            l[i['capabilities']['name']] = i
-        l[i['ip']] = i
+        if "name" in i["capabilities"]:
+            l[i["capabilities"]["name"]] = i
+        l[i["ip"]] = i
     lookup = l
 
 
 def isIp(x):
-    x = x.strip().split('.')
+    x = x.strip().split(".")
     try:
         x = [int(i) for i in x]
         if len(x) == 4:
             return True
-    except:
+    except Exception:
         return False
 
 
@@ -102,7 +103,7 @@ class YeelightDevice(iot_devices.device.Device):
         iot_devices.device.Device.__init__(self, name, data, **kw)
 
         self.numeric_data_point("rssi", writable=False)
-        self.set_alarm("Low Signal", 'rssi', "value < -90")
+        self.set_alarm("Low Signal", "rssi", "value < -90")
 
         self.rssiCacheTime = 0
         self.lastLoggedUnreachable = 0
@@ -115,15 +116,16 @@ class YeelightDevice(iot_devices.device.Device):
         with self.lock:
             "Returns the current RSSI value of the device"
             if time.monotonic() - self.rssiCacheTime < cacheFor:
-                return self.datapoints['rssi'] or -75
+                return self.datapoints["rssi"] or -75
 
             # Not ideal, but we really can't be retrying this too often.
             # if it's dis_connected. Way too much slowdown
             self.rssiCacheTime = time.monotonic()
 
             try:
-                info = getDevice(self.data.get("device.locator"), timeout,
-                                 self.kdClass).get_properties()
+                info = getDevice(
+                    self.data.get("device.locator"), timeout, self.kdClass
+                ).get_properties()
 
                 self.set_data_point("rssi", -70)
             except Exception:
@@ -133,7 +135,7 @@ class YeelightDevice(iot_devices.device.Device):
                     self.lastLoggedUnreachable = time.monotonic()
                 raise
 
-            return self.datapoints['rssi'] or -75
+            return self.datapoints["rssi"] or -75
 
 
 class YeelightRGB(YeelightDevice):
@@ -150,24 +152,26 @@ class YeelightRGB(YeelightDevice):
 
         # Rate limits will prevent getting rejected
         self.allowedOperations = min(
-            self.allowedOperations+(time.monotonic()-self.lastRecalcedAllowed), 40)
+            self.allowedOperations + (time.monotonic() - self.lastRecalcedAllowed), 40
+        )
         self.lastRecalcedAllowed = time.monotonic()
 
         # Drop frames randomly. This will look a lot better with flickery type effects.
-        if (random.random()*20 + 1) > self.allowedOperations:
+        if (random.random() * 20 + 1) > self.allowedOperations:
             return
 
         self.allowedOperations -= 1
         self.hasData = False
 
-        color = colorzero.Color(self.datapoints['color'] or 'white')
+        color = colorzero.Color(self.datapoints["color"] or "white")
         rgb = color.rgb
 
         # Very crappy color correction done by trial and error
-        hsv = colorzero.Color.from_rgb(rgb[0], max(
-            0, rgb[1] - rgb[0]*0.1),  max(0, rgb[2] - rgb[0]*0.1)).hsv
+        hsv = colorzero.Color.from_rgb(
+            rgb[0], max(0, rgb[1] - rgb[0] * 0.1), max(0, rgb[2] - rgb[0] * 0.1)
+        ).hsv
 
-        duration = self.datapoints['fade'] or 0
+        duration = self.datapoints["fade"] or 0
 
         if hsv.v < 0.0001:
             self.wasOff = True
@@ -178,8 +182,9 @@ class YeelightRGB(YeelightDevice):
                     int(hsv.h * 359.9),
                     int(hsv.s * 100),
                     int(hsv.v * 100),
-                    effect="smooth" if duration else 'sudden',
-                    duration=int(duration * 1000) if not self.wasOff else 0)
+                    effect="smooth" if duration else "sudden",
+                    duration=int(duration * 1000) if not self.wasOff else 0,
+                )
             except Exception:
                 # Assume turned off.  Turn on. Retry.
                 self.setSwitch(0, True, duration)
@@ -187,8 +192,9 @@ class YeelightRGB(YeelightDevice):
                     int(hsv.h * 359.9),
                     int(hsv.s * 100),
                     int(hsv.v * 100),
-                    effect="smooth" if duration else 'sudden',
-                    duration=int(duration * 1000) if not self.wasOff else 0)
+                    effect="smooth" if duration else "sudden",
+                    duration=int(duration * 1000) if not self.wasOff else 0,
+                )
 
             if self.wasOff:
                 self.wasOff = False
@@ -212,16 +218,13 @@ class YeelightRGB(YeelightDevice):
         def swhandle(v, t, a):
             try:
                 self.setSwitch(0, v >= 0.5)
-            except:
+            except Exception:
                 pass
 
-        self.numeric_data_point("switch",
-                                min=0,
-                                max=1,
-                                subtype='bool',
-                                interval=300, handler=swhandle)
-        self.numeric_data_point("fade", min=0, max=10,
-                                subtype="light_fade_duration")
+        self.numeric_data_point(
+            "switch", min=0, max=1, subtype="bool", interval=300, handler=swhandle
+        )
+        self.numeric_data_point("fade", min=0, max=10, subtype="light_fade_duration")
 
         self.huesat = -1
         self.lastVal = -1
@@ -242,12 +245,16 @@ class YeelightRGB(YeelightDevice):
         return self.getRawDevice().is_on
 
     def setSwitch(self, channel, state, duration=1):
-        logger.debug("Setting smartplug " + self.data.get("device.locator") +
-                     "to state " + str(state))
-        self.set_data_point('fade', duration)
-        self.set_data_point('switch', 1 if state else 0)
+        logger.debug(
+            "Setting smartplug "
+            + self.data.get("device.locator")
+            + "to state "
+            + str(state)
+        )
+        self.set_data_point("fade", duration)
+        self.set_data_point("switch", 1 if state else 0)
 
-        duration = self.datapoints['fade'] or 0
+        duration = self.datapoints["fade"] or 0
 
         with self.lock:
             "Set the state of switch channel N"
@@ -255,19 +262,17 @@ class YeelightRGB(YeelightDevice):
                 raise ValueError("This is a 1 channel device")
             try:
                 if state:
-                    getDevice(self.data.get("device.locator"), 3,
-                              self.kdClass).turn_on(effect="smooth",
-                                                    duration=int(duration *
-                                                                 1000))
+                    getDevice(self.data.get("device.locator"), 3, self.kdClass).turn_on(
+                        effect="smooth", duration=int(duration * 1000)
+                    )
                     self.wasOff = False
                 else:
-                    getDevice(self.data.get("device.locator"), 3,
-                              self.kdClass).turn_off(effect="smooth",
-                                                     duration=int(duration *
-                                                                  1000))
+                    getDevice(
+                        self.data.get("device.locator"), 3, self.kdClass
+                    ).turn_off(effect="smooth", duration=int(duration * 1000))
                     self.wasOff = True
                 self.oldTransitionRate = duration
-            except:
+            except Exception:
                 if self.lastLoggedUnreachable < time.monotonic() - 30:
                     self.handle_error("Device was unreachable")
                     self.lastLoggedUnreachable = time.monotonic()
@@ -280,8 +285,7 @@ class YeelightRGB(YeelightDevice):
         if channel > 0:
             raise ValueError("Bulb has 1 color only")
         self.set_data_point("fade", duration)
-        self.set_data_point('color',
-                            colorzero.Color.from_hsv(hue / 360, sat, val).html)
+        self.set_data_point("color", colorzero.Color.from_hsv(hue / 360, sat, val).html)
 
     @classmethod
     def discover_devices(cls, config={}, current_device=None, intent=None, **kw):
@@ -293,12 +297,12 @@ class YeelightRGB(YeelightDevice):
 
             config2.update(
                 {
-                    'type': cls.device_type,
-                    'device.locator': lookup[i]['capabilities'].get("name", '') or lookup[i]['ip']
+                    "type": cls.device_type,
+                    "device.locator": lookup[i]["capabilities"].get("name", "")
+                    or lookup[i]["ip"],
                 }
             )
 
-            l[lookup[i]['capabilities'].get(
-                "name", '') or lookup[i]['ip']] = config2
+            l[lookup[i]["capabilities"].get("name", "") or lookup[i]["ip"]] = config2
 
         return l
