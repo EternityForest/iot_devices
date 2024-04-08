@@ -1,6 +1,11 @@
 # iot_devices
 
-Very early draft of a platform independent abstraction of the idea of a "device".
+![MIT](badges/mit.png)
+![Pre-commit Badge](badges/pre-commit.png)
+![Pytest](badges/pytest.png)
+
+
+Platform independent abstraction of the idea of a "device".
 
 The intent is that you can make plugins for automation frameworks that can also be trivially used as a standalone library.
 
@@ -12,9 +17,6 @@ that can be used to access any device using this spec.
 It also aims to include a library of commonly used devices.
 
 It can be installed with "pip3 install iot_devices".
-
-The Network Video Recorder device can be installed with "pip3 install NVRChannel".
-
 
 
 ## The tui-dash.py app
@@ -54,8 +56,7 @@ Note: All devices must NOT do anything destructive when created with default arg
 [Full device API docs](https://eternityforest.github.io/iot_devices/docs/iot_devices/device.html)
 
 ```python
-from iot_devices import device
-
+import iot_devices.device as device
 import random
 
 class RandomDevice(device.Device):
