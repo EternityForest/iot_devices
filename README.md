@@ -1,6 +1,7 @@
 # iot_devices
 
 ![MIT](badges/mit.png)
+![Python](badges/python.png)
 ![Pre-commit Badge](badges/pre-commit.png)
 ![Pytest](badges/pytest.png)
 

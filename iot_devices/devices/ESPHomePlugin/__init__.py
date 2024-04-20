@@ -38,8 +38,7 @@ class ESPHomeDevice(iot_devices.device.Device):
             # ESPHome uses servicecall packet for both events and service calls
             # Ensure the user can only send events of form 'esphome.xyz'
             if domain != "esphome":
-                self.handle_error(
-                    "Can't do non esphome domains, yours was: " + domain)
+                self.handle_error("Can't do non esphome domains, yours was: " + domain)
 
                 return
 
@@ -53,8 +52,7 @@ class ESPHomeDevice(iot_devices.device.Device):
                         "scanned_tag", "RFID reading", writable=False
                     )
 
-                self.set_data_point(
-                    "scanned_tag", [str(tag_id), time.time(), ""])
+                self.set_data_point("scanned_tag", [str(tag_id), time.time(), ""])
                 return
 
     def update_wireless(self):
@@ -96,14 +94,12 @@ class ESPHomeDevice(iot_devices.device.Device):
                 )
 
             elif isinstance(i, client.NumberInfo):
-                self.numeric_data_point(
-                    i.object_id, min=i.min_value, max=i.max_value)
+                self.numeric_data_point(i.object_id, min=i.min_value, max=i.max_value)
 
             elif isinstance(i, client.SensorInfo):
                 self.numeric_data_point(
                     i.object_id,
-                    unit=i.unit_of_measurement.replace(
-                        "°", "deg").replace("³", "3"),
+                    unit=i.unit_of_measurement.replace("°", "deg").replace("³", "3"),
                     writable=False,
                 )
 
@@ -185,7 +181,7 @@ class ESPHomeDevice(iot_devices.device.Device):
 
     def __init__(self, name: str, config: Dict[str, str], subdevice_config=None, **kw):
         super().__init__(name, config, subdevice_config, **kw)
-        
+
         self.name_to_key = {}
         self.key_to_name = {}
         self.input_units = {}
@@ -205,11 +201,9 @@ class ESPHomeDevice(iot_devices.device.Device):
 
         self.set_config_default("device.hostname", "")
         self.set_config_default("device.apikey", "")
-        
-        self.config_properties['device.apikey'] = {
-                'secret': True
-            }
-            
+
+        self.config_properties["device.apikey"] = {"secret": True}
+
         self.thread.start()
 
     def asyncloop(self):
@@ -218,10 +212,9 @@ class ESPHomeDevice(iot_devices.device.Device):
         self.loop.run_forever()
 
     def close(self):
-        if self.api:
+        if hasattr(self, "api") and self.api:
             try:
-                t = asyncio.run_coroutine_threadsafe(
-                    self.api.disconnect(), self.loop)
+                t = asyncio.run_coroutine_threadsafe(self.api.disconnect(), self.loop)
 
                 d = False
 
@@ -237,8 +230,8 @@ class ESPHomeDevice(iot_devices.device.Device):
             except Exception:
                 self.handle_exception()
 
-        asyncio.run_coroutine_threadsafe(
-            self.loop.shutdown_asyncgens(), self.loop)
+        asyncio.run_coroutine_threadsafe(self.loop.shutdown_asyncgens(), self.loop)
+        time.sleep(0.05)
         self.loop.stop()
 
         for i in range(50):
