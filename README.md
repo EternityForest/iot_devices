@@ -164,3 +164,180 @@ print(dev.datapoints['value'])
 # >>> 0
 
 ```
+
+## Add Metadata to your data points
+
+Full signature of data point functions:
+
+```python
+    def numeric_data_point(
+        self,
+        name: str,
+        *,
+        min: float | None = None,
+        max: float | None = None,
+        hi: float | None = None,  # pylint: disable=unused-argument
+        lo: float | None = None,  # pylint: disable=unused-argument
+        default: float | None = None,
+        description: str = "",  # pylint: disable=unused-argument
+        unit: str = "",  # pylint: disable=unused-argument
+        handler: Callable[[float, float, Any], Any] | None = None,
+        interval: float = 0,  # pylint: disable=unused-argument
+        subtype: str = "",  # pylint: disable=unused-argument
+        writable=True,  # pylint: disable=unused-argument
+        dashboard=True,  # pylint: disable=unused-argument
+        **kwargs,  # pylint: disable=unused-argument
+    ):
+        """Register a new numeric data point with the given properties.
+
+        Handler will be called when it changes.
+        self.datapoints[name] will start out with tha value of None
+
+        The intent is that you can subclass this and have your own implementation of data points,
+        such as exposing an MQTT api or whatever else.
+
+        Most fields are just extra annotations to the host.
+
+        Args:
+            min: The min value the point can take on
+            max: The max value the point can take on
+
+            hi: A value the point can take on that would be
+                considered excessive
+            lo: A value the point can take on that would be
+                considered excessively low
+
+            description: Free text
+
+            unit: A unit of measure, such as "degC" or "MPH"
+
+            default: If unset default value is None,
+                or may be framework defined. Default does not trigger handler.
+
+            handler: A function taking the value,timestamp,
+                and annotation on changes.
+
+            interval :annotates the default data rate the point
+                will produce, for use in setting default poll
+                rates by the host, if the host wants to poll.
+                It does not mean the host SHOULD poll this,
+                it only suggest a rate to poll at if the host
+                has an interest in this data.
+
+            writable:  is purely for a host that might subclass
+                this, to determine if it should allow writing to the point.
+
+            subtype: A string further describing the data
+                type of this value, as a hint to UI generation.
+
+            dashboard: Whether to show this data point in overview displays.
+
+        """
+
+    def string_data_point(
+        self,
+        name: str,
+        *,
+        description: str = "",  # pylint: disable=unused-argument
+        unit: str = "",  # pylint: disable=unused-argument
+        handler: Callable[[str, float, Any], Any] | None = None,
+        default: str | None = None,
+        interval: float = 0,  # pylint: disable=unused-argument
+        writable=True,  # pylint: disable=unused-argument
+        subtype: str = "",  # pylint: disable=unused-argument
+        dashboard=True,  # pylint: disable=unused-argument
+        **kwargs,  # pylint: disable=unused-argument
+    ):
+        """Register a new string data point with the given properties.
+
+        Handler will be called when it changes.
+        self.datapoints[name] will start out with tha value of None
+
+        Interval annotates the default data rate the point will produce, for use in setting default poll
+        rates by the host, if the host wants to poll.
+
+        Most fields are just extra annotations to the host.
+
+
+        Args:
+            description: Free text
+
+            default: If unset default value is None, or may be framework defined. Default does not trigger handler.
+
+            handler: A function taking the value,timestamp, and annotation on changes.
+
+            interval: annotates the default data rate the point will produce, for use in setting default poll
+                rates by the host if the host wants to poll.
+
+                It does not mean the host SHOULD poll this,
+                it only suggest a rate to poll at if the host has an interest in this data.
+
+            writable:  is purely for a host that might subclass this, to determine if it should allow writing to the point.
+
+            subtype: A string further describing the data type of this value, as a hint to UI generation.
+
+            dashboard: Whether to show this data point in overview displays.
+        """
+
+    def object_data_point(
+        self,
+        name: str,
+        *,
+        description: str = "",  # pylint: disable=unused-argument
+        unit: str = "",  # pylint: disable=unused-argument
+        handler: Callable[[dict, float, Any], Any] | None = None,
+        interval: float = 0,  # pylint: disable=unused-argument
+        writable=True,  # pylint: disable=unused-argument
+        subtype: str = "",  # pylint: disable=unused-argument
+        dashboard=True,  # pylint: disable=unused-argument
+        **kwargs,  # pylint: disable=unused-argument
+    ):
+        """Register a new object data point with the given properties.   Here "object"
+        means a JSON-like object.
+
+        Handler will be called when it changes.
+        self.datapoints[name] will start out with tha value of None
+
+        Interval annotates the default data rate the point will produce, for use in setting default poll
+        rates by the host, if the host wants to poll.
+
+        Most fields are just extra annotations to the host.
+
+        Args:
+            description: Free text
+
+            handler: A function taking the value,timestamp, and annotation on changes
+
+            interval :annotates the default data rate the point will produce, for use in setting default poll
+                rates by the host, if the host wants to poll.  It does not mean the host SHOULD poll this,
+                it only suggest a rate to poll at if the host has an interest in this data.
+
+            writable:  is purely for a host that might subclass this, to determine if it should allow writing to the point.
+
+            subtype: A string further describing the data type of this value, as a hint to UI generation.
+
+            dashboard: Whether to show this data point in overview displays.
+        """
+
+    def bytestream_data_point(
+        self,
+        name: str,
+        *,
+        description: str = "",  # pylint: disable=unused-argument
+        unit: str = "",  # pylint: disable=unused-argument
+        handler: Callable[[bytes, float, Any], Any] | None = None,
+        writable=True,  # pylint: disable=unused-argument
+        dashboard=True,  # pylint: disable=unused-argument
+        **kwargs,  # pylint: disable=unused-argument
+    ):
+        """register a new bytestream data point with the
+        given properties. handler will be called when it changes.
+        only meant to be called from within __init__.
+
+        Bytestream data points do not store data,
+        they only push it through.
+
+        Despite the name, buffers of bytes may not be broken up or combined, this is buffer oriented,
+
+        """
+```

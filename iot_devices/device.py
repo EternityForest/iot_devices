@@ -459,6 +459,7 @@ class Device:
         interval: float = 0,  # pylint: disable=unused-argument
         subtype: str = "",  # pylint: disable=unused-argument
         writable=True,  # pylint: disable=unused-argument
+        dashboard=True,  # pylint: disable=unused-argument
         **kwargs,  # pylint: disable=unused-argument
     ):
         """Register a new numeric data point with the given properties.
@@ -502,6 +503,8 @@ class Device:
 
             subtype: A string further describing the data
                 type of this value, as a hint to UI generation.
+
+            dashboard: Whether to show this data point in overview displays.
 
         """
 
@@ -562,6 +565,7 @@ class Device:
         interval: float = 0,  # pylint: disable=unused-argument
         writable=True,  # pylint: disable=unused-argument
         subtype: str = "",  # pylint: disable=unused-argument
+        dashboard=True,  # pylint: disable=unused-argument
         **kwargs,  # pylint: disable=unused-argument
     ):
         """Register a new string data point with the given properties.
@@ -592,6 +596,7 @@ class Device:
 
             subtype: A string further describing the data type of this value, as a hint to UI generation.
 
+            dashboard: Whether to show this data point in overview displays.
         """
 
         self.datapoints[name] = default
@@ -631,6 +636,7 @@ class Device:
         interval: float = 0,  # pylint: disable=unused-argument
         writable=True,  # pylint: disable=unused-argument
         subtype: str = "",  # pylint: disable=unused-argument
+        dashboard=True,  # pylint: disable=unused-argument
         **kwargs,  # pylint: disable=unused-argument
     ):
         """Register a new object data point with the given properties.   Here "object"
@@ -657,7 +663,7 @@ class Device:
 
             subtype: A string further describing the data type of this value, as a hint to UI generation.
 
-
+            dashboard: Whether to show this data point in overview displays.
         """
 
         self.datapoints[name] = None
@@ -703,6 +709,7 @@ class Device:
         unit: str = "",  # pylint: disable=unused-argument
         handler: Callable[[bytes, float, Any], Any] | None = None,
         writable=True,  # pylint: disable=unused-argument
+        dashboard=True,  # pylint: disable=unused-argument
         **kwargs,  # pylint: disable=unused-argument
     ):
         """register a new bytestream data point with the
@@ -713,6 +720,7 @@ class Device:
         they only push it through.
 
         Despite the name, buffers of bytes may not be broken up or combined, this is buffer oriented,
+
         """
 
         self.datapoints[name] = None
