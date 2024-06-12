@@ -1,6 +1,7 @@
 from typing import Dict
 import aioesphomeapi
 import aioesphomeapi.client as client
+import aioesphomeapi.model as model
 import asyncio
 import threading
 import zeroconf
@@ -25,7 +26,7 @@ class ESPHomeDevice(iot_devices.device.Device):
                 raise RuntimeError("Could not connect")
             time.sleep(timeout / 100)
 
-    def async_on_service_call(self, service: client.HomeassistantServiceCall) -> None:
+    def async_on_service_call(self, service: model.HomeassistantServiceCall) -> None:
         """Call service when user automation in ESPHome config is triggered."""
         domain, service_name = service.service.split(".", 1)
         service_data = service.data
@@ -69,10 +70,10 @@ class ESPHomeDevice(iot_devices.device.Device):
             self.key_to_name[i.key] = i.object_id
             self.name_to_key[i.object_id] = i.key
 
-            if isinstance(i, client.BinarySensorInfo):
+            if isinstance(i, model.BinarySensorInfo):
                 self.add_bool(i.object_id)
 
-            elif isinstance(i, client.SwitchInfo):
+            elif isinstance(i, model.SwitchInfo):
 
                 def handler(v, t, a):
                     if not a == "FromRemoteDevice":
@@ -93,10 +94,10 @@ class ESPHomeDevice(iot_devices.device.Device):
                     handler=handler,
                 )
 
-            elif isinstance(i, client.NumberInfo):
+            elif isinstance(i, model.NumberInfo):
                 self.numeric_data_point(i.object_id, min=i.min_value, max=i.max_value)
 
-            elif isinstance(i, client.SensorInfo):
+            elif isinstance(i, model.SensorInfo):
                 self.numeric_data_point(
                     i.object_id,
                     unit=i.unit_of_measurement.replace("°", "deg").replace("³", "3"),
@@ -134,10 +135,10 @@ class ESPHomeDevice(iot_devices.device.Device):
                         priority="warning",
                     )
 
-            elif isinstance(i, client.TextSensorInfo):
+            elif isinstance(i, model.TextSensorInfo):
                 self.string_data_point(i.object_id)
 
-            elif isinstance(i, client.AlarmControlPanelInfo):
+            elif isinstance(i, model.AlarmControlPanelInfo):
                 self.string_data_point(i.object_id, writable=False)
                 self.set_alarm(
                     self.name + " " + i.object_id + "Triggered",
@@ -159,21 +160,21 @@ class ESPHomeDevice(iot_devices.device.Device):
 
     def incoming_state(self, s):
         try:
-            if isinstance(s, (client.BinarySensorState, client.SwitchState)):
+            if isinstance(s, (model.BinarySensorState, model.SwitchState)):
                 self.set_data_point(
                     self.key_to_name[s.key],
                     1 if s.state else 0,
                     annotation="FromRemoteDevice",
                 )
 
-            elif isinstance(s, client.NumberState):
+            elif isinstance(s, model.NumberState):
                 self.set_data_point(self.key_to_name[s.key], s.state)
 
-            elif isinstance(s, client.AlarmControlPanelState):
+            elif isinstance(s, model.AlarmControlPanelState):
                 self.set_data_point(self.key_to_name[s.key], s.state.name)
 
-            elif isinstance(s, client.SensorState) or isinstance(
-                s, client.TextSensorState
+            elif isinstance(s, model.SensorState) or isinstance(
+                s, model.TextSensorState
             ):
                 self.set_data_point(self.key_to_name[s.key], s.state)
         except Exception:
@@ -230,7 +231,14 @@ class ESPHomeDevice(iot_devices.device.Device):
             except Exception:
                 self.handle_exception()
 
-        asyncio.run_coroutine_threadsafe(self.loop.shutdown_asyncgens(), self.loop)
+        if self.loop.is_running():
+            try:
+                asyncio.run_coroutine_threadsafe(
+                    self.loop.shutdown_asyncgens(), self.loop
+                )
+            except RuntimeError:
+                pass
+
         time.sleep(0.05)
         self.loop.stop()
 
@@ -244,56 +252,65 @@ class ESPHomeDevice(iot_devices.device.Device):
 
     async def main(self, *a, **k):
         """Connect to an ESPHome device and get details."""
+        try:
+            # Establish connection
+            api = aioesphomeapi.APIClient(
+                self.config["device.hostname"],
+                6053,
+                None,
+                noise_psk=self.config["device.apikey"] or None,
+                keepalive=10,
+            )
+            self.api = api
+            # await api.connect(login=True)
 
-        # Establish connection
-        api = aioesphomeapi.APIClient(
-            self.config["device.hostname"],
-            6053,
-            None,
-            noise_psk=self.config["device.apikey"] or None,
-            keepalive=10,
-        )
-        self.api = api
-        # await api.connect(login=True)
+            reconnect_logic = aioesphomeapi.ReconnectLogic(
+                client=self.api,
+                on_connect=self.on_connect,
+                on_disconnect=self.on_disconnect,
+                zeroconf_instance=zc,
+            )
 
-        reconnect_logic = aioesphomeapi.ReconnectLogic(
-            client=self.api,
-            on_connect=self.on_connect,
-            on_disconnect=self.on_disconnect,
-            zeroconf_instance=zc,
-        )
+            self.reconnect_logic = reconnect_logic
+            await reconnect_logic.start()
 
-        self.reconnect_logic = reconnect_logic
-        await reconnect_logic.start()
+        except Exception:
+            self.handle_exception()
+            raise
 
     async def on_connect(self, *a):
-        api = self.api
+        try:
+            api = self.api
 
-        # Get API version of the device's firmware
-        print(api.api_version)
+            # Get API version of the device's firmware
+            print(api.api_version)
 
-        # Show device details
-        device_info = await api.device_info()
-        self.metadata["Model"] = device_info.model
-        self.metadata["Manufacturer"] = device_info.manufacturer
-        self.metadata["Project Version"] = device_info.project_version
-        self.metadata["Has Deep Sleep"] = device_info.has_deep_sleep
+            # Show device details
+            device_info = await api.device_info()
+            self.metadata["Model"] = device_info.model
+            self.metadata["Manufacturer"] = device_info.manufacturer
+            self.metadata["Project Version"] = device_info.project_version
+            self.metadata["Has Deep Sleep"] = device_info.has_deep_sleep
 
-        # List all entities of the device
-        entities = await api.list_entities_services()
-        for i in entities[0]:
-            self.obj_to_tag(i)
+            # List all entities of the device
+            entities = await api.list_entities_services()
+            for i in entities[0]:
+                self.obj_to_tag(i)
 
-        def cb(state):
-            self.incoming_state(state)
+            def cb(state):
+                self.incoming_state(state)
 
-        await api.subscribe_states(cb)
-        await api.subscribe_logs(
-            self.handle_log, log_level=client.LogLevel.LOG_LEVEL_INFO
-        )
-        await api.subscribe_service_calls(self.async_on_service_call)
-        time.sleep(0.5)
-        self.set_data_point("native_api_connected", 1)
+            api.subscribe_states(cb)
+            api.subscribe_logs(
+                self.handle_log, log_level=client.LogLevel.LOG_LEVEL_INFO
+            )
+            api.subscribe_service_calls(self.async_on_service_call)
+            time.sleep(0.5)
+            self.set_data_point("native_api_connected", 1)
+
+        except Exception:
+            self.handle_exception()
+            raise
 
     async def on_disconnect(self, *a):
         self.set_data_point("native_api_connected", 0)

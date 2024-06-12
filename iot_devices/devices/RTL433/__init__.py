@@ -1,16 +1,15 @@
-import uuid
 import json
 from mako.lookup import TemplateLookup
 import iot_devices.host as host
 import iot_devices.device as devices
-from scullery import mqtt, messagebus
+from scullery import mqtt
 import logging
 import time
 import threading
 import os
 import weakref
-from collections import OrderedDict
-from weakref import WeakValueDictionary
+import threading
+import asyncio.subprocess
 
 lock = threading.Lock()
 
@@ -21,6 +20,35 @@ all_devs = weakref.WeakValueDictionary()
 mqttlock = threading.Lock()
 
 stopFlag = [0]
+
+
+async def readline(stream: asyncio.StreamReader, timeout: float):
+    try:
+        # stream.readline is a coroutine vvvvvvvvvvvv
+        return await asyncio.wait_for(stream.readline(), timeout=timeout)
+    except asyncio.TimeoutError:
+        return ""
+
+
+async def background(*command, cb):
+    # create subprocess via asyncio
+    proc = await asyncio.create_subprocess_exec(
+        *command, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
+    )
+    while not stopFlag[0] and proc.stdout:
+        try:
+            # Restart on failure
+            if proc.returncode is not None:
+                proc = await asyncio.create_subprocess_exec(
+                    *command,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
+                )
+
+            line = await readline(proc.stdout, timeout=1)
+            cb(line)
+        except Exception:
+            logging.exception("RTL err")
 
 
 def scan():
@@ -108,9 +136,6 @@ class RTL433Client(devices.Device):
             # before declaring it lost
             self.lastseen = time.monotonic()
 
-            # This connection is actually  possibly shared
-            # Scullery does the deduplication for us
-
             self.connection = mqtt.get_connection(
                 self.config["device.server"],
                 int(self.config["device.port"].strip() or 1883),
@@ -131,7 +156,7 @@ class RTL433Client(devices.Device):
 
             def onBattery(t, m):
                 m = float(m)
-                if not "battery" in self.datapoints:
+                if "battery" not in self.datapoints:
                     self.numeric_data_point(
                         "battery", default=50, writable=False, unit="%"
                     )
@@ -151,7 +176,7 @@ class RTL433Client(devices.Device):
 
             def onWind(t, m):
                 m = float(m)
-                if not "wind" in self.datapoints:
+                if "wind" not in self.datapoints:
                     self.numeric_data_point("wind", unit="km/h", writable=False)
 
                     self.set_alarm(
@@ -165,7 +190,7 @@ class RTL433Client(devices.Device):
 
             def onTemp(t, m):
                 m = float(m)
-                if not "temp" in self.datapoints:
+                if "temp" not in self.datapoints:
                     self.numeric_data_point("temp", unit="degC", writable=False)
                     self.set_alarm(
                         name="Freezing temperatures",
@@ -178,7 +203,7 @@ class RTL433Client(devices.Device):
 
             def onHum(t, m):
                 m = float(m)
-                if not "humidity" in self.datapoints:
+                if "humidity" not in self.datapoints:
                     self.numeric_data_point("humidity", unit="%", writable=False)
                     self.set_alarm(
                         name="High humidity",
@@ -198,31 +223,31 @@ class RTL433Client(devices.Device):
 
             def onMoist(t, m):
                 m = float(m)
-                if not "moisture" in self.datapoints:
+                if "moisture" not in self.datapoints:
                     self.numeric_data_point("moisture", unit="%", writable=False)
                 self.set_data_point("moisture", m)
 
             def onPres(t, m):
                 m = float(m)
-                if not "pressure" in self.datapoints:
+                if "pressure" not in self.datapoints:
                     self.numeric_data_point("pressure", unit="Pa", writable=False)
                 self.set_data_point("pressure", m)
 
             def onWeight(t, m):
                 m = float(m)
-                if not "weight" in self.datapoints:
+                if "weight" not in self.datapoints:
                     self.numeric_data_point("weight", writable=False)
                 self.set_data_point("weight", m)
 
             def onCommandCode(t, m):
                 m = float(m)
-                if not "lastCommandCode" in self.datapoints:
+                if "lastCommandCode" not in self.datapoints:
                     self.object_data_point("lastCommandCode", writable=False)
                 self.set_data_point("lastCommandCode", (m, time.time()))
 
             def onCommandName(t, m):
                 m = float(m)
-                if not "lastCommandName" in self.datapoints:
+                if "lastCommandName" not in self.datapoints:
                     self.object_data_point("lastCommandName", writable=False)
                 self.set_data_point("lastCommandName", (m, time.time()))
 

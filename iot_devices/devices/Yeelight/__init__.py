@@ -119,7 +119,7 @@ class YeelightDevice(iot_devices.device.Device):
                 return self.datapoints["rssi"] or -75
 
             # Not ideal, but we really can't be retrying this too often.
-            # if it's dis_connected. Way too much slowdown
+            # if it's disconnected. Way too much slowdown
             self.rssiCacheTime = time.monotonic()
 
             try:

@@ -1,0 +1,24 @@
+[tool.poetry]
+name = "iot-devices"
+version = "0.1.18"
+description = "Framework for creating and using device drives, and a library of devices."
+authors = ["Daniel Dunn <dannydunn@eternityforest.com>"]
+license = "MIT"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+paho-mqtt = "*"
+urwid = "*"
+scullery = "*"
+yeelight = "*"
+colorzero = "*"
+gpiozero = "*"
+aioesphomeapi = "24.6.0"
+
+[tool.poetry.scripts]
+"tui-dash" = "iot_devices.tui_dash:main"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
