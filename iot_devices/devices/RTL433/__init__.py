@@ -7,8 +7,6 @@ import time
 import threading
 import os
 import weakref
-import threading
-import asyncio.subprocess
 
 lock = threading.Lock()
 
@@ -19,35 +17,6 @@ all_devs = weakref.WeakValueDictionary()
 mqttlock = threading.Lock()
 
 stopFlag = [0]
-
-
-async def readline(stream: asyncio.StreamReader, timeout: float):
-    try:
-        # stream.readline is a coroutine vvvvvvvvvvvv
-        return await asyncio.wait_for(stream.readline(), timeout=timeout)
-    except asyncio.TimeoutError:
-        return ""
-
-
-async def background(*command, cb):
-    # create subprocess via asyncio
-    proc = await asyncio.create_subprocess_exec(
-        *command, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
-    )
-    while not stopFlag[0] and proc.stdout:
-        try:
-            # Restart on failure
-            if proc.returncode is not None:
-                proc = await asyncio.create_subprocess_exec(
-                    *command,
-                    stdout=asyncio.subprocess.PIPE,
-                    stderr=asyncio.subprocess.PIPE,
-                )
-
-            line = await readline(proc.stdout, timeout=1)
-            cb(line)
-        except Exception:
-            logging.exception("RTL err")
 
 
 def scan():
@@ -272,7 +241,7 @@ class RTL433Client(devices.Device):
                     self.set_data_point("rssi", -75)
                     self.set_alarm("Signal Lost", "rssi", "value < -98", auto_ack=True)
 
-                    self.lastSeen = time.monotonic()
+                    self.lastseen = time.monotonic()
 
                     if "humidity" in m:
                         onHum(0, m["humidity"])
