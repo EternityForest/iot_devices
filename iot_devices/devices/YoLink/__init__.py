@@ -330,6 +330,46 @@ class YoLinkLeakSensor(YoLinkDevice):
         self.simpleMethod("LeakSensor.getState")
 
 
+class YoLinkMotionSensor(YoLinkDevice):
+    device_type = "YoLinkMotionSensor"
+
+    def __init__(self, name: str, config: Dict[str, str], **kw):
+        super().__init__(name, config, **kw)
+        self.numeric_data_point("motion", min=0, max=1, subtype="bool", writable=False)
+
+    def onData(self, data):
+        YoLinkDevice.onData(self, data)
+        o = get_from_state_or_data(data, "state")
+        if o is None:
+            return
+
+        motion = 0 if (o == "normal") else 1
+        self.set_data_point("motion", motion)
+
+    def refresh(self):
+        self.simpleMethod("MotionSensor.getState")
+
+
+class YoLinkVibrationSensor(YoLinkDevice):
+    device_type = "YoLinkVibrationSensor"
+
+    def __init__(self, name: str, config: Dict[str, str], **kw):
+        super().__init__(name, config, **kw)
+        self.numeric_data_point("motion", min=0, max=1, subtype="bool", writable=False)
+
+    def onData(self, data):
+        YoLinkDevice.onData(self, data)
+        o = get_from_state_or_data(data, "state")
+        if o is None:
+            return
+
+        motion = 0 if (o == "normal") else 1
+        self.set_data_point("motion", motion)
+
+    def refresh(self):
+        self.simpleMethod("VibrationSensor.getState")
+
+
 class YoLinkSiren(YoLinkDevice):
     device_type = "YoLinkSiren"
 
@@ -420,12 +460,13 @@ class YoLinkTemperatureSensor(YoLinkDevice):
         if t is None:
             return
 
+        self.set_data_point("temperature", t)
+
         h = get_from_state_or_data(data, "humidity")
         if h is None:
             return
 
-        self.set_data_point("temperature", t)
-        self.set_data_point("humidity", t)
+        self.set_data_point("humidity", h)
 
     def refresh(self):
         self.simpleMethod("THSensor.getState")
@@ -438,6 +479,8 @@ deviceTypes = {
     "THSensor": YoLinkTemperatureSensor,
     "Siren": YoLinkSiren,
     "Outlet": YoLinkOutlet,
+    "MotionSensor": YoLinkMotionSensor,
+    "VibrationSensor": YoLinkVibrationSensor,
 }
 
 connectRateLimit = RateLimiter(5, 5 * 60)
