@@ -6,7 +6,6 @@
 
 """
 
-
 import time
 import sys
 import configparser
@@ -24,11 +23,8 @@ from iot_devices.device import Device
 
 from typing import Dict
 
-sys.argv[-1] = 'inspect-deep'
-
 
 def main():
-
     user_conf_dir = os.path.expanduser("~/.config/tui-dash")
     os.makedirs(user_conf_dir, exist_ok=True)
 
@@ -55,7 +51,7 @@ type=DemoDevice
 
     for i in cfg.sections():
         data = cfg[i]
-        data['name'] = i
+        data["name"] = i
 
         ordering_list.append(i)
 
@@ -76,8 +72,8 @@ type=DemoDevice
     lock = threading.RLock()
     # cols = urwid.Columns([])
 
-    cols = urwid.GridFlow([], cell_width=60, h_sep=2, v_sep=1, align='left')
-    loop = urwid.MainLoop(urwid.Filler(cols, 'top'))
+    cols = urwid.GridFlow([], cell_width=60, h_sep=2, v_sep=1, align="left")
+    loop = urwid.MainLoop(urwid.Filler(cols, "top"))
 
     def work(*a):
         # Let someone else do stuff
@@ -91,12 +87,12 @@ type=DemoDevice
     loop.set_alarm_in(0.1, work)
 
     class CustomButton(urwid.Button):
-        button_left = urwid.Text('[', align="right")
-        button_right = urwid.Text(']', align="left")
+        button_left = urwid.Text("[", align="right")
+        button_right = urwid.Text("]", align="left")
 
     def Button(*args, **kwargs):
         b = CustomButton(*args, **kwargs)
-        b = urwid.AttrMap(b, '', 'highlight')
+        b = urwid.AttrMap(b, "", "highlight")
         b = urwid.Padding(b, left=1, right=1)
         return b
 
@@ -106,19 +102,19 @@ type=DemoDevice
     loaded = False
 
     def customize(c):
-        class Mixin():
+        class Mixin:
             def __init__(self, name, *a, **k) -> None:
                 pending_devices[name] = self
                 self.txts = {}
                 self.edits = {}
 
                 with lock:
-                    title = urwid.Text(('bold', self.title), 'center', 'any')
+                    title = urwid.Text(("bold", self.title), "center", "any")
                     self.pile = urwid.Pile([title])
 
             def create_subdevice(self, cls, name: str, config: Dict, *a, **k):
                 """
-                    Allows a device to create it's own subdevices.             
+                Allows a device to create it's own subdevices.
                 """
 
                 fn = self.name + "." + name
@@ -128,15 +124,15 @@ type=DemoDevice
                         config.update(all_device_data[fn])
                 except KeyError:
                     logging.exception(
-                        'Probably a race condition. Can probably ignore this one.')
+                        "Probably a race condition. Can probably ignore this one."
+                    )
 
                 # Customize the class we are given
 
-                m = Device.create_subdevice(
-                    self, customize(cls), name, config, *a, **k)
+                m = Device.create_subdevice(self, customize(cls), name, config, *a, **k)
 
                 if loaded:
-                    if not self.config.get('hidden', False):
+                    if not self.config.get("hidden", False):
                         with lock:
                             cols.contents.append((self.pile, cols.options()))
 
@@ -152,11 +148,13 @@ type=DemoDevice
                     if point in self.edits:
                         self.edits[point].set_edit_text(str(value))
 
-            def numeric_data_point(self, name, writable=True, default=0, unit='', subtype='', **kwargs):
+            def numeric_data_point(
+                self, name, writable=True, default=0, unit="", subtype="", **kwargs
+            ):
                 c.numeric_data_point(self, name, **kwargs)
 
                 with lock:
-                    t = urwid.Text(('bold', name), 'left', 'any')
+                    t = urwid.Text(("bold", name), "left", "any")
 
                     if not writable:
                         t2 = urwid.Text("no data ")
@@ -164,56 +162,76 @@ type=DemoDevice
 
                         def refresh(*a):
                             self.request_data_point(name)
+
                         b2 = Button("get", refresh)
 
                         cols = urwid.Columns(
-                            [(20, t), (8, t2), (6+8+2, ut), (9, b2)], min_width=4, dividechars=1)
+                            [(20, t), (8, t2), (6 + 8 + 2, ut), (9, b2)],
+                            min_width=4,
+                            dividechars=1,
+                        )
                         self.txts[name] = t2
 
-                    elif subtype == 'trigger':
+                    elif subtype == "trigger":
+
                         def set(*a):
                             self.set_data_point(
-                                name, (self.datapoints.get(name, 0) or 0) + 1)
+                                name, (self.datapoints.get(name, 0) or 0) + 1
+                            )
+
                         b = Button("go", set)
 
                         cols = urwid.Columns(
-                            [(29+8+6+2+1, t), (9, b)], min_width=4, dividechars=1)
+                            [(29 + 8 + 6 + 2 + 1, t), (9, b)],
+                            min_width=4,
+                            dividechars=1,
+                        )
 
-                    elif subtype == 'bool':
+                    elif subtype == "bool":
                         t2 = urwid.Text("no data ")
 
                         def refresh(*a):
                             self.request_data_point(name)
+
                         b2 = Button("get", refresh)
 
                         def toggle(*a):
-                            self.set_data_point(name, 0 if (
-                                self.datapoints.get(name, 0) or 0) > 0.5 else 1)
+                            self.set_data_point(
+                                name,
+                                0 if (self.datapoints.get(name, 0) or 0) > 0.5 else 1,
+                            )
+
                         b2 = Button("Toggle", toggle)
 
                         cols = urwid.Columns(
-                            [(20, t), (22, t2), (12, b2)], min_width=4, dividechars=1)
+                            [(20, t), (22, t2), (12, b2)], min_width=4, dividechars=1
+                        )
                         self.txts[name] = t2
 
                     else:
-                        t2 = urwid.numedit.FloatEdit('', str(default))
+                        t2 = urwid.numedit.FloatEdit("", str(default))
                         ut = urwid.Text(unit)
 
                         self.edits[name] = t2
 
                         def set(*a):
                             self.set_data_point(name, t2.value())
+
                         b = Button("set", set)
 
                         def refresh(*a):
                             self.request_data_point(name)
+
                         b2 = Button("get", refresh)
 
                         cols = urwid.Columns(
-                            [(20, t), (8, t2), (6, ut), (9, b), (9, b2)], min_width=4, dividechars=1)
+                            [(20, t), (8, t2), (6, ut), (9, b), (9, b2)],
+                            min_width=4,
+                            dividechars=1,
+                        )
                         cols.set_focus(t2)
 
-                    self.pile.contents.append((cols, ('pack', 1)))
+                    self.pile.contents.append((cols, ("pack", 1)))
                     self.pile.set_focus(cols)
 
                     # self.pile.contents.append(   (t2,('pack', 1)) )
@@ -232,7 +250,7 @@ type=DemoDevice
     devs = []
 
     for i, data in all_device_data.items():
-        if (data.get("is_subdevice", False) in (True, 'true')) or 'type' not in data:
+        if (data.get("is_subdevice", False) in (True, "true")) or "type" not in data:
             # Name placeholder
             devs.append(i)
             continue
@@ -247,12 +265,12 @@ type=DemoDevice
 
     for i in ordering_list:
         if i in pending_devices:
-            if not pending_devices[i].config.get('hidden', False):
+            if not pending_devices[i].config.get("hidden", False):
                 cols.contents.append((pending_devices[i].pile, cols.options()))
                 del pending_devices[i]
 
     for i, val in pending_devices.items():
-        if not val.config.get('hidden', False):
+        if not val.config.get("hidden", False):
             cols.contents.append((val.pile, cols.options()))
 
     loaded = True

@@ -19,6 +19,9 @@ aioesphomeapi = "24.6.0"
 [tool.poetry.scripts]
 "tui-dash" = "iot_devices.tui_dash:main"
 
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.2.2"
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"

@@ -1,5 +1,4 @@
 import json
-from mako.lookup import TemplateLookup
 import iot_devices.host as host
 import iot_devices.device as devices
 from scullery import mqtt
@@ -85,8 +84,6 @@ def stop():
 
 host.app_exit_register(stop)
 
-
-templateGetter = TemplateLookup(os.path.dirname(__file__))
 
 defaultSubclassCode = """
 class CustomDeviceType(DeviceType):
