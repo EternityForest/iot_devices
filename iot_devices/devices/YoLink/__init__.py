@@ -607,6 +607,8 @@ class YoLinkService(device.Device):
             self.set_config_default("device.user_id", "")
             self.set_config_default("device.key", "")
 
+            self.config_properties["device.key"] = {"secret": True}
+
             self.numeric_data_point("connected", subtype="bool", writable=False)
             self.set_alarm(
                 "Disconnected from YoLink API",
