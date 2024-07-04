@@ -31,7 +31,7 @@ def scan():
                     # it gone, because packet loss will be less
                     m = 3 if (all_devs[i].datapoints["rssi"] or -80) > -65 else 7
 
-                    if all_devs[i].lastseen < time.monotonic() - (
+                    if all_devs[i].lastseen < time.time() - (
                         float(all_devs[i].config.get("interval", 300) or 300) * m
                     ):
                         # This is how we mark it as not there
@@ -100,7 +100,7 @@ class RTL433Client(devices.Device):
 
             # Pretend we have seen it to give the checker the right interval
             # before declaring it lost
-            self.lastseen = time.monotonic()
+            self.lastseen = time.time()
 
             self.connection = mqtt.get_connection(
                 self.config["device.server"],
@@ -241,7 +241,7 @@ class RTL433Client(devices.Device):
                     self.set_data_point("rssi", -75)
                     self.set_alarm("Signal Lost", "rssi", "value < -98", auto_ack=True)
 
-                    self.lastseen = time.monotonic()
+                    self.lastseen = time.time()
 
                     if "humidity" in m:
                         onHum(0, m["humidity"])

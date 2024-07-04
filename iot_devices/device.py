@@ -536,7 +536,7 @@ class Device:
             v = minimum(maxval, v)
             v = maximum(minval, v)
 
-            t = t or time.monotonic()
+            t = t or time.time()
 
             if self.datapoints[name] == v:
                 # It's still considered a change if the previous value
@@ -608,7 +608,7 @@ class Device:
             if callable(v):
                 v = v()
             v = str(v)
-            t = t or time.monotonic()
+            t = t or time.time()
 
             if self.datapoints[name] == v:
                 # It's still considered a change if the previous value
@@ -683,7 +683,7 @@ class Device:
             # Mutability trouble
             v = copy.deepcopy(v)
 
-            t = t or time.monotonic()
+            t = t or time.time()
 
             if self.datapoints[name] == v:
                 # It's still considered a change if the previous value
@@ -728,7 +728,7 @@ class Device:
         def on_change_attempt(v: bytes | None, t, a):
             if not v:
                 return
-            t = t or time.monotonic()
+            t = t or time.time()
             self.datapoints[name] = v
 
             # Handler used by the device
@@ -769,7 +769,7 @@ class Device:
                 Use set_data_point_getter for a
                 callable which will return such.
 
-            timestamp: if present is a time.monotonic() time.
+            timestamp: if present is a time.time() time.
 
             annotation: is an arbitrary object meant to be
                 compared for identity,
@@ -814,7 +814,7 @@ class Device:
         if name in self.__datapoint_getters:
             x = self.__datapoint_getters[name]()
             if x is not None:
-                timestamp = time.monotonic()
+                timestamp = time.time()
                 # there has been a change! Maybe!  call a handler
                 self.__datapointhandlers[name](x, timestamp, "From getter")
 

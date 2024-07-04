@@ -115,12 +115,12 @@ class YeelightDevice(iot_devices.device.Device):
         "These bulbs don't have RSSI that i found, instead we just detect reachability or not"
         with self.lock:
             "Returns the current RSSI value of the device"
-            if time.monotonic() - self.rssiCacheTime < cacheFor:
+            if time.time() - self.rssiCacheTime < cacheFor:
                 return self.datapoints["rssi"] or -75
 
             # Not ideal, but we really can't be retrying this too often.
             # if it's disconnected. Way too much slowdown
-            self.rssiCacheTime = time.monotonic()
+            self.rssiCacheTime = time.time()
 
             try:
                 info = getDevice(
@@ -130,9 +130,9 @@ class YeelightDevice(iot_devices.device.Device):
                 self.set_data_point("rssi", -70)
             except Exception:
                 self.set_data_point("rssi", -180)
-                if self.lastLoggedUnreachable < time.monotonic() - 30:
+                if self.lastLoggedUnreachable < time.time() - 30:
                     self.handle_error("Device was unreachable")
-                    self.lastLoggedUnreachable = time.monotonic()
+                    self.lastLoggedUnreachable = time.time()
                 raise
 
             return self.datapoints["rssi"] or -75
@@ -152,9 +152,9 @@ class YeelightRGB(YeelightDevice):
 
         # Rate limits will prevent getting rejected
         self.allowedOperations = min(
-            self.allowedOperations + (time.monotonic() - self.lastRecalcedAllowed), 40
+            self.allowedOperations + (time.time() - self.lastRecalcedAllowed), 40
         )
-        self.lastRecalcedAllowed = time.monotonic()
+        self.lastRecalcedAllowed = time.time()
 
         # Drop frames randomly. This will look a lot better with flickery type effects.
         if (random.random() * 20 + 1) > self.allowedOperations:
@@ -207,10 +207,10 @@ class YeelightRGB(YeelightDevice):
     def __init__(self, name, data):
         YeelightDevice.__init__(self, name, data)
         self.closed = False
-        self.lastHueChange = time.monotonic()
+        self.lastHueChange = time.time()
 
         self.allowedOperations = 60
-        self.lastRecalcedAllowed = time.monotonic()
+        self.lastRecalcedAllowed = time.time()
 
         # Has color data to flush
         self.hasData = False
@@ -273,9 +273,9 @@ class YeelightRGB(YeelightDevice):
                     self.wasOff = True
                 self.oldTransitionRate = duration
             except Exception:
-                if self.lastLoggedUnreachable < time.monotonic() - 30:
+                if self.lastLoggedUnreachable < time.time() - 30:
                     self.handle_error("Device was unreachable")
-                    self.lastLoggedUnreachable = time.monotonic()
+                    self.lastLoggedUnreachable = time.time()
                 self.set_data_point("rssi", -180)
                 raise
 

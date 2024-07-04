@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "iot-devices"
-version = "0.1.19"
+version = "0.2.0"
 description = "Framework for creating and using device drives, and a library of devices."
 authors = ["Daniel Dunn <dannydunn@eternityforest.com>"]
 license = "MIT"
@@ -10,7 +10,7 @@ readme = "README.md"
 python = "^3.10"
 paho-mqtt = "*"
 urwid = "*"
-scullery = "*"
+scullery = ">=0.2.0"
 yeelight = "*"
 colorzero = "*"
 gpiozero = "*"

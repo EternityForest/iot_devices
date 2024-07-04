@@ -111,7 +111,7 @@ try:
 except Exception:
 
     def ms():
-        return int(time.monotonic() * 1000)
+        return int(time.time() * 1000)
 
     def tickdiff(a, b):
         return a - b
@@ -360,7 +360,7 @@ The battery tag represents the most recently connected remote that decided to se
         self.httpd = None
 
         self.object_data_point("command", subtype="event")
-        self.set_data_point("command", [None, time.monotonic(), None])
+        self.set_data_point("command", [None, time.time(), None])
 
         self.numeric_data_point("battery", min=0, max=100, unit="%", writable=False)
         self.set_alarm(
@@ -457,14 +457,14 @@ The battery tag represents the most recently connected remote that decided to se
                     if s.path.startswith("/keypress/"):
                         self.set_data_point(
                             "command",
-                            [s.path[len("/keypress/") :], time.monotonic(), None],
+                            [s.path[len("/keypress/") :], time.time(), None],
                         )
                     if s.path.startswith("/launch/"):
                         self.set_data_point(
                             "command",
                             [
                                 "launch:" + s.path[len("/launch/") :],
-                                time.monotonic(),
+                                time.time(),
                                 None,
                             ],
                         )

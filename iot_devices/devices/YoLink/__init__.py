@@ -49,11 +49,11 @@ class RateLimiter:
         self.count = count
         self.duration = duration
 
-        self.lastRefill = time.monotonic()
+        self.lastRefill = time.time()
 
     def limit(self):
-        t = time.monotonic() - self.lastRefill
-        self.lastRefill = time.monotonic()
+        t = time.time() - self.lastRefill
+        self.lastRefill = time.time()
 
         t = t / self.duration
         self.count = self.count + t
@@ -558,10 +558,10 @@ class YoLinkService(device.Device):
         self.connected = False
         c.connect_to_broker()
 
-        t = time.monotonic()
+        t = time.time()
 
         while not self.connected:
-            if time.monotonic() - t > 5:
+            if time.time() - t > 5:
                 break
 
         for i in devList:

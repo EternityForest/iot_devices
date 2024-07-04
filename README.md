@@ -138,6 +138,18 @@ See host_demo.py
 
 
 
+
+## Bool Values
+iot_devices use the following strings to represent booleans.
+
+```python
+TRUE_STRINGS = ("true", "yes", "on", "enable", "active", "enabled", "1")
+FALSE_STRINGS = ("false", "no", "off", "disable", "inactive", "disabled", "0")
+```
+
+Use `iot_devices.util.str_to_bool(f)` to check the value, and raise a ValueError on an invalid string.
+
+
 ### Docs for the included devices
 
 See devicedocs.md for a code example of each one.  Note these are generated with iot_devices_scan.py.  This script searches all of the python paths for any folder that contains devices,  creates
