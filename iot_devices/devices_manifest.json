@@ -47,6 +47,10 @@
         "GPIOInput": {
             "submodule": "devices.GPIODevice",
             "description": "Experimental. Represents a hardware input pin. Supports RasPi and mocked fake pins."
+        },
+        "ArduinoCogsClient": {
+            "submodule": "devices.ArduinoCogsWebsocket",
+            "description": "Experimental/Unstable.  Arduino Cogs Websocket client."
         }
     }
 }

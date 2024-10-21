@@ -1,6 +1,6 @@
 from __future__ import annotations
 import traceback
-from typing import Any, Dict, Optional, Union, List
+from typing import Any
 from collections.abc import Callable
 import logging
 import time
@@ -31,7 +31,7 @@ all_devices: dict[str, weakref.ref[Device]] = {}
 _all_devices: dict[str, weakref.ref[Device]] = {}
 
 
-def new_notification(msg: str, title="Notification", priority="info"):
+def new_notification(msg: str, title: str = "Notification", priority: str = "info"):
     "Push a notification to every device"
     with devices_list_lock:
         for i in all_devices.values():
@@ -90,12 +90,18 @@ class Device:
 
     # this name must be the same as the name of the device itself
     device_type: str = "Device"
-    default_config = {}
+    default_config: dict[str, str] = {}
 
     # This represents either a long text readme or an absolute path beginning with / to such
     readme: str = ""
 
-    def __init__(self, name: str, config: dict[str, str], subdevice_config=None, **kw):  # pylint: disable=unused-argument
+    def __init__(
+        self,
+        name: str,
+        config: dict[str, str],
+        subdevice_config: dict[str, Any] | None = None,
+        **kw: Any,
+    ):  # pylint: disable=unused-argument
         """
 
         The base class __init__ does nothing if
@@ -191,7 +197,7 @@ class Device:
             self.subdevices: dict[str, Device] = {}
 
             # allows us to show large amounts of data that
-            # do not warrent a datapoint, as it is unlikely anyone
+            # do not warrant a datapoint, as it is unlikely anyone
             # would want to show them in a main listing,
             # and nobody wants to see them clutter up anything
             # or slow down the system when they change.
@@ -205,8 +211,18 @@ class Device:
 
             self.title: str = self.config.get("title", "").strip() or name
 
-            self.__datapointhandlers: dict[str, Callable] = {}
-            self.datapoints = {}
+            self.__datapointhandlers: dict[
+                str,
+                Callable[
+                    [
+                        Any,
+                        float,
+                        Any,
+                    ],
+                    None,
+                ],
+            ] = {}
+            self.datapoints: dict[str, int | float | str | bytes | dict[str, Any]] = {}
 
             # Used mostly to determine if the data is still the default.
             self.__datapoint_timestamps = {}
@@ -458,9 +474,9 @@ class Device:
         handler: Callable[[float, float, Any], Any] | None = None,
         interval: float = 0,  # pylint: disable=unused-argument
         subtype: str = "",  # pylint: disable=unused-argument
-        writable=True,  # pylint: disable=unused-argument
-        dashboard=True,  # pylint: disable=unused-argument
-        **kwargs,  # pylint: disable=unused-argument
+        writable: bool = True,  # pylint: disable=unused-argument
+        dashboard: bool = True,  # pylint: disable=unused-argument
+        **kwargs: Any,  # pylint: disable=unused-argument
     ):
         """Register a new numeric data point with the given properties.
 
@@ -746,7 +762,7 @@ class Device:
     def set_data_point(
         self,
         name: str,
-        value,
+        value: int | float | str | bytes,
         timestamp: float | None = None,
         annotation: Any | None = None,
     ):
@@ -833,7 +849,7 @@ class Device:
         trip_delay: float = 0,
         auto_ack: bool = False,
         release_condition: str | None = None,
-        **kw,
+        **kw: Any,
     ):
         """declare an alarm on a certain data point.
         means we should consider the data point to be in an
