@@ -1,3 +1,8 @@
+
+# 0.21.0
+
+* Add experimental support for the ArduinoCogs websocket protocol
+
 # 0.20.0
 
 * BIG BREAKING CHANGE(not really): Use UTC instead of monotonic timestamps
