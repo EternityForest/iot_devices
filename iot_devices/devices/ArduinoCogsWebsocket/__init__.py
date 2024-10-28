@@ -44,6 +44,7 @@ class ArduinoCogsClient(iot_devices.device.Device):
         elif msg.startswith("C"):
             level = "critical"
 
+        msg = msg.lower()
         if msg not in self.datapoints:
             self.numeric_data_point(
                 msg, min=0, max=1, default=0, subtype="bool", writable=False
@@ -116,6 +117,8 @@ class ArduinoCogsClient(iot_devices.device.Device):
                     self.handle_exception()
 
                 r = niquests.get(info_url, timeout=5)
+                if not self.should_run:
+                    return
                 r.raise_for_status()
                 assert isinstance(r.text, str)
                 tagdata = json.loads(r.text)["tags"]
@@ -129,9 +132,12 @@ class ArduinoCogsClient(iot_devices.device.Device):
                     n = i
                     for c in ILLEGAL_NAME_CHARS:
                         n = n.replace(c, "")
+                    n = n.lower()
 
                     val: float = tagdata[i]
                     details = niquests.get(details_url + "?tag=" + i, timeout=5)
+                    if not self.should_run:
+                        return
                     details.raise_for_status()
 
                     assert isinstance(details.text, str)
@@ -202,7 +208,7 @@ class ArduinoCogsClient(iot_devices.device.Device):
 
                         continue
 
-                    if msg:
+                    if msg and self.should_run:
                         if isinstance(msg, str):
                             try:
                                 self.handle_message(msg)
