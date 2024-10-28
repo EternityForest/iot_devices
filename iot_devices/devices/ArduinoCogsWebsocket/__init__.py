@@ -126,35 +126,41 @@ class ArduinoCogsClient(iot_devices.device.Device):
                     if i.startswith("_"):
                         continue
 
+                    n = i
+                    for c in ILLEGAL_NAME_CHARS:
+                        n = n.replace(c, "")
+
                     val: float = tagdata[i]
                     details = niquests.get(details_url + "?tag=" + i, timeout=5)
                     details.raise_for_status()
 
                     assert isinstance(details.text, str)
                     dt = json.loads(details.text)
+                    unit = dt["unit"]
+                    scale = dt["scale"]
+
+                    subtype = ""
+
+                    if unit in ("bool", "boolean"):
+                        subtype = "bool"
+                        unit = ""
+                    if unit in ("bang", "trigger"):
+                        subtype = "trigger"
+                        unit = ""
 
                     if i not in self.datapoints:
-                        scale = dt["scale"]
-
-                        unit = dt["unit"]
-
-                        subtype = ""
-
-                        if unit in ("bool", "boolean"):
-                            subtype = "bool"
-                            unit = ""
-                        if unit in ("bang", "trigger"):
-                            subtype = "trigger"
-                            unit = ""
-
                         readonly = dt.get("readonly", False)
 
-                        n = i
-                        for c in ILLEGAL_NAME_CHARS:
-                            n = n.replace(c, "")
                         self.ext_to_internal_names[i] = n
                         self.internal_to_ext_names[n] = i
                         self.scale_factors[i] = float(scale)
+
+                        # Trigger values are special.
+                        # We don't want to trigger on old stuff
+                        if not subtype == "trigger":
+                            default = val / scale
+                        else:
+                            default = 0
 
                         self.numeric_data_point(
                             n,
@@ -162,11 +168,12 @@ class ArduinoCogsClient(iot_devices.device.Device):
                             max=dt["max"] / scale,
                             subtype=subtype,
                             unit=unit,
-                            default=val / scale,
+                            default=default,
                             writable=not readonly,
                             handler=self.makeHandler(i),
                         )
 
+                    if not subtype == "trigger":
                         self.set_data_point(
                             n, val / scale, annotation="FromRemoteDevice"
                         )
