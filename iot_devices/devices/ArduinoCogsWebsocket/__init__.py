@@ -28,7 +28,9 @@ class ArduinoCogsClient(iot_devices.device.Device):
 
             self.last_start_time = time.time()
 
-            t = Thread(target=self.thread)
+            t = Thread(
+                target=self.thread, name="ArduinoCogsClient:" + self.name, daemon=True
+            )
             t.start()
 
     def handle_trouble_code_state(self, msg: str, val: float):
@@ -219,10 +221,13 @@ class ArduinoCogsClient(iot_devices.device.Device):
             if not self.suppress_connect_error:
                 self.suppress_connect_error = True
                 self.handle_exception()
+            if self.should_run:
+                self.set_data_point("api_connected", 0)
         finally:
             self.running = False
             self.ws = None
-            self.set_data_point("api_connected", 0)
+            if self.should_run:
+                self.set_data_point("api_connected", 0)
 
     def __init__(self, name: str, data: dict[str, str], **kw: Any):
         super().__init__(name, data, **kw)
@@ -261,6 +266,7 @@ class ArduinoCogsClient(iot_devices.device.Device):
 
     def close(self):
         self.should_run = False
+
         try:
             self.scheduled.unregister()
         except Exception:
@@ -271,5 +277,9 @@ class ArduinoCogsClient(iot_devices.device.Device):
                 self.ws.close()
         except Exception:
             pass
+
+        for i in range(250):
+            if self.running:
+                time.sleep(0.001)
 
         return super().close()
