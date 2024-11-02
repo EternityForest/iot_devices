@@ -9,6 +9,9 @@ from websockets.exceptions import ConcurrencyError
 from scullery import scheduling
 
 import iot_devices.device
+import iot_devices.util
+
+from iot_devices.util import str_to_bool as s2b
 
 ILLEGAL_NAME_CHARS = "{}|\\<>,?-=+)(*&^%$#@!~`\n\r\t\0"
 
@@ -19,8 +22,11 @@ class ArduinoCogsClient(iot_devices.device.Device):
 
     def checker(self):
         with self.lock:
-            if self.running:
-                return
+            h = self.thread_handle
+            if h:
+                if h.is_alive():
+                    return
+
             if not self.should_run:
                 return
             if self.last_start_time > (time.time() - 30):
@@ -32,6 +38,8 @@ class ArduinoCogsClient(iot_devices.device.Device):
                 target=self.thread, name="ArduinoCogsClient:" + self.name, daemon=True
             )
             t.start()
+
+            self.thread_handle = t
 
     def handle_trouble_code_state(self, msg: str, val: float):
         level = "warning"
@@ -67,6 +75,12 @@ class ArduinoCogsClient(iot_devices.device.Device):
         if "__error__" in d:
             self.handle_error(d["__error__"])
 
+        if "__notification__" in d:
+            self.print(d["__notification__"])
+
+        if "__success__" in d:
+            self.print(d["__success__"])
+
         for i in d:
             self.on_var_msg(i, d[i])
 
@@ -82,17 +96,23 @@ class ArduinoCogsClient(iot_devices.device.Device):
             if a == "FromRemoteDevice":
                 return
 
-            if var in self.scale_factors:
-                val = float(val) * self.scale_factors[var]
-
-            try:
-                if self.ws:
-                    with self.lock:
-                        self.ws.send(json.dumps({var: val}))
-            except Exception:
-                self.handle_exception()
+            self.update_remote_on_reconnect[var] = (val, ts)
+            self.sendVar(var, val)
 
         return handler
+
+    def sendVar(self, var: str, val: float):
+        if var in self.scale_factors:
+            val = float(val) * self.scale_factors[var]
+
+        try:
+            if self.ws:
+                with self.lock:
+                    self.ws.send(json.dumps({var: val}))
+        except Exception:
+            self.handle_exception()
+            if self.should_run:
+                self.set_data_point("api_connected", 0)
 
     def thread(self):
         url = self.url
@@ -101,11 +121,18 @@ class ArduinoCogsClient(iot_devices.device.Device):
             url = url[:-1]
 
         wsurl = "ws://" + url + "/api/ws"
+        device_info_url = "http://" + url + "/api/cogs.info"
         info_url = "http://" + url + "/api/cogs.tags"
         details_url = "http://" + url + "/api/cogs.tag"
         trouble_code_url = "http://" + url + "/api/cogs.trouble-codes"
 
+        send_on_connect = iot_devices.util.str_to_bool(
+            self.config.get("update_on_reconnect", "true")
+        )
         try:
+            r = niquests.get(device_info_url, timeout=15)
+            r.raise_for_status()
+
             with connect(wsurl) as ws:
                 self.suppress_connect_error = False
                 try:
@@ -145,7 +172,7 @@ class ArduinoCogsClient(iot_devices.device.Device):
                     assert isinstance(details.text, str)
                     dt = json.loads(details.text)
                     unit = dt["unit"]
-                    scale = dt["scale"]
+                    scale = dt["scale"] or 1
 
                     subtype = ""
 
@@ -161,6 +188,10 @@ class ArduinoCogsClient(iot_devices.device.Device):
 
                         self.ext_to_internal_names[i] = n
                         self.internal_to_ext_names[n] = i
+
+                        if subtype == "trigger":
+                            self.exclude_update_on_reconnect[i] = True
+
                         self.scale_factors[i] = float(scale)
 
                         # Trigger values are special.
@@ -182,17 +213,29 @@ class ArduinoCogsClient(iot_devices.device.Device):
                         )
 
                     if not subtype == "trigger":
-                        self.set_data_point(
-                            n, val / scale, annotation="FromRemoteDevice"
-                        )
+                        if not send_on_connect or (
+                            i not in self.update_remote_on_reconnect
+                        ):
+                            self.set_data_point(
+                                n, val / scale, annotation="FromRemoteDevice"
+                            )
+
+                self.ws = ws
+                if send_on_connect:
+                    for i in self.update_remote_on_reconnect:
+                        if i not in self.exclude_update_on_reconnect:
+                            self.sendVar(i, self.update_remote_on_reconnect[i][0])
 
                 self.set_data_point("api_connected", 1)
-                self.ws = ws
                 self.running = True
 
                 pong: Event | None = None
 
-                while self.should_run:
+                if not self.should_run:
+                    return
+                original = self.should_run
+
+                while self.should_run == original:
                     try:
                         msg = ws.recv(10)
                     except TimeoutError:
@@ -223,39 +266,69 @@ class ArduinoCogsClient(iot_devices.device.Device):
                 self.handle_exception()
             if self.should_run:
                 self.set_data_point("api_connected", 0)
-        finally:
-            self.running = False
-            self.ws = None
-            if self.should_run:
-                self.set_data_point("api_connected", 0)
+
+        try:
+            if not self:
+                return
+        except Exception:
+            self.running = 0
+            return
+
+        self.running = 0
+        self.ws = None
+        if self.should_run:
+            self.set_data_point("api_connected", 0)
 
     def __init__(self, name: str, data: dict[str, str], **kw: Any):
         super().__init__(name, data, **kw)
 
         try:
+            self.thread_handle = None
             self.suppress_connect_error = False
             self.numeric_data_point(
                 "api_connected", min=0, max=1, default=0, subtype="bool", writable=False
             )
-            self.set_alarm(
-                "Disconnected",
-                "api_connected",
-                "value < 1",
-                priority="warning",
-                auto_ack=True,
-            )
+
+            self.set_config_default("update_on_reconnect", "true")
+            self.config_properties["update_on_reconnect"] = {
+                "title": "Update on Reconnect",
+                "type": "bool",
+                "default": "true",
+                "description": "Update remote datapoints on reconnect, treating this client as the source of truth.",
+            }
+
+            self.set_config_default("intermittent_availability", "false")
+
+            self.config_properties["intermittent_availability"] = {
+                "title": "Intermittent Availability",
+                "type": "bool",
+                "default": "false",
+                "description": "If false, treat device being offline as an error",
+            }
+
+            if not s2b(self.config.get("intermittent_availability", "false")):
+                self.set_alarm(
+                    "Disconnected",
+                    "api_connected",
+                    "value < 1",
+                    priority="warning",
+                    auto_ack=True,
+                )
 
             self.set_config_default("url", "example.local")
 
             self.ext_to_internal_names: dict[str, str] = {}
             self.internal_to_ext_names: dict[str, str] = {}
 
+            self.update_remote_on_reconnect: dict[str, Any] = {}
+            self.exclude_update_on_reconnect: dict[str, bool] = {}
+
             self.last_start_time = 0
             self.scale_factors: dict[str, float] = {}
             self.ws = None
             self.lock = RLock()
             self.running = False
-            self.should_run = True
+            self.should_run = time.time()
             self.url: str = self.config["url"]
             self.checker()
             self.scheduled = scheduling.scheduler.every(self.checker, 5)
@@ -278,8 +351,11 @@ class ArduinoCogsClient(iot_devices.device.Device):
         except Exception:
             pass
 
-        for i in range(250):
-            if self.running:
-                time.sleep(0.001)
+        try:
+            for i in range(500):
+                if self.thread_handle and self.thread_handle.is_alive():
+                    time.sleep(0.001)
+        except Exception:
+            pass
 
         return super().close()
