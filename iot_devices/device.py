@@ -915,7 +915,7 @@ class Device:
 
     def on_ui_message(self, msg: float | int | str | bool | None | dict | list, **kw):
         """recieve a json message from the ui page.  the host is
-        responsible for providing a send_ui_message(msg)
+        responsible for providing a window.send_ui_message(msg)
         function to the manage and create forms, and a
         set_ui_message_callback(f) function.
 
@@ -929,7 +929,7 @@ class Device:
         ensure that the ui can be fully served over mqtt if desired.
 
         The host page should provide a single JS function
-         send_ui_message(m) to send this message.
+         window.send_ui_message(m) to send this message.
 
         Manage forms should stay with Vanilla JS as much
         as possible, or else use an iframe.
@@ -939,7 +939,7 @@ class Device:
     def send_ui_message(self, msg: float | int | str | bool | None | dict | list):
         """
         send a message to everyone including yourself.
-        The host page should provide a function set_ui_message_handler(f)
+        The host page should provide a function window.set_ui_message_handler(f)
         To set a JS callback to recieve these.
         """
 

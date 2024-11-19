@@ -1,3 +1,7 @@
+# 0.21.1
+
+* Improvements to the ArduinoCogs protocol support
+* send_ui_message is now window.send_ui_message, but that whole API is alpha/not recommented anyway.
 
 # 0.21.0
 
