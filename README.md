@@ -353,3 +353,25 @@ Full signature of data point functions:
 
         """
 ```
+
+## Datapoint edge cases
+
+When a data point is created, it has timestamp 0,
+and value of whatever you pass as the default param.
+
+Timestamps can be seen at device.datapoint_timestamps.  In the future a race condition free API
+may be added to access the point and timestamp at once.
+
+### Handling data that was created before device loads
+
+The host app may override this by subclassing, so after creating a data point, check the datapoint timestamp to see if the host has set the it to something.
+
+This is because the host might be restoring saved data, or connecting it to some existing data sources.
+
+This initial setup will never trigger a change that would call the handler, as it is not actually a data change, only a loading of old data.
+
+### Handlers and changes
+
+Handlers trigger when the value changes, with one exception.  If the timestamp is zero, and something sets the value, the handler fires even if the value stays the same, because if the timestamp is zero it's considered "still on the default" which is treated specially.
+
+Imagine something like a temperature sensor that defaults to 25C if it doesn't have real data, when the first real data comes in, you probably expect the handler to fire even if the real data is 25C.

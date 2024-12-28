@@ -225,7 +225,7 @@ class Device:
             self.datapoints: dict[str, int | float | str | bytes | dict[str, Any]] = {}
 
             # Used mostly to determine if the data is still the default.
-            self.__datapoint_timestamps = {}
+            self.datapoint_timestamps: dict[str, float] = {}
 
             # Functions that can be called to explicitly request a data point
             # That return the new value
@@ -557,7 +557,7 @@ class Device:
             if self.datapoints[name] == v:
                 # It's still considered a change if the previous value
                 # was the default.
-                if self.__datapoint_timestamps.get(name, 0):
+                if self.datapoint_timestamps.get(name, 0):
                     return
 
             self.datapoints[name] = v
@@ -629,7 +629,7 @@ class Device:
             if self.datapoints[name] == v:
                 # It's still considered a change if the previous value
                 # was the default.
-                if self.__datapoint_timestamps.get(name, 0):
+                if self.datapoint_timestamps.get(name, 0):
                     return
 
             self.datapoints[name] = v
@@ -704,7 +704,7 @@ class Device:
             if self.datapoints[name] == v:
                 # It's still considered a change if the previous value
                 # was the default.
-                if self.__datapoint_timestamps.get(name, 0):
+                if self.datapoint_timestamps.get(name, 0):
                     return
 
             self.datapoints[name] = v
@@ -805,7 +805,7 @@ class Device:
 
         """
 
-        self.__datapoint_timestamps[name] = timestamp
+        self.datapoint_timestamps[name] = timestamp
         self.__datapointhandlers[name](value, timestamp, annotation)
 
     def set_data_point_getter(self, name: str, getter: Callable):
@@ -834,7 +834,7 @@ class Device:
                 # there has been a change! Maybe!  call a handler
                 self.__datapointhandlers[name](x, timestamp, "From getter")
 
-                self.__datapoint_timestamps[name] = timestamp
+                self.datapoint_timestamps[name] = timestamp
                 self.datapoints[name] = x
                 return x
 

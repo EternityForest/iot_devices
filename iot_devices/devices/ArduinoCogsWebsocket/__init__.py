@@ -4,6 +4,8 @@ import json
 import time
 from threading import Thread, RLock, Event
 import niquests
+import logging
+
 from websockets.sync.client import connect
 from websockets.exceptions import ConcurrencyError
 from scullery import scheduling
@@ -14,6 +16,8 @@ import iot_devices.util
 from iot_devices.util import str_to_bool as s2b
 
 ILLEGAL_NAME_CHARS = "{}|\\<>,?-=+)(*&^%$#@!~`\n\r\t\0"
+
+logger = logging.getLogger(__name__)
 
 
 # Maintains an auto-reconnecting websocket client
@@ -189,7 +193,7 @@ class ArduinoCogsClient(iot_devices.device.Device):
                         self.ext_to_internal_names[i] = n
                         self.internal_to_ext_names[n] = i
 
-                        if subtype == "trigger":
+                        if readonly or subtype == "trigger":
                             self.exclude_update_on_reconnect[i] = True
 
                         self.scale_factors[i] = float(scale)
@@ -211,6 +215,23 @@ class ArduinoCogsClient(iot_devices.device.Device):
                             writable=not readonly,
                             handler=self.makeHandler(i),
                         )
+
+                        # We need to handle data that the host may tell us about,
+                        # which might have existed before the device itself.
+                        if not subtype == "trigger":
+                            try:
+                                if not readonly:
+                                    if self.datapoint_timestamps.get(i, 0):
+                                        # Uh oh race condition between data and timestamp
+                                        # But I think it's irrelevant for now
+                                        self.update_remote_on_reconnect[i] = (
+                                            self.datapoints[i],
+                                            self.datapoint_timestamps[i],
+                                        )
+                            except Exception:
+                                logger.exception(
+                                    "Failed to handle data that was set before the device connected"
+                                )
 
                     if not subtype == "trigger":
                         if not send_on_connect or (
