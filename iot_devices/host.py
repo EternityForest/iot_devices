@@ -8,24 +8,27 @@ import copy
 import logging
 import threading
 import traceback
-from typing import Dict, Type, TypeVar, Generic
+from collections.abc import Callable
+from typing import Dict, Type, Any
 from . import device
 
 
-_known_device_types: Dict[str, Dict] = {}
+_known_device_types: dict[str, dict[str, Any]] = {}
 """
 Cache of discovered data about devices
 """
 
 
 # Programmatically generated device classes go here
-device_classes = weakref.WeakValueDictionary()
+device_classes: weakref.WeakValueDictionary[str, type[device.Device]] = (
+    weakref.WeakValueDictionary()
+)
 """
 This dict lets you programmatically add new devices
 """
 
 
-app_exit_functions = []
+app_exit_functions: list[Callable[[], None]] = []
 """
 These are called on exit
 """
@@ -44,7 +47,7 @@ Host functions should be very simple and not need changes later!
 """
 
 
-def app_exit_cleanup(*a, **k):
+def app_exit_cleanup(*a: Any, **k: Any):
     """
     Called by the host to clean up all devices and also close them.
     """
@@ -61,7 +64,7 @@ def app_exit_cleanup(*a, **k):
                         print(traceback.format_exc())
 
 
-def app_exit_register(f):
+def app_exit_register(f: Callable[[], None]):
     """
     A device type plugin registers a cleanup function here
     """
@@ -72,7 +75,7 @@ def app_exit_register(f):
             app_exit_functions.append(f)
 
 
-def discover() -> Dict[str, Dict]:
+def discover() -> Dict[str, Dict[str, Any]]:
     """Search system paths for modules that have a devices manifest.
 
     Returns:
@@ -128,7 +131,7 @@ def discover() -> Dict[str, Dict]:
     return _known_device_types
 
 
-def get_class(data) -> Type:
+def get_class(data: dict[str, Any]) -> type[device.Device]:
     """
     Return the class that one would use to construct a device given it's data.  Automatically search all system paths.
 
@@ -139,7 +142,7 @@ def get_class(data) -> Type:
 
     if t in device_classes:
         try:
-            return device_classes[data]
+            return device_classes[t]
         except KeyError:
             pass
 
@@ -174,7 +177,9 @@ def register_subdevice(parent: object, child: object):
     """
 
 
-def create_device(cls: Type[device.Device], name: str, data: Dict) -> device.Device:
+def create_device(
+    cls: Type[device.Device], name: str, data: dict[str, Any]
+) -> device.Device:
     """
     Create a new device from it's data, given the device class,
     and add any framework specific hooks.

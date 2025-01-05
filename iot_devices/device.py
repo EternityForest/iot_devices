@@ -1,7 +1,7 @@
 from __future__ import annotations
 import traceback
 from typing import Any
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 import logging
 import time
 import json
@@ -233,7 +233,7 @@ class Device:
                 ],
             ] = {}
             self.datapoints: dict[
-                str, int | float | str | bytes | dict[str, Any] | None
+                str, int | float | str | bytes | Mapping[str, Any] | None
             ] = {}
 
             # Used mostly to determine if the data is still the default.
@@ -259,7 +259,7 @@ class Device:
                 all_devices = copy.deepcopy(_all_devices)
 
     @property
-    def config_properties(self) -> dict[str, Any]:
+    def config_properties(self) -> LegacyConfigProperties:
         """Included for basic compatibility, hosts can stll work without the data but should
         upgrade to JSON schemas.
         """
@@ -605,16 +605,14 @@ class Device:
 
         self.datapoints[name] = default
 
-        def on_change_attempt(v1: float | None, t: float, a: Any):
+        def on_change_attempt(v1: float | Callable[[], float] | None, t: float, a: Any):
             if v1 is None:
                 return
+
             if callable(v1):
                 v1 = v1()
 
-            if v1 is not None:
-                v: float = v1
-            else:
-                return
+            v: float = float(v1)
 
             v = float(v)
 
@@ -686,7 +684,9 @@ class Device:
 
         self.datapoints[name] = default
 
-        def on_change_attempt(v: str | None, t, a):
+        def on_change_attempt(
+            v: str | Callable[[], str] | None, t: float | None, a: Any
+        ):
             "This function handles the change detection by itself"
             if v is None:
                 return
@@ -717,12 +717,12 @@ class Device:
         *,
         description: str = "",  # pylint: disable=unused-argument
         unit: str = "",  # pylint: disable=unused-argument
-        handler: Callable[[dict, float, Any], Any] | None = None,
+        handler: Callable[[Mapping[str, Any], float, Any], Any] | None = None,
         interval: float = 0,  # pylint: disable=unused-argument
-        writable=True,  # pylint: disable=unused-argument
+        writable: bool = True,  # pylint: disable=unused-argument
         subtype: str = "",  # pylint: disable=unused-argument
-        dashboard=True,  # pylint: disable=unused-argument
-        **kwargs,  # pylint: disable=unused-argument
+        dashboard: bool = True,  # pylint: disable=unused-argument
+        **kwargs: Any,  # pylint: disable=unused-argument
     ):
         """Register a new object data point with the given properties.   Here "object"
         means a JSON-like object.
@@ -753,11 +753,15 @@ class Device:
 
         self.datapoints[name] = None
 
-        def on_change_attempt(v1: dict[str, Any] | None, t, a):
+        def on_change_attempt(
+            v1: dict[str, Any] | Callable[[], Mapping[str, Any]] | None,
+            t: float | None,
+            a: Any,
+        ):
             if v1 is None:
                 return
 
-            v: dict[str, Any] = v1
+            v = v1
 
             if callable(v):
                 v = v()
@@ -810,10 +814,16 @@ class Device:
 
         self.datapoints[name] = None
 
-        def on_change_attempt(v: bytes | None, t, a):
+        def on_change_attempt(
+            v: bytes | Callable[[], bytes] | None, t: float | None, a: Any
+        ):
             if not v:
                 return
             t = t or time.time()
+
+            if callable(v):
+                v = v()
+
             self.datapoints[name] = v
 
             # Handler used by the device
@@ -878,7 +888,11 @@ class Device:
         self.datapoint_timestamps[name] = timestamp
         self.__datapointhandlers[name](value, timestamp, annotation)
 
-    def set_data_point_getter(self, name: str, getter: Callable):
+    def set_data_point_getter(
+        self,
+        name: str,
+        getter: Callable[[], int | float | str | bytes | Mapping[str, Any] | None],
+    ):
         """Set the Getter of a datapoint, making it into an
         on-request point.
         The callable may return either the new value,
@@ -901,6 +915,8 @@ class Device:
             x = self.__datapoint_getters[name]()
             if x is not None:
                 timestamp = time.time()
+                if isinstance(x, (dict, Mapping)):
+                    x = copy.deepcopy(x)
                 # there has been a change! Maybe!  call a handler
                 self.__datapointhandlers[name](x, timestamp, "From getter")
 
