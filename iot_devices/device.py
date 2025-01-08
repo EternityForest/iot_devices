@@ -490,12 +490,26 @@ class Device:
         # Auto strip the values to clean them up
         self.config[key] = value
 
+    def set_defaults_from_schema(self):
+        if self.json_schema:
+            if "properties" not in self.json_schema:
+                raise ValueError("No properties key in json schema")
+            for i in self.json_schema["properties"]:
+                p = self.json_schema["properties"][i]
+                if "default" in p:
+                    if p not in self.config:
+                        self.config[i] = p["default"]
+
     def set_config_default(self, key: str, value: str):
         """sets an option in self.config if it does not exist or is blank.
         Calls into set_config_option, you should not need to subclass this.
+
+        Only for devices using strings-only configuration.
         """
 
-        if key not in self.config or not self.config[key].strip():
+        if key not in self.config or (
+            isinstance(self.config[key], str) and not self.config[key].strip()
+        ):
             self.set_config_option(key, value.strip())
 
         if self.json_schema:
@@ -524,7 +538,10 @@ class Device:
 
     def handle_exception(self):
         "Helper function that just calls handle_error with a traceback."
-        self.handle_error(traceback.format_exc())
+        try:
+            self.handle_error(traceback.format_exc())
+        except Exception:
+            print(traceback.format_exc())  # pragma: no cover
 
     def handle_event(self, event: str, data: Any | None):
         "Handle arbitrary messages from the host"
@@ -841,7 +858,7 @@ class Device:
     def set_data_point(
         self,
         name: str,
-        value: int | float | str | bytes,
+        value: int | float | str | bytes | Mapping[str, Any],
         timestamp: float | None = None,
         annotation: Any | None = None,
     ):
@@ -912,11 +929,16 @@ class Device:
 
         """
         if name in self.__datapoint_getters:
-            x = self.__datapoint_getters[name]()
-            if x is not None:
+            ret: int | float | str | bytes | Mapping[str, Any] | None = (
+                self.__datapoint_getters[name]()
+            )
+            if ret is not None:
                 timestamp = time.time()
-                if isinstance(x, (dict, Mapping)):
-                    x = copy.deepcopy(x)
+                if isinstance(ret, (dict, Mapping)):
+                    x = copy.deepcopy(ret)
+                else:
+                    x = ret
+
                 # there has been a change! Maybe!  call a handler
                 self.__datapointhandlers[name](x, timestamp, "From getter")
 

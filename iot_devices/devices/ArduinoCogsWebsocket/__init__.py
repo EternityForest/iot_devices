@@ -88,9 +88,13 @@ class ArduinoCogsClient(iot_devices.device.Device):
         for i in d:
             self.on_var_msg(i, d[i])
 
-    def on_var_msg(self, msg: str, val: float):
+    def on_var_msg(self, msg: str, val: float | int):
+        if isinstance(val, int):
+            self.unknown_incoming_variables[msg] = val
+
         if msg in self.scale_factors:
             val = float(val) / self.scale_factors[msg]
+
         if msg in self.ext_to_internal_names:
             msg = self.ext_to_internal_names[msg]
             self.set_data_point(msg, val, annotation="FromRemoteDevice")
@@ -136,7 +140,8 @@ class ArduinoCogsClient(iot_devices.device.Device):
         try:
             r = niquests.get(device_info_url, timeout=15)
             r.raise_for_status()
-
+            # Clear these so we don't try to use data from the previous session
+            self.unknown_incoming_variables = {}
             with connect(wsurl) as ws:
                 self.suppress_connect_error = False
                 try:
@@ -168,6 +173,13 @@ class ArduinoCogsClient(iot_devices.device.Device):
                     n = n.lower()
 
                     val: float = tagdata[i]
+                    # To avoid a race condition in case the websocket data arrived
+                    # before this, always use thw WS data.
+                    # This does not itself make a race because if this happens first,
+                    # Then the WS thing will overwrite it as it should
+                    if i in self.unknown_incoming_variables:
+                        val = self.unknown_incoming_variables[i]
+
                     details = niquests.get(details_url + "?tag=" + i, timeout=5)
                     if not self.should_run:
                         return
@@ -304,6 +316,11 @@ class ArduinoCogsClient(iot_devices.device.Device):
         super().__init__(name, data, **kw)
 
         try:
+            # We might get a variable via WS before getting it's
+            # metadata, so we want to use the ws version so everything stays in band
+            # and there are no race conditions
+            self.unknown_incoming_variables: dict[str, int] = {}
+
             self.thread_handle = None
             self.suppress_connect_error = False
             self.numeric_data_point(

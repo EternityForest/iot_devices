@@ -1,8 +1,9 @@
-from iot_devices import device
-
+from typing import Any
 import random
 import time
 import os
+
+from iot_devices import device
 
 
 class DemoDevice(device.Device):
@@ -37,12 +38,40 @@ class DemoDevice(device.Device):
         self.numeric_data_point("useless_toggle", subtype="bool")
         self.numeric_data_point("do_nothing", subtype="trigger")
         self.numeric_data_point("read_only", writable=False)
+
+        self.numeric_data_point("echo_number", writable=False)
+        self.set_config_default("device.echo_number", "5")
+
+        self.set_data_point("echo_number", float(self.config["device.echo_number"]))
+
         self.set_data_point("read_only", random.random())
 
         self.set_data_point_getter("dyn_random", random.random)
 
         if not "gen2" in data:
             self.create_subdevice(DemoDevice, "subdevice", {"gen2": True})
+
+        self.bytestream_data_point("bytestream")
+        self.string_data_point("string")
+        self.object_data_point("object")
+
+        self.set_data_point("object", {"a": 1, "b": 2, "c": 3})
+        self.set_data_point("string", "hello world")
+        self.set_data_point("bytestream", b"hello world")
+
+        def fake_an_error(v: float, t: float, a: Any):
+            try:
+                self.handle_error("An error")
+                raise Exception("Another error")
+            except Exception:
+                self.handle_exception()
+
+        self.numeric_data_point("test_errors", subtype="trigger", handler=fake_an_error)
+
+    def set_config_option(self, key: str, value: device.Any):
+        if key == "device.echo_number":
+            self.set_data_point("echo_number", float(value))
+        return super().set_config_option(key, value)
 
     @classmethod
     def discover_devices(cls, config={}, current_device=None, intent=None, **kw):
