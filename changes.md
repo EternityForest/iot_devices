@@ -1,5 +1,10 @@
 # Change Log
 
+## 0.24.0
+
+* DemoDevice does more random stuff
+* Avoid a theoretical race condition when first connecting with ArduinoCogs
+
 ## 0.23.0
 
 * Now we use JSON Schemas to describe config.  Legacy config still works, we are completely backwards compatible.

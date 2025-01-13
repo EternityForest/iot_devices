@@ -19,8 +19,6 @@ import colorzero
 
 logger = logging.Logger("plugins.yeelight")
 
-templateGetter = TemplateLookup(os.path.dirname(__file__))
-
 
 lookup = {}
 

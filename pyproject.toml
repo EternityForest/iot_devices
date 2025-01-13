@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "iot-devices"
-version = "0.23.0"
+version = "0.24.0"
 description = "Framework for creating and using device drives, and a library of devices."
 authors = ["Daniel Dunn <dannydunn@eternityforest.com>"]
 license = "MIT"
