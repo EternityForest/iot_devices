@@ -50,7 +50,11 @@
         },
         "ArduinoCogsClient": {
             "submodule": "devices.ArduinoCogsWebsocket",
-            "description": "Experimental/Unstable.  Arduino Cogs Websocket client."
+            "description": "ArduinoCogs protocol Websocket client."
+        },
+        "ArduinoCogsServer": {
+            "submodule": "devices.ArduinoCogsServer",
+            "description": "Arduino Cogs Websocket Server."
         }
     }
 }

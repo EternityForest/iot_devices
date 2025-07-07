@@ -53,3 +53,11 @@ Represents a setting that affects the duration of a light fade.
 
 This is a list containing [eventName, timestamp, data] where data may be any type.  As with timetrigger, the timestamp may be
 in any format the device wants to send, but should be expressed in floating point seconds.
+
+### textmessage
+
+An object with the following, used for representing a stream of chat messages.
+
+text: the message as a string
+priority: debug, error, info, warning, critical
+timestamp: float

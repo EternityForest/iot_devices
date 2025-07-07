@@ -240,7 +240,10 @@ class ESPHomeDevice(iot_devices.device.Device):
                 pass
 
         time.sleep(0.05)
-        self.loop.stop()
+        try:
+            self.loop.stop()
+        except RuntimeError:
+            return super().close()
 
         for i in range(50):
             if not self.loop.is_running():

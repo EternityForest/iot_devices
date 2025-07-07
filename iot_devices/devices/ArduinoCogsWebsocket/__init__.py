@@ -5,6 +5,16 @@ import time
 from threading import Thread, RLock, Event
 import niquests
 import logging
+import asyncio
+
+import starlette.responses
+import starlette.requests
+import starlette.types
+import starlette.websockets
+import starlette.applications
+from starlette.routing import Route, WebSocketRoute
+import uvicorn
+
 
 from websockets.sync.client import connect
 from websockets.exceptions import ConcurrencyError
@@ -390,10 +400,173 @@ class ArduinoCogsClient(iot_devices.device.Device):
             pass
 
         try:
-            for i in range(500):
+            for _i in range(500):
                 if self.thread_handle and self.thread_handle.is_alive():
                     time.sleep(0.001)
         except Exception:
             pass
+
+        return super().close()
+
+
+server_schema: dict[str, Any] = {
+    "type": "object",
+    "properties": {
+        "port": {"type": "integer"},
+        "intermittent_availability": {"type": "boolean", "default": False},
+        "tagpoints": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string"},
+                    "writable": {"type": "boolean", "default": True},
+                    "resolution": {"type": "number", "default": 16384},
+                    "min": {"type": "number"},
+                    "max": {"type": "number"},
+                    "unit": {"type": "string", "default": ""},
+                    "subtype": {
+                        "type": "string",
+                        "default": "",
+                        "enum": ["bool", "trigger", ""],
+                    },
+                },
+                "required": ["name", "datapoint"],
+            },
+        },
+    },
+    "required": ["port"],
+}
+
+
+class ArduinoCogsServer(iot_devices.device.Device):
+    device_type = "ArduinoCogsServer"
+
+    def __init__(self, name: str, data: dict[str, Any], **kw: Any):
+        super().__init__(name, data, **kw)
+        self.should_run = True
+
+        for i in data.get("tagpoints", []):
+            self.numeric_data_point(
+                i["name"],  # type: ignore
+                min=i.get("min", None),  # type: ignore
+                max=i.get("max", None),  # type: ignore
+                unit=i.get("unit", ""),  # type: ignore
+                subtype=i.get("subtype", ""),  # type: ignore
+                writable=i.get("writable", True),  # type: ignore
+                resolution=i.get("resolution", 16384),  # type: ignore
+            )
+
+        app = starlette.applications.Starlette(
+            routes=[
+                WebSocketRoute("/api/ws", self.ws),
+                Route("/api/tags", self.handle_tags_list_request),
+                Route("/api/tags/{tag}", self.handle_tag_info_request),
+                Route("/api/troublecodes", self.handle_trouble_codes_request),
+                Route("/api/deviceinfo", self.handle_device_info_request),
+            ]
+        )
+
+        if "port" in data and data["port"]:
+            try:
+                config = uvicorn.Config(app, port=int(data["port"]), log_level="info")
+                server = uvicorn.Server(config)
+                self.server = server
+
+                self.clients: list[starlette.websockets.WebSocket] = []
+
+                self.loop = asyncio.new_event_loop()
+                self.loop.run_until_complete(server.serve())
+
+                def f():
+                    self.loop.run_forever()
+
+                self.thread_handle = Thread(
+                    target=f, daemon=True, name="ArduinoCogsServer:" + self.name
+                )
+                self.thread_handle.start()
+
+            except Exception:
+                self.handle_exception()
+
+    async def ws(
+        self,
+        ws: starlette.websockets.WebSocket,
+    ):
+        await ws.accept()
+        self.clients.append(ws)
+        while self.should_run:
+            try:
+                x = await ws.receive()
+                assert isinstance(x, str)
+                await ws.send(x)
+            except Exception:
+                break
+
+            try:
+                x = json.loads(x)
+                for i in x:
+                    if not i.startswith("_"):
+                        self.set_data_point(i, x[i])
+
+            except Exception:
+                self.handle_exception()
+        try:
+            self.clients.remove(ws)
+        except Exception:
+            pass
+
+    def handle_device_info_request(self, request: starlette.requests.Request):
+        return starlette.responses.JSONResponse(
+            {
+                "name": self.name,
+                "type": self.device_type,
+                "version": "1.0",
+            }
+        )
+
+    def handle_tag_info_request(self, request: starlette.requests.Request):
+        tag = request.path_params["tag"]
+        return starlette.responses.JSONResponse(
+            {
+                "name": tag,
+                "writable": self.config.get("writable", True),
+                "min": self.config.get("min", None),
+                "max": self.config.get("max", None),
+                "unit": self.config.get("unit", ""),
+            }
+        )
+
+    def handle_trouble_codes_request(self, request: starlette.requests.Request):
+        return starlette.responses.JSONResponse({})
+
+    def handle_tags_list_request(self, request: starlette.requests.Request):
+        r = list(self.config.get("tagpoints", {}).keys())
+        return starlette.responses.JSONResponse(r)
+
+    def close(self):
+        self.should_run = False
+        try:
+            self.loop.call_soon_threadsafe(self.server.shutdown)
+
+            if self.loop.is_running():
+                try:
+                    asyncio.run_coroutine_threadsafe(
+                        self.loop.shutdown_asyncgens(), self.loop
+                    )
+                except RuntimeError:
+                    pass
+
+            time.sleep(0.05)
+            self.loop.stop()
+
+            for _i in range(50):
+                if not self.loop.is_running():
+                    self.loop.close()
+                    break
+                time.sleep(0.1)
+
+        except Exception:
+            self.handle_exception()
 
         return super().close()
