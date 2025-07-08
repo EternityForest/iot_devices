@@ -48,6 +48,37 @@ class Payload:
         return msgpack.packb(flat, use_bin_type=True)
 
 
+# define PACKET_OVERHEAD (1 + 1 + 1 + 1 + 8 + 4 + ROUTING_ID_LEN + AUTH_TAG_LEN)
+
+PACKET_OVERHEAD = 1 + 1 + 1 + 1 + 8 + 4 + 16 + 6
+
+PACKET_TYPE_CONTROL = 0
+PACKET_TYPE_DATA = 1
+PACKET_TYPE_RELIABLE_DATA = 2
+
+PACKET_TYPE_MASK = 0b11
+TTL_OFFSET = 2
+SLOW_TRANSPORT_OFFSET = 5
+GLOBAL_ROUTE_OFFSET = 6
+WAS_GLOBAL_ROUTED_OFFSET = 7
+HEADER_2_FIRST_SEND_ATTEMPT_BIT = 0
+
+CONTROL_TYPE_ACK = 1
+CONTROL_TYPE_REPEATER_ACK = 2
+
+
+HEADER_1_BYTE_OFFSET = 0
+HEADER_2_BYTE_OFFSET = 1
+MESH_ROUTE_NUMBER_BYTE_OFFSET = 2
+PATH_LOSS_BYTE_OFFSET = 3
+ROUTING_ID_BYTE_OFFSET = 4
+RANDOMNESS_BYTE_OFFSET = 20
+TIME_BYTE_OFFSET = 28
+CIPHERTEXT_BYTE_OFFSET = 32
+AUTH_TAG_LEN = 6
+PACKET_ID_64_OFFSET = RANDOMNESS_BYTE_OFFSET + 4
+
+
 def header1(
     packet_type: int,
     ttl: int,
@@ -59,9 +90,9 @@ def header1(
         raise ValueError("Invalid packet type")
     header1 = packet_type
     header1 |= ttl << 2
-    header1 |= (1 << 5) if can_use_slow_transport else 0
-    header1 |= (1 << 6) if can_global_route else 0
-    header1 |= (1 << 7) if was_global_routed else 0
+    header1 |= (1 << SLOW_TRANSPORT_OFFSET) if can_use_slow_transport else 0
+    header1 |= (1 << GLOBAL_ROUTE_OFFSET) if can_global_route else 0
+    header1 |= (1 << WAS_GLOBAL_ROUTED_OFFSET) if was_global_routed else 0
     return header1
 
 

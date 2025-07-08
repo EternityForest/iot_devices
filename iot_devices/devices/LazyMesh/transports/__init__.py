@@ -9,6 +9,10 @@ class RawPacketMetadata:
 
 
 class ITransport(Protocol):
+    use_reliable_retransmission: bool
+    # For things like LoRa where we can repeat back out the same interface
+    use_loopback: bool
+
     async def listen(self) -> AsyncGenerator[RawPacketMetadata | None, None]:
         """Async generator that yields incoming raw packet bytes"""
         ...

@@ -10,6 +10,10 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.backends import default_backend
 from ..crypto import aes_gcm_decrypt, aes_gcm_encrypt
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 class MQTTTransport(ITransport):
     def __init__(self, url: str, topic_prefix: str = "lazymesh_route_"):
@@ -25,7 +29,8 @@ class MQTTTransport(ITransport):
         self.should_subscribe: list[tuple[float, str]] = []
 
         self.client.on_connect = self.on_reconnect
-        self.client.on_message = self.on_message  # add this line
+        self.client.on_disconnect = self.on_disconnect  # type: ignore
+        self.client.on_message = self.on_message
         self.client.connect(hostname, port)
         self.client.loop_start()
 
@@ -35,6 +40,13 @@ class MQTTTransport(ITransport):
 
         # topic -> routingID used as key
         self.topic_crypto_keys: dict[str, bytes] = {}
+
+        # MQTT just relies entirely on TCP for reliability.
+        self.use_reliable_retransmission = False
+        self.use_loopback = False
+
+    def on_disconnect(self, *a, **k):
+        logger.info("MQTT disconnected")
 
     def on_reconnect(
         self,
@@ -47,6 +59,7 @@ class MQTTTransport(ITransport):
         with self.lock:
             for _, topic in self.should_subscribe:
                 client.subscribe(topic)
+        logger.info("MQTT Connected")
 
     def on_message(self, client: mqtt.Client, userdata: Any, msg: mqtt.MQTTMessage):
         # Decrypt using topic_crypto_keys[topic]
@@ -101,9 +114,6 @@ class MQTTTransport(ITransport):
 
         can_global_route = (header_1 & (1 << 6)) > 0
         was_global_routed = (header_1 & (1 << 7)) > 0
-        print(
-            f"[MQTTTransport] can_global_route: {can_global_route}, was_global_routed: {was_global_routed}"
-        )
 
         if not can_global_route or was_global_routed:
             return False

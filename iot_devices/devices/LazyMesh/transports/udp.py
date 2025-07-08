@@ -11,6 +11,8 @@ MCAST_PORT = 2221
 class UDPTransport(ITransport):
     def __init__(self):
         self.sock = None
+        self.use_reliable_retransmission = True
+        self.use_loopback = False
 
     async def setup(self):
         # Create UDP socket

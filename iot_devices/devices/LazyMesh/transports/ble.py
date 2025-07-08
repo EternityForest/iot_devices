@@ -13,6 +13,11 @@ class BLETransport(ITransport):
         self.queue: asyncio.Queue[bytes] = asyncio.Queue()
         self.should_run = True
 
+        # We can't transmit at all and if we could it wouldn't be reliable
+        # Enough to bother with acknowledgement
+        self.use_reliable_retransmission = False
+        self.use_loopback = False
+
     async def listen(self) -> AsyncGenerator[RawPacketMetadata | None, None]:
         async def detection_callback(
             device: BLEDevice, advertisement_data: AdvertisementData
