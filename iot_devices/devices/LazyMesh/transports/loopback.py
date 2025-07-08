@@ -1,5 +1,5 @@
 import asyncio
-from . import ITransport
+from . import ITransport, RawPacketMetadata
 
 
 class LoopbackTransport(ITransport):
@@ -12,7 +12,7 @@ class LoopbackTransport(ITransport):
     async def listen(self):
         while True:
             data = await self.queue.get()
-            yield data
+            yield RawPacketMetadata(data, self)
 
     async def send(self, data: bytes):
         print("LoopbackTransport.send")

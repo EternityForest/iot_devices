@@ -2,7 +2,7 @@ import asyncio
 import socket
 import struct
 from typing import AsyncGenerator
-from . import ITransport
+from . import ITransport, RawPacketMetadata
 
 MCAST_GROUP = "224.0.0.251"
 MCAST_PORT = 2221
@@ -29,7 +29,7 @@ class UDPTransport(ITransport):
         # Set non-blocking
         self.sock.setblocking(False)
 
-    async def listen(self) -> AsyncGenerator[bytes | None, None]:
+    async def listen(self) -> AsyncGenerator[RawPacketMetadata | None, None]:
         if not self.sock:
             await self.setup()
         assert self.sock
@@ -38,7 +38,7 @@ class UDPTransport(ITransport):
         while True:
             try:
                 data, _addr = await loop.sock_recvfrom(self.sock, 4096)
-                yield data
+                yield RawPacketMetadata(data, self)
             except asyncio.CancelledError:
                 break
             except Exception as e:

@@ -4,6 +4,90 @@ from iot_devices.device import Device
 from .mesh import MeshNode, ITransport, Payload
 
 
+class RemoteLazyMeshNode(Device):
+    json_schema: dict[str, Any] = {
+        "type": "object",
+        "properties": {
+            "custom_properties": {
+                "type": "array",
+                "description": "Config for reading and writing non-standard datapoints",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "id": {"type": "number"},
+                        "name": {"type": "string"},
+                        "datapoint": {"type": "string"},
+                        "type": {"type": "string"},
+                        "writable": {"type": "boolean"},
+                        "resolution": {"type": "number"},
+                        "min": {"type": "number"},
+                        "max": {"type": "number"},
+                        "unit": {"type": "string"},
+                        "subtype": {"type": "string"},
+                    },
+                },
+            },
+        },
+    }
+
+    def __init__(self, name: str, data: dict[str, Any], **kw: Any):
+        Device.__init__(self, name, data, **kw)
+
+        self.ids_to_numeric_points: dict[int, str] = {}
+        self.ids_to_string_points: dict[int, str] = {}
+        self.ids_to_numeric_points_resolution: dict[int, float] = {}
+
+        self.parent: LazyMeshNode | None = None
+
+        for i in self.config["custom_properties"]:
+            if i["type"] == "numeric":
+                self.ids_to_numeric_points[i["id"]] = i["datapoint"]
+                self.ids_to_numeric_points_resolution[i["id"]] = i["resolution"]
+            else:
+                self.ids_to_string_points[i["id"]] = i["datapoint"]
+
+    def on_lm_message(self, data: Payload):
+        # Incomimg data is telling us the state of the remote node
+        # So update accordingly
+        for i in data:
+            if i.id in self.ids_to_numeric_points:
+                assert isinstance(i.data, int)
+                val = i.data / self.ids_to_numeric_points_resolution[i.id]
+                self.set_data_point(
+                    self.ids_to_numeric_points[i.id], val, None, "from_remote"
+                )
+            elif i.id in self.ids_to_string_points:
+                assert isinstance(i.data, str)
+                self.set_data_point(
+                    self.ids_to_string_points[i.id], i.data, None, "from_remote"
+                )
+
+    def data_id_handler(self, schema: dict[str, Any]):
+        def f(v: str | int | float, t: float, a: Any):
+            if not self.parent:
+                return
+
+            if a == "from_remote":
+                return
+
+            else:
+                p = Payload()
+                p.add_data(schema["id"], v)
+
+                def g():
+                    if not self.parent:
+                        return
+                    if not self.parent.channel:
+                        return
+                    self.parent.node.loop.create_task(
+                        self.parent.channel.send_packet(p)
+                    )
+
+                self.parent.node.loop.call_soon_threadsafe(g)
+
+        return f
+
+
 class LazyMeshNode(Device):
     json_schema: dict[str, Any] = {
         "type": "object",
@@ -42,6 +126,11 @@ class LazyMeshNode(Device):
                 "type": "boolean",
                 "default": True,
                 "description": "Enable BLE",
+            },
+            "discover_remote_nodes": {
+                "type": "boolean",
+                "default": True,
+                "description": "Discover remote nodes",
             },
             "local_data_ids": {
                 "type": "array",
@@ -107,7 +196,6 @@ class LazyMeshNode(Device):
 
         try:
             self.transports: list[ITransport] = []
-
             if self.config["enable_mqtt"]:
                 from iot_devices.devices.LazyMesh.transports.mqtt import MQTTTransport
 
@@ -127,6 +215,8 @@ class LazyMeshNode(Device):
             self.ids_to_numeric_points: dict[int, str] = {}
             self.ids_to_string_points: dict[int, str] = {}
             self.ids_to_numeric_points_resolution: dict[int, float] = {}
+
+            self.subdevices_by_id: dict[int, LazyMeshNode] = {}
 
             for i in self.config["local_data_ids"]:
                 if i["type"] == "number":
@@ -172,7 +262,6 @@ class LazyMeshNode(Device):
             write_enabled: bool = False
 
             for i in data:
-                print(i.id, i.data)
                 if i.id == 5:
                     addressed = True
                     if i.data == self.config["local_device_id"]:
@@ -183,14 +272,12 @@ class LazyMeshNode(Device):
                 for i in data:
                     # data request handler
                     if i.id == 1:
-                        print("data request")
                         p = Payload()
                         p.add_data(2, self.config["local_device_id"])
                         assert isinstance(i.data, list)
                         for j in i.data:
                             assert isinstance(j, int)
                             if j in self.ids_to_numeric_points:
-                                print("numeric")
                                 point_name = self.ids_to_numeric_points[j]
                                 resolution = self.ids_to_numeric_points_resolution[j]
                                 d = self.datapoints[point_name]

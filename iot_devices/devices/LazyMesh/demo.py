@@ -1,4 +1,12 @@
 import time
+import logging
+
+# log to console
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
 # from .transports.mqtt import MQTTTransport
 
 # from .transports.ble import BLETransport

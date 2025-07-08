@@ -3,8 +3,9 @@ from threading import RLock
 import asyncio
 import time
 from typing import Any
+from scullery.ratelimits import RateLimiter
 import os
-from . import ITransport
+from . import ITransport, RawPacketMetadata
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.backends import default_backend
 from ..crypto import aes_gcm_decrypt, aes_gcm_encrypt
@@ -28,6 +29,10 @@ class MQTTTransport(ITransport):
         self.client.connect(hostname, port)
         self.client.loop_start()
 
+        # For now just hardcode to make really sure
+        # we don't DDoS a free broker
+        self.ratelimiter = RateLimiter(0.2, 25)
+
         # topic -> routingID used as key
         self.topic_crypto_keys: dict[str, bytes] = {}
 
@@ -45,7 +50,6 @@ class MQTTTransport(ITransport):
 
     def on_message(self, client: mqtt.Client, userdata: Any, msg: mqtt.MQTTMessage):
         # Decrypt using topic_crypto_keys[topic]
-        # print  (f"[MQTTTransport] {msg.topic}")
         routing_key = self.topic_crypto_keys.get(msg.topic)
         if routing_key:
             try:
@@ -71,7 +75,7 @@ class MQTTTransport(ITransport):
         self.loop = asyncio.get_running_loop()
         while True:
             data = await self.queue.get()
-            yield data
+            yield RawPacketMetadata(data, self)
 
     async def maintain(self):
         while self.should_run:
@@ -97,8 +101,14 @@ class MQTTTransport(ITransport):
 
         can_global_route = (header_1 & (1 << 6)) > 0
         was_global_routed = (header_1 & (1 << 7)) > 0
+        print(
+            f"[MQTTTransport] can_global_route: {can_global_route}, was_global_routed: {was_global_routed}"
+        )
 
         if not can_global_route or was_global_routed:
+            return False
+
+        if not self.ratelimiter.limit():
             return False
 
         # Extract routingID at offset 4 (ROUTING_ID_OFFSET)

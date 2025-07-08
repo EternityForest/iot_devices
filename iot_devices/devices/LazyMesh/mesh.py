@@ -2,11 +2,12 @@ import time
 import threading
 from typing import Callable, Coroutine
 import asyncio
+import traceback
 from .mesh_packet import MeshPacket, Payload, header1
 from .crypto import derive_crypto_key, derive_routing_key
 from hashlib import sha256
-from .transports import ITransport
-
+from .transports import ITransport, RawPacketMetadata
+import logging
 from aiostream import stream
 
 import os
@@ -127,24 +128,29 @@ class MeshChannel:
         if self.mesh_node:
             await self.mesh_node.send_packet(packet.serialize())
 
-    async def handle_packet(self, data: bytes):
-        packet = MeshPacket.parse(data)
-        if packet.routing_id == self.temp_keys["routing_key"]:
-            packet.decrypt(self.temp_keys["crypto_key"])
-            if packet.plaintext:
-                payload = Payload.from_buffer(packet.plaintext)
-                payload.unix_time = packet.timestamp
-                if self.callback:
-                    self.callback(payload)
-
-        elif "closest_routing_key" in self.temp_keys:
-            if packet.routing_id == self.temp_keys["closest_routing_key"]:
-                packet.decrypt(self.temp_keys["closest_crypto_key"])
+    async def handle_packet(self, meta: RawPacketMetadata):
+        try:
+            data = meta.raw
+            packet = MeshPacket.parse(data)
+            if packet.routing_id == self.temp_keys["routing_key"]:
+                packet.decrypt(self.temp_keys["crypto_key"])
                 if packet.plaintext:
-                    payload = Payload.from_buffer(packet.plaintext)
+                    payload = Payload.from_buffer(packet.plaintext, meta)
                     payload.unix_time = packet.timestamp
                     if self.callback:
                         self.callback(payload)
+
+            elif "closest_routing_key" in self.temp_keys:
+                if packet.routing_id == self.temp_keys["closest_routing_key"]:
+                    packet.decrypt(self.temp_keys["closest_crypto_key"])
+                    if packet.plaintext:
+                        payload = Payload.from_buffer(packet.plaintext, meta)
+                        payload.unix_time = packet.timestamp
+                        if self.callback:
+                            self.callback(payload)
+        except Exception:
+            print("Error handling packet")
+            print(traceback.format_exc())
 
 
 class MeshNode:
@@ -163,13 +169,15 @@ class MeshNode:
 
         self.seenPackets: dict[bytes, float] = {}
 
-    async def send_packet(self, b: bytes):
-        if self.has_seen_packet(b):
-            return
+    async def send_packet(self, b: bytes, exclude: list[ITransport] = []):
+        self.has_seen_packet(b)
+
         c: list[Coroutine[None, None, None]] = []
 
         global_routed = False
         for i in self.transports:
+            if i in exclude:
+                continue
             if await i.global_route(b):
                 global_routed = True
 
@@ -181,6 +189,8 @@ class MeshNode:
             b = b[:0] + bytes([header_1]) + b[1:]
 
         for i in self.transports:
+            if i in exclude:
+                continue
             c.append(i.send(b))
 
         await asyncio.gather(*c)
@@ -221,25 +231,48 @@ class MeshNode:
         self.should_run = False
         self.loop.call_soon_threadsafe(self.loop.stop)
 
+    def decrement_ttl(self, packet: bytes) -> bytes | None:
+        h = packet[0]
+        ttl = h & (0b11 << 2)
+        without_ttl = h & ~(0b11 << 2)
+        if ttl == 0:
+            return None
+
+        h = without_ttl | (ttl - 1)
+
+        return packet[:0] + bytes([h]) + packet[1:]
+
     async def _run(self):
-        merged = stream.merge(*[i.listen() for i in self.transports])
-        async with merged.stream() as s:
-            async for i in s:
-                if i:
-                    if self.has_seen_packet(i):
-                        continue
-                    for channel in self.channels.values():
-                        await channel.handle_packet(i)
+        try:
+            merged = stream.merge(*[i.listen() for i in self.transports])
+            async with merged.stream() as s:
+                async for i in s:
+                    if i:
+                        if self.has_seen_packet(i.raw):
+                            continue
+                        decremented = self.decrement_ttl(i.raw)
+                        if decremented:
+                            await self.send_packet(decremented, exclude=[i.source])
+
+                        for channel in self.channels.values():
+                            await channel.handle_packet(i)
+        except Exception:
+            print(traceback.format_exc())
 
     async def maintainance_loop(self):
-        for channel in self.channels.values():
-            await channel.announce(first=True)
-
-        while self.should_run:
-            time_till_next_hour = 3600 - time.time() % 3600
-            await asyncio.sleep(max(time_till_next_hour, 300))
+        try:
             for channel in self.channels.values():
-                await channel.announce()
+                await channel.announce(first=True)
+
+            while self.should_run:
+                time_till_next_hour = 3600 - time.time() % 3600
+                await asyncio.sleep(max(time_till_next_hour, 300))
+                for channel in self.channels.values():
+                    await channel.announce()
+
+        except Exception:
+            print(traceback.format_exc())
+            logging.error("Error in maintainance loop")
 
     def add_channel(self, password: str):
         psk = password.encode("utf-8")

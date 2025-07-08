@@ -3,7 +3,7 @@ from typing import AsyncGenerator
 from bleak import BleakScanner
 from bleak.backends.device import BLEDevice
 from bleak.backends.scanner import AdvertisementData
-from . import ITransport
+from . import ITransport, RawPacketMetadata
 
 LAZYMESH_UUID = "d1a77e11-420f-9f11-1a00-10a6beef0001"
 
@@ -13,7 +13,7 @@ class BLETransport(ITransport):
         self.queue: asyncio.Queue[bytes] = asyncio.Queue()
         self.should_run = True
 
-    async def listen(self) -> AsyncGenerator[bytes | None, None]:
+    async def listen(self) -> AsyncGenerator[RawPacketMetadata | None, None]:
         async def detection_callback(
             device: BLEDevice, advertisement_data: AdvertisementData
         ):
@@ -25,7 +25,7 @@ class BLETransport(ITransport):
         async with BleakScanner(detection_callback):
             while self.should_run:
                 data = await self.queue.get()
-                yield data
+                yield RawPacketMetadata(data, self)
 
     async def send(self, data: bytes):
         """Send raw packet bytes"""

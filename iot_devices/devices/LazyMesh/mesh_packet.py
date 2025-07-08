@@ -2,6 +2,7 @@ import msgpack
 from typing import Union, NamedTuple
 from dataclasses import dataclass
 import struct
+from .transports import RawPacketMetadata
 from .crypto import aes_gcm_encrypt, aes_gcm_decrypt
 
 DataItemValue = Union[str, int, float, list[int], list[str], list[float] | bytes]
@@ -27,7 +28,7 @@ class Payload:
         return iter(self.items)
 
     @classmethod
-    def from_buffer(cls, buf: bytes) -> "Payload":
+    def from_buffer(cls, buf: bytes, raw: RawPacketMetadata) -> "Payload":
         unpacked: list[int | DataItemValue] = msgpack.unpackb(buf, raw=False)
         if not isinstance(unpacked, list):  # type: ignore
             raise ValueError("Invalid payload format")
