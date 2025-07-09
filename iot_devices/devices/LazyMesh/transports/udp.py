@@ -24,9 +24,12 @@ class UDPTransport(ITransport):
         except Exception as e:
             raise RuntimeError(f"Failed to bind UDP socket: {e}")
 
-        # Join multicast group
-        mreq = struct.pack("4sl", socket.inet_aton(MCAST_GROUP), socket.INADDR_ANY)
-        self.sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
+            # Join multicast group
+            group = socket.inet_aton(MCAST_GROUP)
+            mreq = struct.pack("4s4s", group, socket.inet_aton("0.0.0.0"))
+
+            # Set the socket option to join the multicast group
+            self.sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
 
         # Set non-blocking
         self.sock.setblocking(False)

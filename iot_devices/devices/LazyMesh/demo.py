@@ -53,6 +53,7 @@ config: dict[str, Any] = {
     "mqtt_urls": ["mqtt://test.mosquitto.org:1883"],
     "enable_udp": True,
     "local_device_name": "PythonNode",
+    "discover_remote_nodes": True,
     "enable_ble": True,
     "local_data_ids": [
         {
@@ -61,11 +62,43 @@ config: dict[str, Any] = {
             "type": "number",
         }
     ],
+    # This config says we should be looking for a device
+    # on the channel that calls itself "FriendlyNameHere"
+    # And has a custom datapoint with ID 169
+    # That has the following properties
+    "subdevice_config": {
+        "FriendlyNameHere": {
+            "custom_properties": [
+                {
+                    "id": 196,
+                    "name": "TestCustomDataPoint",
+                    "datapoint": "test",
+                    "type": "number",
+                    "writable": True,
+                    "resolution": 1,
+                    "min": 0,
+                    "max": 100,
+                    "reliable": True,
+                }
+            ]
+        }
+    },
 }
 
 
 node = LazyMeshNode("test", config)
-
+x = 1
 while True:
-    time.sleep(1)
-    print(node.datapoints["test"])
+    time.sleep(5)
+    if "FriendlyNameHere" in node.subdevices:
+        remote_node = node.subdevices["FriendlyNameHere"]
+
+        remote_node.set_data_point("test", x)
+        x += 1
+        remote_node.request_data_point("test")
+        time.sleep(1)
+        print("Remote: " + str(remote_node.datapoints["test"]))
+    else:
+        print("FriendlyNameHere not found")
+
+    print("Local: " + str(node.datapoints["test"]))

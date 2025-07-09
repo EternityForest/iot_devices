@@ -13,7 +13,6 @@ import logging
 from aiostream import stream
 
 import os
-import struct
 
 
 class MeshChannel:
@@ -21,6 +20,10 @@ class MeshChannel:
         self.psk = psk
         self.temp_keys = self.get_temp_keys()
         self.callback: Callable[[Payload], None] | None = None
+        self.async_callback: Callable[[Payload], Coroutine[None, None, None]] | None = (
+            None
+        )
+
         self.mesh_node: MeshNode | None = None
         self.can_global_route = True
         self.can_use_slow_transports = True
@@ -66,7 +69,7 @@ class MeshChannel:
                 packet = MeshPacket(
                     header=h,
                     header2=0,
-                    mesh_route_num=0,
+                    mesh_route_num=self.mesh_node.outgoing_route_id,
                     path_loss=0,
                     last_hop_loss=0,
                     routing_id=self.temp_keys["routing_key"],
@@ -84,7 +87,7 @@ class MeshChannel:
                 packet = MeshPacket(
                     header=h,
                     header2=0,
-                    mesh_route_num=0,
+                    mesh_route_num=self.mesh_node.outgoing_route_id,
                     path_loss=0,
                     last_hop_loss=0,
                     routing_id=self.temp_keys["next_routing_key"],
@@ -99,6 +102,9 @@ class MeshChannel:
                     self.mesh_node.enqueue_packet(b)
 
     async def send_packet(self, payload: Payload):
+        if not self.mesh_node:
+            raise Exception("MeshNode is not set")
+
         timestamp = int(time.time())
         entropy = os.urandom(8)
         raw_payload = payload.to_buffer()
@@ -112,7 +118,7 @@ class MeshChannel:
         packet = MeshPacket(
             header=h,
             header2=0,
-            mesh_route_num=0,
+            mesh_route_num=self.mesh_node.outgoing_route_id,
             path_loss=0,
             last_hop_loss=0,
             routing_id=self.temp_keys["routing_key"],
@@ -123,24 +129,6 @@ class MeshChannel:
         packet.encrypt(self.temp_keys["crypto_key"])
         if self.mesh_node:
             self.mesh_node.enqueue_packet(packet.serialize())
-
-    async def send_channel_ack(self, packet: bytes):
-        if self.mesh_node:
-            header1 = 0
-            header1 |= (
-                1 << mesh_packet.SLOW_TRANSPORT_OFFSET
-                if self.can_use_slow_transports
-                else 0
-            )
-            header1 |= 1 << mesh_packet.TTL_OFFSET
-            header2 = 0
-
-            p = bytes([header1, header2, mesh_packet.CONTROL_TYPE_ACK])
-            packet_id = packet[
-                mesh_packet.PACKET_ID_64_OFFSET : mesh_packet.PACKET_ID_64_OFFSET + 8
-            ]
-            ack_packet = p + packet_id
-            await self.mesh_node.send_packet(ack_packet)
 
     async def handle_packet(self, meta: RawPacketMetadata):
         try:
@@ -155,6 +143,8 @@ class MeshChannel:
                     payload.unix_time = packet.timestamp
                     if self.callback:
                         self.callback(payload)
+                    if self.async_callback:
+                        await self.async_callback(payload)
                     decoded = True
 
             elif "closest_routing_key" in self.temp_keys:
@@ -165,10 +155,16 @@ class MeshChannel:
                         payload.unix_time = packet.timestamp
                         if self.callback:
                             self.callback(payload)
+                        if self.async_callback:
+                            await self.async_callback(payload)
                         decoded = True
 
             if decoded:
-                await self.send_channel_ack(meta.raw)
+                if meta.source.use_reliable_retransmission:
+                    if self.mesh_node:
+                        await self.mesh_node.send_ack(
+                            meta.raw, meta.source, mesh_packet.CONTROL_TYPE_ACK
+                        )
 
         except Exception:
             print("Error handling packet")
@@ -190,26 +186,23 @@ class QueuedOutgoingPacket:
         self.expect_repeaters = expect_repeaters
         self.expect_subscribers = expect_subscribers
 
-        self.repeaters_seen = 0
-        self.subscribers_seen = 0
-
         self.send_attempts = 0
         self.last_send_time: float = 0
         self.packet_id = packet[24:32]
 
         self.exclude = exclude
 
+        self.stopSending = False
+
 
 class SeenPacketReport:
-    def __init__(self, packet: bytes):
-        self.timestamp: int = struct.unpack(
-            "<I",
-            packet[mesh_packet.TIME_BYTE_OFFSET : mesh_packet.TIME_BYTE_OFFSET + 4],
-        )[0]
+    def __init__(self, packetID: bytes):
+        self.timestamp: int = int(time.time())
+        self.packet_id = packetID
 
-        self.packet_id = packet[
-            mesh_packet.PACKET_ID_64_OFFSET : mesh_packet.PACKET_ID_64_OFFSET + 8
-        ]
+        self.repeaters_seen = 0
+        self.subscribers_seen = 0
+        self.real_copies_seen = 0
 
 
 class MeshNode:
@@ -217,6 +210,10 @@ class MeshNode:
         self.transports: list[ITransport] = transports
         self.channels: dict[bytes, MeshChannel] = {}
         self.should_run = True
+
+        self.routes_enabled: dict[int, bool] = {0: True}
+
+        self.outgoing_route_id = 0
 
         self.do_queued_packets = asyncio.Event()
         self.loop = asyncio.new_event_loop()
@@ -283,6 +280,21 @@ class MeshNode:
 
         await asyncio.gather(*c)
 
+    async def send_ack(self, packet: bytes, destination: ITransport, ack_type: int):
+        header1 = 0
+
+        slow_transport_bit = packet[0] & (1 << mesh_packet.SLOW_TRANSPORT_OFFSET)
+        header1 |= 1 << mesh_packet.SLOW_TRANSPORT_OFFSET if slow_transport_bit else 0
+        header1 |= 1 << mesh_packet.TTL_OFFSET
+        header2 = 0
+
+        p = bytes([header1, header2, ack_type])
+        packet_id = packet[
+            mesh_packet.PACKET_ID_64_OFFSET : mesh_packet.PACKET_ID_64_OFFSET + 8
+        ]
+        ack_packet = p + packet_id
+        await self.send_packet(ack_packet, interface=destination)
+
     def has_seen_packet(self, packet: bytes, source: ITransport | None = None):
         # Too small to be anthig but control and control doesn't have replay detect
 
@@ -293,9 +305,13 @@ class MeshNode:
             mesh_packet.PACKET_ID_64_OFFSET : mesh_packet.PACKET_ID_64_OFFSET + 8
         ]
 
-        report = SeenPacketReport(packet)
+        firstAttempt = packet[1] & (1 << mesh_packet.HEADER_2_FIRST_SEND_ATTEMPT_BIT)
 
-        packetTime = report.timestamp
+        # 4 bytes
+        packetTime = int.from_bytes(
+            packet[mesh_packet.TIME_BYTE_OFFSET : mesh_packet.TIME_BYTE_OFFSET + 4],
+            "little",
+        )
 
         if packetTime < time.time() - 180:
             return True
@@ -303,19 +319,31 @@ class MeshNode:
         if packetTime > time.time() + 120:
             return True
 
-        for i in self.outgoingQueue:
-            if i.packet_id == packetID:
-                if source and source.use_reliable_retransmission:
-                    i.repeaters_seen += 1
-
+        x = self.ensure_seen_packet_report_exists(packetID)
         seen = False
-        if packetID in self.seenPackets:
+        if x:
+            if x.real_copies_seen > 0:
+                seen = True
+            x.real_copies_seen += 1
+
+            # If it comes from outside and we are tracking repeater counts
+            # then count it
+            if source and source.use_reliable_retransmission:
+                if firstAttempt:
+                    x.repeaters_seen += 1
+
+        return seen
+
+    def ensure_seen_packet_report_exists(
+        self, packetID: bytes
+    ) -> SeenPacketReport | None:
+        if packetID not in self.seenPackets:
             if len(self.seenPackets) > 10**6:
                 # Oldest packet is too recent to clear, return true, we have to assume
                 # everything has been seen since we can't actually check
                 for i in self.seenPackets:
                     if self.seenPackets[i].timestamp > time.time() - 180:
-                        return True
+                        return None
                     break
 
                 # Delete old
@@ -325,11 +353,12 @@ class MeshNode:
                         del self.seenPackets[first]
                     else:
                         break
-
+            report = SeenPacketReport(packetID)
             self.seenPackets[packetID] = report
-            seen = True
 
-        return seen
+        if packetID in self.seenPackets:
+            return self.seenPackets[packetID]
+        return None
 
     def close(self):
         self.should_run = False
@@ -337,12 +366,12 @@ class MeshNode:
 
     def decrement_ttl(self, packet: bytes) -> bytes | None:
         h = packet[0]
-        ttl = h & (0b11 << 2)
-        without_ttl = h & ~(0b11 << 2)
+        ttl = (h & (0b111 << 2)) >> 2
+        without_ttl = h & ~(0b111 << 2)
         if ttl == 0:
             return None
 
-        h = without_ttl | (ttl - 1)
+        h = without_ttl | ((ttl - 1) << 2)
 
         return packet[:0] + bytes([h]) + packet[1:]
 
@@ -356,6 +385,13 @@ class MeshNode:
         except Exception:
             print(traceback.format_exc())
 
+    def enable_route(self, route_id: int):
+        """Enable repeating packets marke with the given route id"""
+        self.routes_enabled[route_id] = True
+
+    def disable_route(self, route_id: int):
+        self.routes_enabled[route_id] = False
+
     async def handle_packet(self, meta: RawPacketMetadata):
         if self.has_seen_packet(meta.raw):
             return
@@ -364,27 +400,41 @@ class MeshNode:
 
         if packet_type in [1, 2]:
             decremented = self.decrement_ttl(meta.raw)
-            if decremented:
-                self.enqueue_packet(decremented, exclude=[meta.source])
+            route_id = meta.raw[mesh_packet.MESH_ROUTE_NUMBER_BYTE_OFFSET]
+            if self.routes_enabled.get(route_id, False):
+                if decremented:
+                    self.enqueue_packet(
+                        decremented,
+                        exclude=[meta.source] if not meta.source.use_loopback else [],
+                    )
+
+                    # No loopback means we need an explicit repeater ack because we aren't sending
+                    # A copy
+                    if (
+                        not meta.source.use_loopback
+                    ) and meta.source.use_reliable_retransmission:
+                        await self.send_ack(
+                            meta.raw, meta.source, mesh_packet.CONTROL_TYPE_REPEATER_ACK
+                        )
 
             for channel in self.channels.values():
                 await channel.handle_packet(meta)
 
         # control
         if packet_type == 0:
-            control_type = meta.raw[1]
-            control_payload = meta.raw[2:]
+            control_type = meta.raw[2]
+            control_payload = meta.raw[3:]
 
             if meta.source.use_reliable_retransmission:
                 if control_type == mesh_packet.CONTROL_TYPE_ACK:
-                    for i in self.outgoingQueue:
-                        if i.packet_id == control_payload:
-                            i.subscribers_seen += 1
+                    x = self.ensure_seen_packet_report_exists(control_payload)
+                    if x:
+                        x.subscribers_seen += 1
 
                 elif control_type == mesh_packet.CONTROL_TYPE_REPEATER_ACK:
-                    for i in self.outgoingQueue:
-                        if i.packet_id == control_payload:
-                            i.repeaters_seen += 1
+                    x = self.ensure_seen_packet_report_exists(control_payload)
+                    if x:
+                        x.repeaters_seen += 1
 
     def enqueue_packet(self, packet: bytes, exclude: list[ITransport] = []):
         if len(packet) < mesh_packet.PACKET_OVERHEAD:
@@ -435,9 +485,6 @@ class MeshNode:
                 for i in self.outgoingQueue:
                     # print("Sending packet attempt", i.send_attempts)
                     if i.last_send_time < time.time() - 0.2:
-                        i.last_send_time = time.time()
-                        i.send_attempts += 1
-
                         # Set or clear the first send attempt bit
                         if i.send_attempts > 1:
                             header2 = i.packet[1]
@@ -450,49 +497,101 @@ class MeshNode:
                             header2 |= 1 << mesh_packet.HEADER_2_FIRST_SEND_ATTEMPT_BIT
                             i.packet = i.packet[:1] + bytes([header2]) + i.packet[2:]
 
-                        await self.send_packet(i.packet, exclude=i.exclude)
+                        if not i.stopSending:
+                            i.last_send_time = time.time()
+                            i.send_attempts += 1
+                            await self.send_packet(i.packet, exclude=i.exclude)
 
                 torm: list[QueuedOutgoingPacket] = []
                 for i in self.outgoingQueue:
+                    packet_type = i.packet[0] & 0b11
+
                     if i.send_attempts > 5:
-                        torm.append(i)
-                    if i.subscribers_seen >= i.expect_subscribers:
-                        if i.repeaters_seen >= i.expect_repeaters:
+                        i.stopSending = True
+                        # Wait a while to see how many replies we get
+                        if i.last_send_time < time.time() - 2:
                             torm.append(i)
+
+                        continue
+
+                    if packet_type == 1 and i.send_attempts > 1:
+                        i.stopSending = True
+                        if i.last_send_time < time.time() - 2:
+                            torm.append(i)
+                        continue
+
+                    seenReport = self.ensure_seen_packet_report_exists(
+                        i.packet[
+                            mesh_packet.PACKET_ID_64_OFFSET : mesh_packet.PACKET_ID_64_OFFSET
+                            + 8
+                        ]
+                    )
+                    repeaters_seen = 0
+                    subscribers_seen = 0
+
+                    if seenReport:
+                        repeaters_seen = seenReport.repeaters_seen
+                        subscribers_seen = seenReport.subscribers_seen
+
+                    if subscribers_seen >= i.expect_subscribers:
+                        if repeaters_seen >= i.expect_repeaters:
+                            i.stopSending = True
+                            if i.last_send_time < time.time() - 2:
+                                torm.append(i)
 
                 for i in torm:
                     # print("Done with packet after", i.send_attempts, "attempts")
                     # print(i.repeaters_seen, i.expect_repeaters, i.subscribers_seen, i.expect_subscribers)
                     self.outgoingQueue.remove(i)
-                    route_id = i.packet[mesh_packet.MESH_ROUTE_NUMBER_BYTE_OFFSET]
 
-                    old = self.repeater_interest_by_route_id.get(route_id, 0)
-                    new = i.repeaters_seen
+                    packet_type = i.packet[0] & 0b11
 
-                    if new > old:
-                        self.repeater_interest_by_route_id[route_id] = new
-                    else:
-                        new = old * 0.90 + new * 0.10
-                        self.repeater_interest_by_route_id[route_id] = new
-
-                    channel_hash = i.packet[
-                        mesh_packet.ROUTING_ID_BYTE_OFFSET : mesh_packet.ROUTING_ID_BYTE_OFFSET
-                        + 16
-                    ]
-
-                    old = self.subscriber_interest_by_channel.get(channel_hash, 0)
-                    new = i.subscribers_seen
-
-                    if new > old:
-                        self.subscriber_interest_by_channel[channel_hash] = new
-                    else:
-                        new = old * 0.90 + new * 0.10
-                        self.subscriber_interest_by_channel[channel_hash] = new
-
-                    if len(self.subscriber_interest_by_channel) > 3096:
-                        self.subscriber_interest_by_channel = OrderedDict(
-                            list(self.subscriber_interest_by_channel.items())[-2048:]
+                    if packet_type == 2:
+                        seenReport = self.ensure_seen_packet_report_exists(
+                            i.packet[
+                                mesh_packet.PACKET_ID_64_OFFSET : mesh_packet.PACKET_ID_64_OFFSET
+                                + 8
+                            ]
                         )
+                        repeaters_seen = 0
+                        subscribers_seen = 0
+
+                        if seenReport:
+                            repeaters_seen = seenReport.repeaters_seen
+                            subscribers_seen = seenReport.subscribers_seen
+
+                        route_id = i.packet[mesh_packet.MESH_ROUTE_NUMBER_BYTE_OFFSET]
+
+                        old = self.repeater_interest_by_route_id.get(route_id, 0)
+                        new = repeaters_seen
+
+                        if new > old:
+                            self.repeater_interest_by_route_id[route_id] = new
+                        else:
+                            new = old * 0.90 + new * 0.10
+                            self.repeater_interest_by_route_id[route_id] = new
+
+                        channel_hash = i.packet[
+                            mesh_packet.ROUTING_ID_BYTE_OFFSET : mesh_packet.ROUTING_ID_BYTE_OFFSET
+                            + 16
+                        ]
+
+                        old = self.subscriber_interest_by_channel.get(channel_hash, 0)
+                        new = subscribers_seen
+
+                        if new > old:
+                            self.subscriber_interest_by_channel[channel_hash] = new
+                        else:
+                            new = old * 0.90 + new * 0.10
+                            self.subscriber_interest_by_channel[channel_hash] = new
+
+                        if len(self.subscriber_interest_by_channel) > 3096:
+                            self.subscriber_interest_by_channel = OrderedDict(
+                                list(self.subscriber_interest_by_channel.items())[
+                                    -2048:
+                                ]
+                            )
+
             except Exception:
                 print(traceback.format_exc())
                 logging.error("Error in send queued packets")

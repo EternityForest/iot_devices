@@ -1,6 +1,6 @@
 from __future__ import annotations
 import traceback
-from typing import Any
+from typing import Any, TypeVar
 from collections.abc import Callable, Mapping
 import logging
 import time
@@ -8,6 +8,9 @@ import json
 import copy
 import weakref
 import threading
+
+DeviceClassTypeVar = TypeVar("DeviceClassTypeVar", bound="Device")
+
 
 # example device_manifest.json file that should be in any module declaring devices. keys are device type names.
 
@@ -321,9 +324,14 @@ class Device:
         )
 
     def create_subdevice(
-        self, cls: type[Device], name: str, config: dict[str, Any], *a: Any, **k: Any
-    ) -> object:
-        """
+        self,
+        cls: type[DeviceClassTypeVar],
+        name: str,
+        config: dict[str, Any],
+        *a: Any,
+        **k: Any,
+    ) -> DeviceClassTypeVar:
+        """Creates a subdevice
         Args:
             cls: The class used to make the device
             name: The base name of the device.  The full name will be parent.basename
@@ -360,6 +368,12 @@ class Device:
 
         fn = f"{self.name}.{name}"
         config = copy.deepcopy(config)
+
+        # Mostly just there for quick scripts
+        if "subdevice_config" in self.config:
+            if name in self.config["subdevice_config"]:
+                config.update(copy.deepcopy(self.config["subdevice_config"][name]))
+
         config["name"] = fn
         config["is_subdevice"] = "true"
         config["type"] = cls.device_type
@@ -924,6 +938,7 @@ class Device:
     def request_data_point(self, name: str) -> Any:
         """Rather than just passively read, actively
         request a data point's new value.
+        May return None and just cause the point to be updated later.
 
         Meant to be called by external host code.
 

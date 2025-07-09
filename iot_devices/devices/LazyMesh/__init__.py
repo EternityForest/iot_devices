@@ -1,5 +1,8 @@
+from __future__ import annotations
 from typing import Any
 import traceback
+import asyncio
+import time
 from iot_devices.device import Device
 from .mesh import MeshNode, ITransport, Payload
 
@@ -24,6 +27,11 @@ class RemoteLazyMeshNode(Device):
                         "max": {"type": "number"},
                         "unit": {"type": "string"},
                         "subtype": {"type": "string"},
+                        "reliable": {
+                            "type": "boolean",
+                            "default": True,
+                            "description": "Auto retry all attempts to set remote values",
+                        },
                     },
                 },
             },
@@ -32,6 +40,7 @@ class RemoteLazyMeshNode(Device):
 
     def __init__(self, name: str, data: dict[str, Any], **kw: Any):
         Device.__init__(self, name, data, **kw)
+        self.device_id = 0
 
         self.ids_to_numeric_points: dict[int, str] = {}
         self.ids_to_string_points: dict[int, str] = {}
@@ -39,17 +48,56 @@ class RemoteLazyMeshNode(Device):
 
         self.parent: LazyMeshNode | None = None
 
+        # maps datapoint id to the thing we are trying to set
+        # prefixed by a timestamp so we know when to just give up
+        self.set_value_jobs: dict[int, tuple[float, Any]] = {}
+
+        self.should_run = True
+
         for i in self.config["custom_properties"]:
-            if i["type"] == "numeric":
+            if i["type"] == "number":
                 self.ids_to_numeric_points[i["id"]] = i["datapoint"]
                 self.ids_to_numeric_points_resolution[i["id"]] = i["resolution"]
-            else:
+                self.numeric_data_point(
+                    i["datapoint"],
+                    handler=self.data_id_handler(i),
+                    min=i.get("min", None),
+                    max=i.get("max", None),
+                    unit=i.get("unit", ""),
+                    subtype=i.get("subtype", ""),
+                    writable=i.get("writable", True),
+                )
+            elif i["type"] == "string":
                 self.ids_to_string_points[i["id"]] = i["datapoint"]
+                self.string_data_point(
+                    i["datapoint"],
+                    handler=self.data_id_handler(i),
+                    subtype=i.get("subtype", ""),
+                    writable=i.get("writable", True),
+                )
+            else:
+                raise Exception("Unknown type {}".format(i["type"]))
+
+    def set_parent(self, parent: LazyMeshNode):
+        if self.parent:
+            raise Exception("Already have a parent")
+        self.parent = parent
+
+        def f():
+            parent.node.loop.create_task(self.flush_set_value_jobs())
+
+        parent.node.loop.call_soon_threadsafe(f)
 
     def on_lm_message(self, data: Payload):
         # Incomimg data is telling us the state of the remote node
         # So update accordingly
         for i in data:
+            # If it's the value we are trying to set
+            # then clear the job
+            if i.id in self.set_value_jobs:
+                if i.data == self.set_value_jobs[i.id][1]:
+                    self.set_value_jobs.pop(i.id, None)
+
             if i.id in self.ids_to_numeric_points:
                 assert isinstance(i.data, int)
                 val = i.data / self.ids_to_numeric_points_resolution[i.id]
@@ -62,30 +110,68 @@ class RemoteLazyMeshNode(Device):
                     self.ids_to_string_points[i.id], i.data, None, "from_remote"
                 )
 
-    def data_id_handler(self, schema: dict[str, Any]):
-        def f(v: str | int | float, t: float, a: Any):
-            if not self.parent:
-                return
+    def close(self):
+        self.should_run = False
+        return super().close()
 
+    async def flush_set_value_jobs(self):
+        while self.should_run:
+            await asyncio.sleep(1)
+            try:
+                for i in list(self.set_value_jobs.keys()):
+                    if self.set_value_jobs[i][0] < (time.time() - 5):
+                        self.handle_error(
+                            f"Timed out trying to set value for datapoint {i}"
+                        )
+                        self.set_value_jobs.pop(i)
+                    else:
+                        self.send_data_val_set_packet(
+                            i, self.set_value_jobs[i][1], request_ack=True
+                        )
+
+            except Exception:
+                self.handle_error("Error flushing set value jobs")
+                traceback.print_exc()
+
+    def data_id_handler(self, schema: dict[str, Any]):
+        def f(v: str | int | float, _t: float, a: Any):
             if a == "from_remote":
                 return
-
             else:
-                p = Payload()
-                p.add_data(schema["id"], v)
+                self.send_data_val_set_packet(
+                    schema["id"], v, schema.get("reliable", False)
+                )
 
-                def g():
-                    if not self.parent:
-                        return
-                    if not self.parent.channel:
-                        return
-                    self.parent.node.loop.create_task(
-                        self.parent.channel.send_packet(p)
-                    )
-
-                self.parent.node.loop.call_soon_threadsafe(g)
+                if schema["id"] in self.set_value_jobs:
+                    self.set_value_jobs.pop(schema["id"], None)
+                if schema.get("reliable", False):
+                    self.set_value_jobs[schema["id"]] = (time.time(), v)
 
         return f
+
+    def send_data_val_set_packet(self, data_id: int, v: Any, request_ack: bool = False):
+        if not self.device_id:
+            return
+        p = Payload()
+        p.add_data(5, self.device_id)
+        # Set write enable
+        p.add_data(6, 1)
+        p.add_data(data_id, v)
+
+        # Request that they send back the value
+        if request_ack:
+            p.add_data(1, [data_id])
+
+        def g():
+            if not self.parent:
+                return
+            if not self.parent.channel:
+                return
+            self.parent.node.loop.create_task(self.parent.channel.send_packet(p))
+
+        if not self.parent:
+            return
+        self.parent.node.loop.call_soon_threadsafe(g)
 
 
 class LazyMeshNode(Device):
@@ -216,7 +302,9 @@ class LazyMeshNode(Device):
             self.ids_to_string_points: dict[int, str] = {}
             self.ids_to_numeric_points_resolution: dict[int, float] = {}
 
-            self.subdevices_by_id: dict[int, LazyMeshNode] = {}
+            self.subdevices_by_id: dict[int, RemoteLazyMeshNode] = {}
+
+            self.friendly_names_by_id: dict[int, str] = {}
 
             for i in self.config["local_data_ids"]:
                 if i["type"] == "number":
@@ -246,19 +334,29 @@ class LazyMeshNode(Device):
                         data_id_handler=self.data_id_handler(i),
                     )
                     self.ids_to_string_points[i["id"]] = i["name"]
+                else:
+                    raise ValueError(f"Unknown type {i['type']}")
 
             self.node = MeshNode(self.transports)
 
             self.channel = self.node.add_channel(self.config["channel_password"])
-            self.channel.callback = self.on_lm_message
+            # TODO type ignore bad
+            self.channel.async_callback = self.on_lm_message  # type: ignore
         except Exception:
             print(traceback.format_exc())
             self.handle_error("Failed to create node")
 
-    def on_lm_message(self, data: Payload):
+    async def request_data_point_from_remote(self, device: int, data_point: int) -> Any:
+        p = Payload()
+        p.add_data(5, device)
+        p.add_data(1, [data_point])
+        await self.channel.send_packet(p)
+
+    async def on_lm_message(self, data: Payload):
         try:
             is_for_us: bool = False
-            addressed: bool = False
+            addressed: int | None = None
+            source: int | None = None
             write_enabled: bool = False
 
             for i in data:
@@ -267,6 +365,28 @@ class LazyMeshNode(Device):
                     if i.data == self.config["local_device_id"]:
                         is_for_us = True
                         break
+
+            for i in data:
+                if i.id == 2:
+                    source = int(i.data)  # type: ignore
+
+            if source is not None and not is_for_us:
+                for i in data:
+                    if i.id == 3:
+                        self.friendly_names_by_id[source] = str(i.data)
+
+                if source not in self.subdevices_by_id:
+                    if source not in self.friendly_names_by_id:
+                        await self.request_data_point_from_remote(source, 3)
+                    else:
+                        self.subdevices_by_id[source] = self.create_subdevice(
+                            RemoteLazyMeshNode, self.friendly_names_by_id[source], {}
+                        )
+                        self.subdevices_by_id[source].device_id = source
+                        self.subdevices_by_id[source].set_parent(self)
+
+                if source in self.subdevices_by_id:
+                    self.subdevices_by_id[source].on_lm_message(data)
 
             if is_for_us or not addressed:
                 for i in data:
