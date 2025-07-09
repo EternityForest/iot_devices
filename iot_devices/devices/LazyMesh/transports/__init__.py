@@ -3,9 +3,9 @@ from typing import Protocol, AsyncGenerator
 
 
 class RawPacketMetadata:
-    def __init__(self, raw: bytes, source: ITransport):
+    def __init__(self, raw: bytes, source: ITransport | None):
         self.raw = raw
-        self.source = source
+        self.source: ITransport | None = source
 
 
 class ITransport(Protocol):

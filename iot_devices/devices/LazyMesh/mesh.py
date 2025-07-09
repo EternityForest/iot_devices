@@ -128,13 +128,14 @@ class MeshChannel:
         )
         packet.encrypt(self.temp_keys["crypto_key"])
         if self.mesh_node:
-            self.mesh_node.enqueue_packet(packet.serialize())
+            m = RawPacketMetadata(packet.serialize(), None)
+            await self.mesh_node.handle_packet(m)
 
     async def handle_packet(self, meta: RawPacketMetadata):
+        decoded = False
         try:
             data = meta.raw
             packet = MeshPacket.parse(data)
-            decoded = False
 
             if packet.routing_id == self.temp_keys["routing_key"]:
                 packet.decrypt(self.temp_keys["crypto_key"])
@@ -159,16 +160,11 @@ class MeshChannel:
                             await self.async_callback(payload)
                         decoded = True
 
-            if decoded:
-                if meta.source.use_reliable_retransmission:
-                    if self.mesh_node:
-                        await self.mesh_node.send_ack(
-                            meta.raw, meta.source, mesh_packet.CONTROL_TYPE_ACK
-                        )
-
         except Exception:
             print("Error handling packet")
             print(traceback.format_exc())
+
+        return decoded
 
 
 class QueuedOutgoingPacket:
@@ -280,7 +276,9 @@ class MeshNode:
 
         await asyncio.gather(*c)
 
-    async def send_ack(self, packet: bytes, destination: ITransport, ack_type: int):
+    async def send_ack(
+        self, packet: bytes, destination: ITransport | None, ack_type: int
+    ):
         header1 = 0
 
         slow_transport_bit = packet[0] & (1 << mesh_packet.SLOW_TRANSPORT_OFFSET)
@@ -307,6 +305,9 @@ class MeshNode:
 
         firstAttempt = packet[1] & (1 << mesh_packet.HEADER_2_FIRST_SEND_ATTEMPT_BIT)
 
+        isRepeater = packet[1] & (1 << mesh_packet.HEADER_2_REPEATER_BIT)
+        isSourceInterested = packet[1] & (1 << mesh_packet.HEADER_2_INTERESTED_BIT)
+
         # 4 bytes
         packetTime = int.from_bytes(
             packet[mesh_packet.TIME_BYTE_OFFSET : mesh_packet.TIME_BYTE_OFFSET + 4],
@@ -328,9 +329,13 @@ class MeshNode:
 
             # If it comes from outside and we are tracking repeater counts
             # then count it
-            if source and source.use_reliable_retransmission:
+            if source and isRepeater and source.use_reliable_retransmission:
                 if firstAttempt:
                     x.repeaters_seen += 1
+
+            # Implicit ACK
+            if source and isSourceInterested:
+                x.subscribers_seen += 1
 
         return seen
 
@@ -398,43 +403,83 @@ class MeshNode:
 
         packet_type = meta.raw[0] & 0b11
 
+        local_interested = False
+
         if packet_type in [1, 2]:
+            if meta.source is not None:
+                for channel in self.channels.values():
+                    if await channel.handle_packet(meta):
+                        local_interested = True
+            else:
+                local_interested = True
+
             decremented = self.decrement_ttl(meta.raw)
             route_id = meta.raw[mesh_packet.MESH_ROUTE_NUMBER_BYTE_OFFSET]
+
+            did_repeat = False
+
             if self.routes_enabled.get(route_id, False):
                 if decremented:
-                    self.enqueue_packet(
-                        decremented,
-                        exclude=[meta.source] if not meta.source.use_loopback else [],
-                    )
+                    # Set the is repeater bit
+                    header2 = decremented[1]
+                    header2 = header2 | (1 << mesh_packet.HEADER_2_REPEATER_BIT)
+
+                    # Set the local interested bit
+                    if local_interested:
+                        header2 = header2 | (1 << mesh_packet.HEADER_2_INTERESTED_BIT)
+
+                    decremented = decremented[:1] + bytes([header2]) + decremented[2:]
+
+                    # Local packet
+                    if meta.source is None:
+                        self.enqueue_packet(
+                            decremented,
+                        )
+                    # Repeated packet
+                    else:
+                        self.enqueue_packet(
+                            decremented,
+                            exclude=[meta.source]
+                            if not meta.source.use_loopback
+                            else [],
+                        )
+
+                    did_repeat = True
 
                     # No loopback means we need an explicit repeater ack because we aren't sending
                     # A copy
                     if (
-                        not meta.source.use_loopback
-                    ) and meta.source.use_reliable_retransmission:
+                        (meta.source is not None)
+                        and (not meta.source.use_loopback)
+                        and meta.source.use_reliable_retransmission
+                        and (len(self.transports) > 1)
+                    ):
                         await self.send_ack(
                             meta.raw, meta.source, mesh_packet.CONTROL_TYPE_REPEATER_ACK
                         )
 
-            for channel in self.channels.values():
-                await channel.handle_packet(meta)
+            if local_interested and not did_repeat:
+                # Local packet just use the implicit ack bit
+                if meta.source is not None and meta.source.use_reliable_retransmission:
+                    # Must send channel ACKs on all interfaces
+                    await self.send_ack(meta.raw, None, mesh_packet.CONTROL_TYPE_ACK)
 
         # control
         if packet_type == 0:
-            control_type = meta.raw[2]
-            control_payload = meta.raw[3:]
+            if meta.source is not None:
+                control_type = meta.raw[2]
+                control_payload = meta.raw[3:]
 
-            if meta.source.use_reliable_retransmission:
-                if control_type == mesh_packet.CONTROL_TYPE_ACK:
-                    x = self.ensure_seen_packet_report_exists(control_payload)
-                    if x:
-                        x.subscribers_seen += 1
+                if meta.source.use_reliable_retransmission:
+                    if control_type == mesh_packet.CONTROL_TYPE_ACK:
+                        x = self.ensure_seen_packet_report_exists(control_payload)
+                        if x:
+                            x.subscribers_seen += 1
 
-                elif control_type == mesh_packet.CONTROL_TYPE_REPEATER_ACK:
-                    x = self.ensure_seen_packet_report_exists(control_payload)
-                    if x:
-                        x.repeaters_seen += 1
+                    elif control_type == mesh_packet.CONTROL_TYPE_REPEATER_ACK:
+                        x = self.ensure_seen_packet_report_exists(control_payload)
+                        if x:
+                            x.repeaters_seen += 1
 
     def enqueue_packet(self, packet: bytes, exclude: list[ITransport] = []):
         if len(packet) < mesh_packet.PACKET_OVERHEAD:
