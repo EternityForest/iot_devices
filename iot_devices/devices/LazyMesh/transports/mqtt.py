@@ -43,7 +43,6 @@ class MQTTTransport(ITransport):
 
         # MQTT just relies entirely on TCP for reliability.
         self.use_reliable_retransmission = False
-        self.use_loopback = False
 
     def on_disconnect(self, *a, **k):
         logger.info("MQTT disconnected")
@@ -71,6 +70,11 @@ class MQTTTransport(ITransport):
                     # strip metadata (first byte), same as TS version
                     metadata_length = decrypted[0]
                     payload = decrypted[1 + metadata_length :]
+
+                    header_1 = payload[0]
+                    # Ensure was global routed bit is set
+                    payload = payload[:1] + bytes([header_1 | (1 << 7)]) + payload[2:]
+
                     if self.loop:
                         asyncio.run_coroutine_threadsafe(
                             self.queue.put(payload), self.loop
@@ -120,6 +124,9 @@ class MQTTTransport(ITransport):
 
         if not self.ratelimiter.limit():
             return False
+
+        # set the was global routed bit
+        data = data[:1] + bytes([header_1 | (1 << 7)]) + data[2:]
 
         # Extract routingID at offset 4 (ROUTING_ID_OFFSET)
         routing_id = data[4:20]

@@ -431,32 +431,11 @@ class MeshNode:
                     decremented = decremented[:1] + bytes([header2]) + decremented[2:]
 
                     # Local packet
-                    if meta.source is None:
-                        self.enqueue_packet(
-                            decremented,
-                        )
-                    # Repeated packet
-                    else:
-                        self.enqueue_packet(
-                            decremented,
-                            exclude=[meta.source]
-                            if not meta.source.use_loopback
-                            else [],
-                        )
+                    self.enqueue_packet(
+                        decremented,
+                    )
 
                     did_repeat = True
-
-                    # No loopback means we need an explicit repeater ack because we aren't sending
-                    # A copy
-                    if (
-                        (meta.source is not None)
-                        and (not meta.source.use_loopback)
-                        and meta.source.use_reliable_retransmission
-                        and (len(self.transports) > 1)
-                    ):
-                        await self.send_ack(
-                            meta.raw, meta.source, mesh_packet.CONTROL_TYPE_REPEATER_ACK
-                        )
 
             if local_interested and not did_repeat:
                 # Local packet just use the implicit ack bit
@@ -475,11 +454,6 @@ class MeshNode:
                         x = self.ensure_seen_packet_report_exists(control_payload)
                         if x:
                             x.subscribers_seen += 1
-
-                    elif control_type == mesh_packet.CONTROL_TYPE_REPEATER_ACK:
-                        x = self.ensure_seen_packet_report_exists(control_payload)
-                        if x:
-                            x.repeaters_seen += 1
 
     def enqueue_packet(self, packet: bytes, exclude: list[ITransport] = []):
         if len(packet) < mesh_packet.PACKET_OVERHEAD:
