@@ -67,12 +67,12 @@ class RandomDevice(device.Device):
     # This schema determines the config a host will give us.
     # The host will also give us a few extra special keys.
     json_schema = {
-        "properties":[
+        "properties":{
             "demo_param":
                 {
                     "type": "string"
                 }
-        ]
+        }
     }
 
     def __init__(self,name, config, **kw):
