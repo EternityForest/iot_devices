@@ -55,6 +55,14 @@
         "ArduinoCogsServer": {
             "submodule": "devices.ArduinoCogsServer",
             "description": "Arduino Cogs Websocket Server."
+        },
+        "GPSDClient": {
+            "submodule": "devices.GPSDClient",
+            "description": "GPSD client for accessing GPS on Linux"
+        },
+        "LazyMeshNode":{
+            "submodule": "devices.LazyMesh",
+            "description": "EXPERIMENTAL. Pre-alpha."
         }
     }
 }

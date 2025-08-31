@@ -4,6 +4,7 @@ from bleak import BleakScanner
 from bleak.backends.device import BLEDevice
 from bleak.backends.scanner import AdvertisementData
 from . import ITransport, RawPacketMetadata
+from .. import mesh_packet
 
 LAZYMESH_UUID = "d1a77e11-420f-9f11-1a00-10a6beef0001"
 
@@ -24,6 +25,9 @@ class BLETransport(ITransport):
             # Check if our UUID is present
             svc_data = advertisement_data.service_data.get(LAZYMESH_UUID)
             if svc_data:
+                rssi = advertisement_data.rssi
+                loss = int(max(0, (rssi * 50) / 10))
+                svc_data = mesh_packet.add_packet_loss(svc_data, loss)
                 await self.queue.put(svc_data)
 
         async with BleakScanner(detection_callback):

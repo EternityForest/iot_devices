@@ -511,7 +511,7 @@ class Device:
             for i in self.json_schema["properties"]:
                 p = self.json_schema["properties"][i]
                 if "default" in p:
-                    if p not in self.config:
+                    if i not in self.config:
                         self.config[i] = p["default"]
 
     def set_config_default(self, key: str, value: str):

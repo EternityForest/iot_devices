@@ -17,6 +17,9 @@ class Payload:
     def __init__(self):
         self.items: list[DataItem] = []
         self.unix_time: int = 0
+        self.metadata: RawPacketMetadata | None = None
+
+        self.path_loss = 0
 
     def add_data(self, id: int, item: DataItemValue):
         self.items.append(DataItem(id, item))
@@ -30,9 +33,11 @@ class Payload:
     @classmethod
     def from_buffer(cls, buf: bytes, raw: RawPacketMetadata) -> "Payload":
         unpacked: list[int | DataItemValue] = msgpack.unpackb(buf, raw=False)
+
         if not isinstance(unpacked, list):  # type: ignore
             raise ValueError("Invalid payload format")
         payload = cls()
+        payload.metadata = raw
         for i in range(0, len(unpacked), 2):
             if not isinstance(unpacked[i], int):
                 raise ValueError("Invalid payload format")
@@ -82,6 +87,29 @@ AUTH_TAG_LEN = 6
 PACKET_ID_64_OFFSET = RANDOMNESS_BYTE_OFFSET + 4
 
 
+def add_packet_loss(packet: bytes, extra_loss: int):
+    """Set the last hop field and adds to the total field"""
+    if extra_loss > 7:
+        extra_loss = 7
+
+    old: int = packet[PATH_LOSS_BYTE_OFFSET]
+    without_last_hop: int = old & 0b11111
+
+    without_last_hop += extra_loss
+    if without_last_hop > 31:
+        without_last_hop = 31
+
+    n = without_last_hop | (extra_loss << 5)
+
+    modified = (
+        packet[:PATH_LOSS_BYTE_OFFSET]
+        + bytes([n])
+        + packet[PATH_LOSS_BYTE_OFFSET + 1 :]
+    )
+    assert len(modified) == len(packet)
+    return modified
+
+
 def header1(
     packet_type: int,
     ttl: int,
@@ -126,7 +154,7 @@ class MeshPacket:
                 self.header,
                 self.header2,
                 self.mesh_route_num,
-                (self.path_loss << 3) | (self.last_hop_loss & 0b111),
+                (min(self.path_loss, 31) << 3) | (min(self.last_hop_loss, 7) & 0b111),
             ]
         )
         buf.extend(self.routing_id)

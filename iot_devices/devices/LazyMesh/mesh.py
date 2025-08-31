@@ -141,6 +141,7 @@ class MeshChannel:
                 packet.decrypt(self.temp_keys["crypto_key"])
                 if packet.plaintext:
                     payload = Payload.from_buffer(packet.plaintext, meta)
+                    payload.path_loss = packet.path_loss
                     payload.unix_time = packet.timestamp
                     if self.callback:
                         self.callback(payload)
@@ -153,6 +154,7 @@ class MeshChannel:
                     packet.decrypt(self.temp_keys["closest_crypto_key"])
                     if packet.plaintext:
                         payload = Payload.from_buffer(packet.plaintext, meta)
+                        payload.path_loss = packet.path_loss
                         payload.unix_time = packet.timestamp
                         if self.callback:
                             self.callback(payload)
@@ -438,7 +440,7 @@ class MeshNode:
                     did_repeat = True
 
             if local_interested and not did_repeat:
-                # Local packet just use the implicit ack bit
+                # Local packets can just use the implicit ack bit
                 if meta.source is not None and meta.source.use_reliable_retransmission:
                     # Must send channel ACKs on all interfaces
                     await self.send_ack(meta.raw, None, mesh_packet.CONTROL_TYPE_ACK)

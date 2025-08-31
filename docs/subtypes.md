@@ -61,3 +61,7 @@ An object with the following, used for representing a stream of chat messages.
 text: the message as a string
 priority: debug, error, info, warning, critical
 timestamp: float
+
+### gnss
+
+This is an object with at minimum lat, lon, time, and alt stored as floats.

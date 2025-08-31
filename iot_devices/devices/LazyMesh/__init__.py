@@ -54,6 +54,17 @@ class RemoteLazyMeshNode(Device):
 
         self.should_run = True
 
+        self.numeric_data_point(
+            "path_loss",
+            min=-130,
+            max=90,
+            default=-130,
+            unit="dB",
+            description="Rough estimate of total path loss along the mesh",
+        )
+
+        self.set_rssi_ts = time.time()
+
         for i in self.config["custom_properties"]:
             if i["type"] == "number":
                 self.ids_to_numeric_points[i["id"]] = i["datapoint"]
@@ -91,6 +102,11 @@ class RemoteLazyMeshNode(Device):
     def on_lm_message(self, data: Payload):
         # Incomimg data is telling us the state of the remote node
         # So update accordingly
+
+        if time.time() > (self.set_rssi_ts + 3600):
+            self.set_rssi_ts = time.time()
+            self.set_data_point("path_loss", (-50) - (10 * data.path_loss))
+
         for i in data:
             # If it's the value we are trying to set
             # then clear the job
@@ -342,9 +358,23 @@ class LazyMeshNode(Device):
             self.channel = self.node.add_channel(self.config["channel_password"])
             # TODO type ignore bad
             self.channel.async_callback = self.on_lm_message  # type: ignore
+
+            self.numeric_data_point(
+                "local.scan_devices",
+                subtype="trigger",
+                handler=self.scan_req_tag_handler,
+                description="Discover outher nodes on the channel",
+            )
         except Exception:
             print(traceback.format_exc())
             self.handle_error("Failed to create node")
+
+    def scan_req_tag_handler(self, *_a: Any):
+        def f():
+            cr = self.request_data_point_from_remote(0, 3)
+            self.node.loop.create_task(cr)
+
+        self.node.loop.call_soon_threadsafe(f)
 
     async def request_data_point_from_remote(self, device: int, data_point: int) -> Any:
         p = Payload()
