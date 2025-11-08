@@ -50,7 +50,7 @@ class ESPHomeDevice(iot_devices.device.Device):
                 # Don't clutter up the system with unneeded data points.
                 if "scanned_tag" not in self.datapoints:
                     self.object_data_point(
-                        "scanned_tag", "RFID reading", writable=False
+                        "scanned_tag", description="RFID reading", writable=False
                     )
 
                 self.set_data_point("scanned_tag", [str(tag_id), time.time(), ""])
@@ -65,6 +65,14 @@ class ESPHomeDevice(iot_devices.device.Device):
     def add_bool(self, name: str, w=False):
         self.numeric_data_point(name, min=0, max=1, subtype="bool", writable=w)
 
+    def add_button(self, name: str, buttonid: int):
+        def handler(v, t, a):
+            if not a == "FromRemoteDevice":
+                if v >= 1:
+                    self.api.button_command(buttonid)
+
+        self.numeric_data_point(name, min=0, max=1, subtype="trigger", handler=handler)
+
     def obj_to_tag(self, i):
         try:
             self.key_to_name[i.key] = i.object_id
@@ -73,17 +81,13 @@ class ESPHomeDevice(iot_devices.device.Device):
             if isinstance(i, model.BinarySensorInfo):
                 self.add_bool(i.object_id)
 
+            if isinstance(i, model.ButtonInfo):
+                self.add_button(i.object_id, i.key)
+
             elif isinstance(i, model.SwitchInfo):
 
                 def handler(v, t, a):
-                    if not a == "FromRemoteDevice":
-
-                        async def f():
-                            await self.api.switch_command(
-                                i.key, True if v > 0.5 else False
-                            )
-
-                        asyncio.run_coroutine_threadsafe(f(), self.loop)
+                    self.api.switch_command(i.key, True if v > 0.5 else False)
 
                 self.numeric_data_point(
                     i.object_id,
@@ -139,17 +143,18 @@ class ESPHomeDevice(iot_devices.device.Device):
                 self.string_data_point(i.object_id)
 
             elif isinstance(i, model.AlarmControlPanelInfo):
-                self.string_data_point(i.object_id, writable=False)
+                objid = "alarm_control_panel"
+                self.string_data_point(objid, writable=False)
                 self.set_alarm(
-                    self.name + " " + i.object_id + "Triggered",
-                    i.object_id,
+                    self.name + " " + objid + "Triggered",
+                    objid,
                     "value =='TRIGGERED'",
                     priority="critical",
                     auto_ack=True,
                 )
                 self.set_alarm(
-                    self.name + " " + i.object_id,
-                    i.object_id,
+                    self.name + " " + objid,
+                    objid,
                     "value =='PENDING'",
                     priority="warning",
                     auto_ack=True,
@@ -171,7 +176,7 @@ class ESPHomeDevice(iot_devices.device.Device):
                 self.set_data_point(self.key_to_name[s.key], s.state)
 
             elif isinstance(s, model.AlarmControlPanelState):
-                self.set_data_point(self.key_to_name[s.key], s.state.name)
+                self.set_data_point(self.key_to_name["alarm_control_panel"], s.name)
 
             elif isinstance(s, model.SensorState) or isinstance(
                 s, model.TextSensorState
@@ -186,6 +191,9 @@ class ESPHomeDevice(iot_devices.device.Device):
         self.name_to_key = {}
         self.key_to_name = {}
         self.input_units = {}
+
+        self.stopper = asyncio.Event()
+
         self.thread = threading.Thread(
             target=self.asyncloop, name="ESPHOME " + self.name
         )
@@ -210,7 +218,6 @@ class ESPHomeDevice(iot_devices.device.Device):
     def asyncloop(self):
         self.loop = asyncio.new_event_loop()
         self.loop.run_until_complete(self.main())
-        self.loop.run_forever()
 
     def close(self):
         if hasattr(self, "api") and self.api:
@@ -230,6 +237,8 @@ class ESPHomeDevice(iot_devices.device.Device):
                     self.handle_error("Timeout waiting for clean disconnect")
             except Exception:
                 self.handle_exception()
+
+        self.loop.call_soon_threadsafe(self.stopper.set)
 
         if self.loop.is_running():
             try:
@@ -265,7 +274,6 @@ class ESPHomeDevice(iot_devices.device.Device):
                 keepalive=10,
             )
             self.api = api
-            # await api.connect(login=True)
 
             reconnect_logic = aioesphomeapi.ReconnectLogic(
                 client=self.api,
@@ -277,6 +285,8 @@ class ESPHomeDevice(iot_devices.device.Device):
             self.reconnect_logic = reconnect_logic
             await reconnect_logic.start()
 
+            await self.stopper.wait()
+
         except Exception:
             self.handle_exception()
             raise
@@ -286,7 +296,7 @@ class ESPHomeDevice(iot_devices.device.Device):
             api = self.api
 
             # Get API version of the device's firmware
-            print(api.api_version)
+            self.metadata["API Version"] = api.api_version
 
             # Show device details
             device_info = await api.device_info()

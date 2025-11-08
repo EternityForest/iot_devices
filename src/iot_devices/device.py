@@ -872,7 +872,7 @@ class Device:
     def set_data_point(
         self,
         name: str,
-        value: int | float | str | bytes | Mapping[str, Any],
+        value: int | float | str | bytes | Mapping[str, Any] | list[Any],
         timestamp: float | None = None,
         annotation: Any | None = None,
     ):

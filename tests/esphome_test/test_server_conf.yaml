@@ -1,0 +1,55 @@
+esphome:
+  name: hosttest
+  friendly_name: HOSTTEST
+  area: Arbeitszimmer
+
+# Example configuration entry
+host:
+
+
+button:
+  - platform: template
+    name: Testbutton
+    on_press:
+      then:
+        - logger.log: Button Pressed
+        - number.increment: button_counter
+
+text_sensor:
+  - platform: template
+    name: "MyFixedTextSensor"
+    lambda: |-
+      return {"This is my fixed text value"};
+
+
+number:
+  - platform: template
+    name: "Button Counter"
+    id: button_counter
+    optimistic: true
+    min_value: 0
+    max_value: 1000
+    step: 1
+
+  - platform: template
+    name: "Seconds Counter"
+    id: seconds_counter
+    optimistic: true
+    min_value: 0
+    max_value: 86400 # Max value for 24 hours (optional)
+    step: 1
+
+interval:
+  - interval: 1s
+    then:
+      - number.increment: seconds_counter
+
+
+# Enable logging
+logger:
+
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: LkMUUoOtGdp0C2aiVGjnerDtF1/lBe7nNq142V12Zj0=

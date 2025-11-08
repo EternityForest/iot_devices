@@ -213,6 +213,10 @@ class MeshNode:
 
         self.outgoing_route_id = 0
 
+        self.repeater_id = 0
+
+        self.expect_repeater_id = 0
+
         self.do_queued_packets = asyncio.Event()
         self.loop = asyncio.new_event_loop()
         asyncio.run_coroutine_threadsafe(self._run(), self.loop)
