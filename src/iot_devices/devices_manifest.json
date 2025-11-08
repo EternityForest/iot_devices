@@ -53,7 +53,7 @@
             "description": "ArduinoCogs protocol Websocket client."
         },
         "ArduinoCogsServer": {
-            "submodule": "devices.ArduinoCogsServer",
+            "submodule": "devices.ArduinoCogsWebsocket",
             "description": "Arduino Cogs Websocket Server."
         },
         "GPSDClient": {

@@ -140,7 +140,7 @@ class ArduinoCogsClient(iot_devices.device.Device):
 
         wsurl = "ws://" + url + "/api/ws"
         device_info_url = "http://" + url + "/api/cogs.info"
-        info_url = "http://" + url + "/api/cogs.tags"
+        tags_list_url = "http://" + url + "/api/cogs.tags"
         details_url = "http://" + url + "/api/cogs.tag"
         trouble_code_url = "http://" + url + "/api/cogs.trouble-codes"
 
@@ -164,7 +164,7 @@ class ArduinoCogsClient(iot_devices.device.Device):
                 except Exception:
                     self.handle_exception()
 
-                r = niquests.get(info_url, timeout=5)
+                r = niquests.get(tags_list_url, timeout=5)
                 if not self.should_run:
                     return
                 r.raise_for_status()
@@ -197,8 +197,12 @@ class ArduinoCogsClient(iot_devices.device.Device):
 
                     assert isinstance(details.text, str)
                     dt = json.loads(details.text)
-                    unit = dt["unit"]
-                    scale = dt["scale"] or 1
+
+                    if dt.get("type", "number") not in ("number", "numeric"):
+                        continue
+
+                    unit = dt.get("unit", "")
+                    scale = dt.get("scale", 1)
 
                     subtype = ""
 
@@ -227,10 +231,15 @@ class ArduinoCogsClient(iot_devices.device.Device):
                         else:
                             default = 0
 
+                        if "min" in dt and dt["min"] is not None:
+                            dt["min"] /= scale
+                        if "max" in dt and dt["max"] is not None:
+                            dt["max"] /= scale
+
                         self.numeric_data_point(
                             n,
-                            min=dt["min"] / scale,
-                            max=dt["max"] / scale,
+                            min=dt["min"],
+                            max=dt["max"],
                             subtype=subtype,
                             unit=unit,
                             default=default,
@@ -421,7 +430,8 @@ server_schema: dict[str, Any] = {
                 "properties": {
                     "name": {"type": "string"},
                     "writable": {"type": "boolean", "default": True},
-                    "resolution": {"type": "number", "default": 16384},
+                    "scale": {"type": "number", "default": 16384},
+                    "default": {"type": "number", "default": 0},
                     "min": {"type": "number"},
                     "max": {"type": "number"},
                     "unit": {"type": "string", "default": ""},
@@ -442,6 +452,16 @@ server_schema: dict[str, Any] = {
 class ArduinoCogsServer(iot_devices.device.Device):
     device_type = "ArduinoCogsServer"
 
+    def numeric_handler(self, n: str, scale: float):
+        def f(v: float, t: float, a: Any):
+            async def push():
+                for i in self.clients:
+                    await i.send_text(json.dumps({n: v * scale}))
+
+            if not t == "FromRemoteDevice":
+                if self.should_run:
+                    asyncio.run_coroutine_threadsafe(push(), self.loop)
+
     def __init__(self, name: str, data: dict[str, Any], **kw: Any):
         super().__init__(name, data, **kw)
         self.should_run = True
@@ -452,18 +472,19 @@ class ArduinoCogsServer(iot_devices.device.Device):
                 min=i.get("min", None),  # type: ignore
                 max=i.get("max", None),  # type: ignore
                 unit=i.get("unit", ""),  # type: ignore
+                default=i.get("default", 0),  # type: ignore
                 subtype=i.get("subtype", ""),  # type: ignore
                 writable=i.get("writable", True),  # type: ignore
-                resolution=i.get("resolution", 16384),  # type: ignore
+                handler=self.numeric_handler(i["name"], i.get("scale", 16384)),
             )
 
         app = starlette.applications.Starlette(
             routes=[
-                WebSocketRoute("/api/ws", self.ws),
-                Route("/api/tags", self.handle_tags_list_request),
-                Route("/api/tags/{tag}", self.handle_tag_info_request),
-                Route("/api/troublecodes", self.handle_trouble_codes_request),
-                Route("/api/deviceinfo", self.handle_device_info_request),
+                WebSocketRoute("/api/ws", self.makews()),
+                Route("/api/cogs.tags", self.handle_tags_list_request),
+                Route("/api/cogs.tag", self.handle_tag_info_request),
+                Route("/api/cogs.trouble-codes", self.handle_trouble_codes_request),
+                Route("/api/cogs.info", self.handle_device_info_request),
             ]
         )
 
@@ -476,10 +497,9 @@ class ArduinoCogsServer(iot_devices.device.Device):
                 self.clients: list[starlette.websockets.WebSocket] = []
 
                 self.loop = asyncio.new_event_loop()
-                self.loop.run_until_complete(server.serve())
 
                 def f():
-                    self.loop.run_forever()
+                    self.loop.run_until_complete(server.serve())
 
                 self.thread_handle = Thread(
                     target=f, daemon=True, name="ArduinoCogsServer:" + self.name
@@ -489,32 +509,33 @@ class ArduinoCogsServer(iot_devices.device.Device):
             except Exception:
                 self.handle_exception()
 
-    async def ws(
-        self,
-        ws: starlette.websockets.WebSocket,
-    ):
-        await ws.accept()
-        self.clients.append(ws)
-        while self.should_run:
-            try:
-                x = await ws.receive()
-                assert isinstance(x, str)
-                await ws.send(x)
-            except Exception:
-                break
+    def makews(self):
+        async def ws(
+            ws: starlette.websockets.WebSocket,
+        ):
+            await ws.accept()
+            self.clients.append(ws)
+            while self.should_run:
+                try:
+                    x = await ws.receive()
+                    assert isinstance(x, str)
+                except Exception:
+                    break
 
-            try:
-                x = json.loads(x)
-                for i in x:
-                    if not i.startswith("_"):
-                        self.set_data_point(i, x[i])
+                try:
+                    x = json.loads(x)
+                    for i in x:
+                        if not i.startswith("_"):
+                            self.set_data_point(i, x[i], annotation="FromRemoteDevice")
 
+                except Exception:
+                    self.handle_exception()
+            try:
+                self.clients.remove(ws)
             except Exception:
-                self.handle_exception()
-        try:
-            self.clients.remove(ws)
-        except Exception:
-            pass
+                pass
+
+        return ws
 
     def handle_device_info_request(self, request: starlette.requests.Request):
         return starlette.responses.JSONResponse(
@@ -526,7 +547,7 @@ class ArduinoCogsServer(iot_devices.device.Device):
         )
 
     def handle_tag_info_request(self, request: starlette.requests.Request):
-        tag = request.path_params["tag"]
+        tag = request.query_params["tag"]
         return starlette.responses.JSONResponse(
             {
                 "name": tag,
@@ -534,6 +555,8 @@ class ArduinoCogsServer(iot_devices.device.Device):
                 "min": self.config.get("min", None),
                 "max": self.config.get("max", None),
                 "unit": self.config.get("unit", ""),
+                "scale": self.config.get("scale", 16384),
+                "subtype": self.config.get("subtype", ""),
             }
         )
 
@@ -541,7 +564,13 @@ class ArduinoCogsServer(iot_devices.device.Device):
         return starlette.responses.JSONResponse({})
 
     def handle_tags_list_request(self, request: starlette.requests.Request):
-        r = list(self.config.get("tagpoints", {}).keys())
+        r = {
+            "tags": {
+                i["name"]: self.datapoints[i["name"]] * i.get("scale", 16384)
+                for i in self.config.get("tagpoints", {})
+                if self.datapoints.get(i["name"], None) is not None
+            }
+        }
         return starlette.responses.JSONResponse(r)
 
     def close(self):
