@@ -85,6 +85,22 @@ def test_native_api():
                 device.datapoints["myfixedtextsensor"] == "This is my fixed text value"
             )
 
+    for attempt in stamina.retry_context(on=AssertionError, attempts=20):
+        with attempt:
+            assert device.datapoints["loopback_num_out"] == 0
+
+    device.set_data_point("loopback_num_in", 5)
+    for attempt in stamina.retry_context(on=AssertionError, attempts=20):
+        with attempt:
+            assert device.datapoints["loopback_num_out"] == 5
+
+    assert device.datapoints["loopback_bool_out"] == 0
+
+    device.set_data_point("loopback_bool_in", 1)
+    for attempt in stamina.retry_context(on=AssertionError, attempts=20):
+        with attempt:
+            assert device.datapoints["loopback_bool_out"] == 1
+
     device.close()
     p.kill()
 

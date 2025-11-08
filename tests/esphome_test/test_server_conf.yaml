@@ -6,6 +6,10 @@ esphome:
 # Example configuration entry
 host:
 
+globals:
+  - id: my_boolean_state
+    type: bool
+    initial_value: "false"
 
 button:
   - platform: template
@@ -21,6 +25,29 @@ text_sensor:
     lambda: |-
       return {"This is my fixed text value"};
 
+switch:
+  - platform: template
+    name: loopback_bool_in
+    id: loopback_bool_in
+    turn_on_action:
+      then:
+         - lambda:
+             id(my_boolean_state) = 1;
+             id(loopback_bool_out).publish_state(1);
+
+    turn_off_action:
+      then:
+         - lambda:
+             id(my_boolean_state) = 0;
+             id(loopback_bool_out).publish_state(0);
+
+binary_sensor:
+  - platform: template
+    name: "loopback_bool_out"
+    id: loopback_bool_out
+    lambda: |-
+      return id(my_boolean_state);
+
 
 number:
   - platform: template
@@ -30,6 +57,27 @@ number:
     min_value: 0
     max_value: 1000
     step: 1
+
+  - platform: template
+    name: loopback_num_out
+    optimistic: true
+    id: loopback_num_out
+    min_value: 0
+    max_value: 1000
+    step: 1
+
+  - platform: template
+    name: loopback_num_in
+    id: loopback_num_in
+    optimistic: true
+    min_value: 0
+    max_value: 1000
+    step: 1
+    set_action:
+      then:
+        - number.set:
+            id: loopback_num_out
+            value: 5
 
   - platform: template
     name: "Seconds Counter"

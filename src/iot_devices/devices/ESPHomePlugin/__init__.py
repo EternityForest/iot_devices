@@ -63,7 +63,16 @@ class ESPHomeDevice(iot_devices.device.Device):
         self.print(msg)
 
     def add_bool(self, name: str, w=False):
-        self.numeric_data_point(name, min=0, max=1, subtype="bool", writable=w)
+        def handler(v, t, a):
+            if not a == "FromRemoteDevice":
+                if v >= 1:
+                    self.api.switch_command(self.name_to_key[name], True)
+                else:
+                    self.api.switch_command(self.name_to_key[name], False)
+
+        self.numeric_data_point(
+            name, min=0, max=1, subtype="bool", writable=w, handler=handler
+        )
 
     def add_button(self, name: str, buttonid: int):
         def handler(v, t, a):
@@ -99,7 +108,18 @@ class ESPHomeDevice(iot_devices.device.Device):
                 )
 
             elif isinstance(i, model.NumberInfo):
-                self.numeric_data_point(i.object_id, min=i.min_value, max=i.max_value)
+
+                def handler(v, t, a):
+                    if not a == "FromRemoteDevice":
+                        self.api.number_command(i.key, v)
+
+                self.numeric_data_point(
+                    i.object_id,
+                    min=i.min_value,
+                    max=i.max_value,
+                    writable=True,
+                    handler=handler,
+                )
 
             elif isinstance(i, model.SensorInfo):
                 self.numeric_data_point(
@@ -173,7 +193,9 @@ class ESPHomeDevice(iot_devices.device.Device):
                 )
 
             elif isinstance(s, model.NumberState):
-                self.set_data_point(self.key_to_name[s.key], s.state)
+                self.set_data_point(
+                    self.key_to_name[s.key], s.state, annotation="FromRemoteDevice"
+                )
 
             elif isinstance(s, model.AlarmControlPanelState):
                 self.set_data_point(self.key_to_name["alarm_control_panel"], s.name)
@@ -181,7 +203,9 @@ class ESPHomeDevice(iot_devices.device.Device):
             elif isinstance(s, model.SensorState) or isinstance(
                 s, model.TextSensorState
             ):
-                self.set_data_point(self.key_to_name[s.key], s.state)
+                self.set_data_point(
+                    self.key_to_name[s.key], s.state, annotation="FromRemoteDevice"
+                )
         except Exception:
             self.handle_exception()
 
