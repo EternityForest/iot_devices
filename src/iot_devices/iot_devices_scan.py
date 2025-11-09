@@ -1,9 +1,29 @@
 import json
-import copy
+import re
 import traceback
-
+import inspect
 from iot_devices.host import get_class, discover
 from iot_devices.device import Device
+
+
+def print_datapoints(f: str):
+    x = re.findall(r"\.((\w*)_data_point\(\s*(.[^,]*)[,\)][^\)]*\))", f)
+
+    print("## Datapoints(Some may be unlisted)\n")
+    for i in x:
+        if i[1] not in ("numeric", "string", "bool", "object", "bytestream"):
+            continue
+        subtype = re.findall(r"subtype\s*=\s*['\"](.*?)['\"]", i[0])
+        if subtype:
+            subtype = subtype[0]
+        else:
+            subtype = ""
+
+        w = "writable=false" in i[0].lower().replace(" ", "")
+        print(f"# {i[1]} {subtype} {i[2]}  {'(writable)' if not w else ''}")
+
+    print("")
+
 
 print("# Known Device Plugins\n")
 print("All devices shown, some config params may be unlisted.")
@@ -77,48 +97,52 @@ for i in sorted(d.keys()):
         defaults = {}
         tags = {}
 
-        try:
-            inst = c("DeviceName", {"type": i})
-            props.update(inst.config_properties)
+        if not c.json_schema:
+            try:
+                inst = c("DeviceName", {"type": i})
+                props.update(inst.config_properties.raw)
 
-            for j in inst.config:
-                if not j in props:
-                    props[j] = {}
+                for j in inst.config:
+                    if not j in props:
+                        props[j] = {}
 
-            tags.update(inst.datapoints)
+                tags.update(inst.datapoints)
 
-        except Exception:
-            print(traceback.format_exc())
+            except Exception:
+                print(traceback.format_exc())
 
-        print("```python")
-        print("from iot_devices.host import create_device")
-        print("from " + d[i]["importable"] + " import " + i + "\n")
+            print("```python")
+            print("from iot_devices.host import create_device")
+            print("from " + d[i]["importable"] + " import " + i + "\n")
 
-        print("dev = " + "create_device(" + i + ', "name", {')
-        count = 0
-        for j in props:
-            count += 1
-            if j.startswith("device."):
-                desc = props[j].get("description", "")
-                if desc:
-                    print("    # " + props[j].get("description", "") + "")
-                ending = "," if count < len(props) else "\n})"
-                if j in inst.config:
-                    print(f"    '{j}': '{inst.config[j]}'" + ending)
+            print("dev = " + "create_device(" + i + ', "name", {')
+            count = 0
 
-        print("\n\n")
-        for j in dpi:
-            desc = dpd.get(j, "")
-            if dpi[j].strip():
-                print(f"# {dpi[j]}")
-            if desc:
-                print(f"# {desc}")
-            print(f"print(dev.datapoints['{j}'])")
-            print(f"# >>> {str(inst.datapoints[j])[:64]}\n")
+            for j in props:
+                count += 1
+                if j.startswith("device."):
+                    desc = props[j].get("description", "")
+                    if desc:
+                        print("    # " + props[j].get("description", "") + "")
+                    ending = "," if count < len(props) else "\n})"
+                    if j in inst.config:
+                        print(f"    '{j}': '{inst.config[j]}'" + ending)
+            if not props:
+                print("})")
+        else:
+            print("```python")
+            print("from iot_devices.host import create_device")
+            print("from " + d[i]["importable"] + " import " + i + "\n")
 
-            if dpw.get(j, False):
-                print(f"# {j} is writable")
-                print(f"# dev.set_data_point('{j}', <your value> )\n")
+            print("dev = " + "create_device(" + i + ', "name", cfg)')
+
+            sch = json.dumps(c.json_schema, indent=4)
+            print("\n\n# Config Schema")
+            for line in sch.split("\n"):
+                print(f"# {line}")
+
+            print_datapoints(inspect.getsource(c1))
+
         print("```")
 
     except Exception:

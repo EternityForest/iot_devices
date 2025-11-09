@@ -1,17 +1,12 @@
 # Plugin that manages YeeLight devices.
 
 import yeelight
-from mako.lookup import TemplateLookup
-import os
-import mako
 import time
 import threading
 import logging
 import random
 import weakref
 import traceback
-
-from yeelight import discover_bulbs
 
 import iot_devices.device
 

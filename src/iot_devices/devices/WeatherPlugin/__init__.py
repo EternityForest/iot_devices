@@ -3,7 +3,7 @@ from iot_devices import host
 
 import os
 import getpass
-import requests
+import niquests
 import time
 import threading
 import json
@@ -29,7 +29,7 @@ def fetch(url, cachetime=1 * 3600):
             with open(fn) as f:
                 return f.read()
 
-    d = requests.get(url)
+    d = niquests.get(url)
     d.raise_for_status()
 
     with open(fn, "w") as f:

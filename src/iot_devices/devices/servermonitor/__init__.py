@@ -29,24 +29,36 @@ def ping_ok(sHost) -> bool:
     return True
 
 
+schema = {
+    "type": "object",
+    "properties": {
+        "target": {
+            "description": "Hostname or URL to ping.  If an http:// url is used, will poll with HTTP as well as ping."
+        },
+        "expect_pattern": {
+            "description": "With HTTP URLs, expects to find string matching this regex in the returned data"
+        },
+    },
+}
+
+
 class ServerMonitor(device.Device):
     device_type = "ServerMonitor"
 
-    config_properties = {
-        "device.target": {
-            "description": "Hostname or URL to ping.  If an http:// url is used, will poll with HTTP as well as ping."
-        },
-        "device.expect_pattern": {
-            "description": "With HTTP URLs, expects to find string matching this regex in the returned data"
-        },
+    upgrade_legacy_config_keys = {
+        "device.target": "target",
+        "device.expect_pattern": "expect_pattern",
+        "device.check_interval": "check_interval",
     }
+
+    json_schema = schema
 
     def __init__(self, name, data, **kw):
         device.Device.__init__(self, name, data, **kw)
 
-        self.set_config_default("device.target", "")
-        self.set_config_default("device.expect_pattern", "")
-        self.set_config_default("device.check_interval", "300")
+        self.set_config_default("target", "")
+        self.set_config_default("expect_pattern", "")
+        self.set_config_default("check_interval", "300")
 
         # Push type data point set by the device
         self.numeric_data_point("status", subtype="bool", writable=False)
@@ -57,7 +69,7 @@ class ServerMonitor(device.Device):
         t = threading.Thread(
             target=self.work_loop,
             daemon=True,
-            name="Monitor for " + self.config["device.target"],
+            name="Monitor for " + self.config["target"],
         )
         t.start()
 
@@ -68,7 +80,7 @@ class ServerMonitor(device.Device):
     def work_loop(self):
         "This runs until the device is closed"
         val = self.stop_flag
-        url = self.config["device.target"]
+        url = self.config["target"]
         if not url:
             return
 
@@ -106,10 +118,8 @@ class ServerMonitor(device.Device):
                             r = requests.get(url, timeout=5)
                             r.raise_for_status()
 
-                            if self.config["device.expect_pattern"]:
-                                r = re.search(
-                                    self.config["device.expect_pattern"], r.text
-                                )
+                            if self.config["expect_pattern"]:
+                                r = re.search(self.config["expect_pattern"], r.text)
 
                             if not r:
                                 raise ValueError(
@@ -130,7 +140,7 @@ class ServerMonitor(device.Device):
                 self.handle_exception()
 
             if reachable or first:
-                time.sleep(float(self.config["device.check_interval"]))
+                time.sleep(float(self.config["check_interval"]))
             else:
                 # Retry faster at first, try to get good data as soon as possible
                 first = True

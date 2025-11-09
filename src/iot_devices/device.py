@@ -84,6 +84,13 @@ class LegacyConfigProperties:
         self.device = device
         self.config = config
 
+    @property
+    def raw(self):
+        return self.config
+
+    def __iter__(self):
+        return iter(self.config)
+
     def __getitem__(self, key: str):
         return self.config[key]
 

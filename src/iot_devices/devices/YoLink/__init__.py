@@ -1,5 +1,5 @@
 from iot_devices import device
-import requests
+import niquests
 import json
 import time
 import os
@@ -494,7 +494,7 @@ class YoLinkService(device.Device):
         r["time"] = int(time.time())
 
         return json.loads(
-            requests.post(
+            niquests.post(
                 server_url + "/open/yolink/v2/api",
                 headers={
                     "Content-Type": "application/json",
@@ -526,7 +526,7 @@ class YoLinkService(device.Device):
             self.handle_error(traceback.format_exc())
 
     def initialConnection(self):
-        self.token = requests.post(
+        self.token = niquests.post(
             server_url + "/open/yolink/token",
             params={
                 "grant_type": "client_credentials",

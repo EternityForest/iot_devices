@@ -387,8 +387,10 @@ class ArduinoCogsClient(iot_devices.device.Device):
             self.running = False
             self.should_run = time.time()
             self.url: str = self.config["url"]
-            self.checker()
-            self.scheduled = scheduling.scheduler.every(self.checker, 5)
+
+            if self.config["url"]:
+                self.checker()
+                self.scheduled = scheduling.scheduler.every(self.checker, 5)
 
         except Exception:
             self.handle_exception()

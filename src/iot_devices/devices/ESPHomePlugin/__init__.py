@@ -237,7 +237,8 @@ class ESPHomeDevice(iot_devices.device.Device):
 
         self.config_properties["device.apikey"] = {"secret": True}
 
-        self.thread.start()
+        if config.get("device.hostname"):
+            self.thread.start()
 
     def asyncloop(self):
         self.loop = asyncio.new_event_loop()
