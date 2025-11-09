@@ -120,6 +120,8 @@ class Device:
     # Can set this directly instead of using the old style strings-only config
     json_schema: dict[str, Any] = {}
 
+    upgrade_legacy_config_keys: dict[str, str] = {}
+
     def __init__(
         self,
         name: str,
@@ -183,6 +185,11 @@ class Device:
         # Due to complex inheritance patterns, this could be called more than once
         if not hasattr(self, "__initial_setup"):
             config = copy.deepcopy(config)
+
+            for i in self.upgrade_legacy_config_keys:
+                if i in config:
+                    config[self.upgrade_legacy_config_keys[i]] = config[i]
+                    del config[i]
 
             if config.get("type", self.device_type) != self.device_type:
                 # Special placeholder

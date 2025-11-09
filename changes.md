@@ -1,5 +1,13 @@
 # Change Log
 
+## 0.25.0
+
+Remove some low quality unmaintained devices, and add unit tests.
+
+* :coffin: Remove RTL433 MQTT Client
+* :coffin: Remove RokuRemote
+* Switch to UV
+
 ## 0.24.0
 
 * DemoDevice does more random stuff
