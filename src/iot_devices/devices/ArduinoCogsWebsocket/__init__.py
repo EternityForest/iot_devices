@@ -21,9 +21,6 @@ from websockets.exceptions import ConcurrencyError
 from scullery import scheduling
 
 import iot_devices.device
-import iot_devices.util
-
-from iot_devices.util import str_to_bool as s2b
 
 ILLEGAL_NAME_CHARS = "{}|\\<>,?-=+)(*&^%$#@!~`\n\r\t\0"
 
@@ -359,7 +356,7 @@ class ArduinoCogsClient(iot_devices.device.Device):
                 "api_connected", min=0, max=1, default=0, subtype="bool", writable=False
             )
 
-            if not s2b(self.config.get("intermittent_availability", "false")):
+            if not self.config.get("intermittent_availability", False):
                 self.set_alarm(
                     "Disconnected",
                     "api_connected",

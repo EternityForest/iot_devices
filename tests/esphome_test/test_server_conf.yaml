@@ -57,6 +57,7 @@ number:
     min_value: 0
     max_value: 1000
     step: 1
+    initial_value: 0
 
   - platform: template
     name: loopback_num_out
