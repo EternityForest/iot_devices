@@ -62,9 +62,11 @@ def test_native_api():
         time.sleep(1)
 
     time.sleep(2)
+    for attempt in stamina.retry_context(on=AssertionError, attempts=20):
+        with attempt:
+            assert device.datapoints["native_api_connected"]
+            assert "testbutton" in device.datapoints
 
-    assert device.datapoints["native_api_connected"]
-    assert "testbutton" in device.datapoints
     device.set_data_point("testbutton", 1)
 
     for attempt in stamina.retry_context(on=AssertionError, attempts=20):

@@ -489,6 +489,18 @@ connectRateLimit = RateLimiter(5, 5 * 60)
 class YoLinkService(device.Device):
     device_type = "YoLinkService"
 
+    config_schema = {
+        "type": "object",
+        "properties": {
+            "user_id": {"type": "string", "default": ""},
+            "key": {"type": "string", "format": "password", "default": ""},
+        },
+    }
+    upgrade_legacy_config_keys = {
+        "device.user_id": "user_id",
+        "device.key": "key",
+    }
+
     def makeRequest(self, r):
         r = copy.deepcopy(r)
         r["time"] = int(time.time())
@@ -530,8 +542,8 @@ class YoLinkService(device.Device):
             server_url + "/open/yolink/token",
             params={
                 "grant_type": "client_credentials",
-                "client_id": self.config["device.user_id"],
-                "client_secret": self.config["device.key"],
+                "client_id": self.config["user_id"],
+                "client_secret": self.config["key"],
             },
             timeout=5,
         ).text
@@ -550,9 +562,7 @@ class YoLinkService(device.Device):
 
         self.homeId = listify(gInfo)[0]["id"]
 
-        c = YoLinkMQTTClient(
-            self.config["device.user_id"], self.token, self.homeId, self
-        )
+        c = YoLinkMQTTClient(self.config["user_id"], self.token, self.homeId, self)
         self.client = c
 
         self.connected = False
@@ -569,13 +579,15 @@ class YoLinkService(device.Device):
             d = {}
 
             if t in deviceTypes:
-                d = self.create_subdevice(deviceTypes[t], i["name"], d)
+                if i["name"] not in self.subdevices:
+                    d = self.create_subdevice(deviceTypes[t], i["name"], d)
 
                 d.deviceId = i["deviceId"]
                 d.token = i["token"]
                 d.parent = self
 
                 self.devices_by_id[i["deviceId"]] = d
+
         for i in self.devices_by_id:
             try:
                 self.devices_by_id[i].refresh()
@@ -604,11 +616,6 @@ class YoLinkService(device.Device):
         device.Device.__init__(self, name, data, **kw)
         self.shouldRun = False
         try:
-            self.set_config_default("device.user_id", "")
-            self.set_config_default("device.key", "")
-
-            self.config_properties["device.key"] = {"secret": True}
-
             self.numeric_data_point("connected", subtype="bool", writable=False)
             self.set_alarm(
                 "Disconnected from YoLink API",
@@ -626,7 +633,7 @@ class YoLinkService(device.Device):
 
             self.connectLock = threading.RLock()
 
-            if self.config["device.key"]:
+            if self.config["key"]:
                 with self.connectLock:
                     if not self.initialConnectionDone:
                         connectRateLimit.limit()

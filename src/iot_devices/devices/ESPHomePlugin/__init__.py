@@ -18,6 +18,23 @@ iot_devices.host.app_exit_register(zc.close)
 class ESPHomeDevice(iot_devices.device.Device):
     device_type = "ESPHomeDevice"
 
+    config_schema = {
+        "type": "object",
+        "properties": {
+            "hostname": {"type": "string", "default": ""},
+            "apikey": {
+                "type": "string",
+                "default": "",
+                "secret": True,
+                "format": "password",
+            },
+        },
+    }
+    upgrade_legacy_config_keys = {
+        "device.hostname": "hostname",
+        "device.apikey": "apikey",
+    }
+
     def wait_ready(self, timeout=15):
         # Wait for connection ready
         s = time.time()
@@ -218,6 +235,8 @@ class ESPHomeDevice(iot_devices.device.Device):
 
         self.stopper = asyncio.Event()
 
+        self.loop = asyncio.new_event_loop()
+
         self.thread = threading.Thread(
             target=self.asyncloop, name="ESPHOME " + self.name
         )
@@ -232,16 +251,10 @@ class ESPHomeDevice(iot_devices.device.Device):
             auto_ack=True,
         )
 
-        self.set_config_default("device.hostname", "")
-        self.set_config_default("device.apikey", "")
-
-        self.config_properties["device.apikey"] = {"secret": True}
-
-        if config.get("device.hostname"):
+        if self.config.get("hostname") and self.config.get("apikey"):
             self.thread.start()
 
     def asyncloop(self):
-        self.loop = asyncio.new_event_loop()
         self.loop.run_until_complete(self.main())
 
     def close(self):
@@ -292,10 +305,10 @@ class ESPHomeDevice(iot_devices.device.Device):
         try:
             # Establish connection
             api = aioesphomeapi.APIClient(
-                self.config["device.hostname"],
+                self.config["hostname"],
                 6053,
                 None,
-                noise_psk=self.config["device.apikey"] or None,
+                noise_psk=self.config["apikey"] or None,
                 keepalive=10,
             )
             self.api = api

@@ -45,6 +45,23 @@ def getWeather(place, cachetime=1 * 3600):
 class WeatherClient(device.Device):
     device_type = "WeatherClient"
 
+    config_schema = {
+        "type": "object",
+        "properties": {
+            "location": {
+                "type": "string",
+                "default": "",
+                "description": "GPS coordinates to get weather for",
+            },
+            "update_minutes": {"type": "integer", "default": 180},
+        },
+    }
+
+    upgrade_legacy_config_keys = {
+        "device.location": "location",
+        "device.update_minutes": "update_minutes",
+    }
+
     def __init__(self, name, data, **kw):
         device.Device.__init__(self, name, data, **kw)
 
@@ -59,12 +76,7 @@ class WeatherClient(device.Device):
         location = str(lat) + "," + str(lon)
 
         self.shouldRun = True
-        self.set_config_default("device.location", location)
-        self.set_config_default("device.update_minutes", "180")
-        self.config_properties["device.update_interval"] = {
-            "description": "Values below 90 minutes are ignored",
-            "unit": "minute",
-        }
+        self.set_config_default("location", location)
 
         def worker():
             while self.shouldRun:
@@ -92,8 +104,8 @@ class WeatherClient(device.Device):
 
     def update(self):
         w = getWeather(
-            self.config["device.location"],
-            max(int(self.config["device.update_minutes"].strip()), 90),
+            self.config["location"],
+            max(int(self.config["update_minutes"].strip()), 90),
         )
         w2 = w["current_condition"][0]
         self.set_data_point("temperature", w2["temp_C"])

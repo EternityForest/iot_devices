@@ -9,7 +9,6 @@ requires-python = ">=3.11"
 
 dependencies = [
     "paho-mqtt",
-    "aiomqtt",
     "urwid",
     "scullery >=0.2.0",
     "yeelight",
@@ -20,6 +19,7 @@ dependencies = [
     "niquests ~=3.9.1",
     "uvicorn ~=0.34.0",
     "starlette",
+    "jsonschema",
     "cryptography",
     "msgpack",
     "msgpack-types",

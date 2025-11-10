@@ -29,10 +29,25 @@ ILLEGAL_NAME_CHARS = "{}|\\<>,?-=+)(*&^%$#@!~`\n\r\t\0"
 
 logger = logging.getLogger(__name__)
 
+client_schema = {
+    "type": "object",
+    "properties": {
+        "url": {"type": "string", "default": ""},
+        "update_on_reconnect": {
+            "type": "boolean",
+            "default": True,
+            "description": "Update remote datapoints on reconnect, treating this client as the source of truth.",
+        },
+        "intermittent_availability": {"type": "boolean", "default": False},
+    },
+}
+
 
 # Maintains an auto-reconnecting websocket client
 class ArduinoCogsClient(iot_devices.device.Device):
     device_type = "ArduinoCogsClient"
+
+    config_schema = client_schema
 
     def checker(self):
         with self.lock:
@@ -144,9 +159,7 @@ class ArduinoCogsClient(iot_devices.device.Device):
         details_url = "http://" + url + "/api/cogs.tag"
         trouble_code_url = "http://" + url + "/api/cogs.trouble-codes"
 
-        send_on_connect = iot_devices.util.str_to_bool(
-            self.config.get("update_on_reconnect", "true")
-        )
+        send_on_connect = self.config.get("update_on_reconnect", True)
         try:
             r = niquests.get(device_info_url, timeout=15)
             r.raise_for_status()
@@ -346,23 +359,6 @@ class ArduinoCogsClient(iot_devices.device.Device):
                 "api_connected", min=0, max=1, default=0, subtype="bool", writable=False
             )
 
-            self.set_config_default("update_on_reconnect", "true")
-            self.config_properties["update_on_reconnect"] = {
-                "title": "Update on Reconnect",
-                "type": "bool",
-                "default": "true",
-                "description": "Update remote datapoints on reconnect, treating this client as the source of truth.",
-            }
-
-            self.set_config_default("intermittent_availability", "false")
-
-            self.config_properties["intermittent_availability"] = {
-                "title": "Intermittent Availability",
-                "type": "bool",
-                "default": "false",
-                "description": "If false, treat device being offline as an error",
-            }
-
             if not s2b(self.config.get("intermittent_availability", "false")):
                 self.set_alarm(
                     "Disconnected",
@@ -371,8 +367,6 @@ class ArduinoCogsClient(iot_devices.device.Device):
                     priority="warning",
                     auto_ack=True,
                 )
-
-            self.set_config_default("url", "example.local")
 
             self.ext_to_internal_names: dict[str, str] = {}
             self.internal_to_ext_names: dict[str, str] = {}

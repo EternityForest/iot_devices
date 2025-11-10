@@ -1,5 +1,3 @@
-import subprocess
-import os
 import time
 import stamina
 from iot_devices.host import get_class, create_device
@@ -61,5 +59,5 @@ def test_basic_loop():
 #         print(client.datapoints)
 #         time.sleep(0.5)
 
-# if __name__ == "__main__":
-#     physical_device()
+if __name__ == "__main__":
+    test_basic_loop()

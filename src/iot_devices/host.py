@@ -186,4 +186,8 @@ def create_device(
     This function is meant to be overriden by the host app,
     to add framework specific functionality
     """
+    d = copy.deepcopy(data)
+    if not d.get("name", None):
+        d["name"] = name
+
     return cls(name, data)

@@ -36,8 +36,8 @@ Only one device is needed here, the top level service, all other devices are aut
 
 ```ini
 [YoLinkService]
-device.key= Your UAC key here
-device.user_id=Your UAC password here
+key= Your UAC key here
+user_id=Your UAC password here
 type = YoLinkService
 
 # Hide this, it just creates the subdevices
@@ -175,11 +175,11 @@ from iot_devices.host import create_device
 from iot_devices.devices.GPIODevice import GPIOInput
 
 dev = create_device(GPIOInput, "name", {
-    'device.active_high': 'true',
-    'device.pull_up': 'false',
-    'device.pull_down': 'false',
-    'device.pin': 'MOCK1',
-    'device.debounce_time_ms': '0'
+    'active_high': 'true',
+    'pull_up': 'false',
+    'pull_down': 'false',
+    'pin': 'MOCK1',
+    'debounce_time_ms': '0'
 })
 
 

@@ -7,6 +7,10 @@ Remove some low quality unmaintained devices, and add unit tests.
 * :coffin: Remove RTL433 MQTT Client
 * :coffin: Remove RokuRemote
 * Switch to UV
+* Document send_ui_message removal
+* The legacy config_properties interface is deprecated.  It will still work for a while with the compatibility shims, but it raises warnings.
+* There is a fixed set of reserved keys.  No more device. prefixes.
+* Nonstandard additional properties added by the framework must go in a top level "extensions" section.
 
 ## 0.24.0
 

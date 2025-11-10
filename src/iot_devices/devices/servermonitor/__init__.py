@@ -33,10 +33,19 @@ schema = {
     "type": "object",
     "properties": {
         "target": {
-            "description": "Hostname or URL to ping.  If an http:// url is used, will poll with HTTP as well as ping."
+            "description": "Hostname or URL to ping.  If an http:// url is used, will poll with HTTP as well as ping.",
+            "default": "",
+            "type": "string",
         },
         "expect_pattern": {
-            "description": "With HTTP URLs, expects to find string matching this regex in the returned data"
+            "description": "With HTTP URLs, expects to find string matching this regex in the returned data",
+            "default": "",
+            "type": "string",
+        },
+        "check_interval": {
+            "description": "How often to check the server in seconds",
+            "default": 300,
+            "type": "integer",
         },
     },
 }
@@ -51,14 +60,10 @@ class ServerMonitor(device.Device):
         "device.check_interval": "check_interval",
     }
 
-    json_schema = schema
+    config_schema = schema
 
     def __init__(self, name, data, **kw):
         device.Device.__init__(self, name, data, **kw)
-
-        self.set_config_default("target", "")
-        self.set_config_default("expect_pattern", "")
-        self.set_config_default("check_interval", "300")
 
         # Push type data point set by the device
         self.numeric_data_point("status", subtype="bool", writable=False)

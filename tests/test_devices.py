@@ -4,7 +4,7 @@ import iot_devices.device as device
 from iot_devices.host import get_class, create_device
 
 
-class RandomDevice(device.Device):
+class DeviceWithLegacyConfigOptions(device.Device):
     "Text making custom devices"
 
     device_type = "RandomDevice"
@@ -52,7 +52,7 @@ class RandomDevice(device.Device):
 
 
 def test_random():
-    r = RandomDevice("DevName", {})
+    r = DeviceWithLegacyConfigOptions("DevName", {})
     v = r.request_data_point("dyn_random")
     v2 = r.request_data_point("dyn_random")
     assert v != v2
