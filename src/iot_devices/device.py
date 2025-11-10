@@ -1,6 +1,6 @@
 from __future__ import annotations
 import traceback
-from typing import Any, TypeVar
+from typing import Any, TypeVar, final
 from collections.abc import Callable, Mapping
 import logging
 import time
@@ -319,11 +319,6 @@ class Device:
 
             self.name = name
 
-            self.text_config_files: list[str] = []
-            """
-                Expose files in the config dir for easy editing if the framework supports it.
-            """
-
             # hasattr checked later
             self.__initial_setup = True  # pylint: disable=unused-private-member
 
@@ -361,13 +356,20 @@ class Device:
     @config_properties.setter
     def config_properties(self, value: dict[str, Any]):
         """Setter for devices using old style strings-only config files"""
+        warnings.warn(
+            "config_properties is deprecated, do not use old style string based config",
+            DeprecationWarning,
+        )
         self._config_properties = LegacyConfigProperties(self, {})
         for i in value:
             self._config_properties[i] = value[i]
 
     def get_full_schema(self) -> dict[str, Any]:
         """Returns a full schema of the device. Including
-        auto-generated properties, and generic things all devices should have."""
+        auto-generated properties, and generic things all devices should have.
+
+        Frameworks may subclass to add their own extension properties.
+        """
         d = copy.deepcopy(self.json_schema)
         if "properties" not in d:
             d["properties"] = {}
@@ -422,8 +424,12 @@ class Device:
             "__auto_generated_by_iot_devices", False
         )
 
-    def delete_subdevice(self, name: str):
-        """Deletes a subdevice"""
+    @final
+    def close_subdevice(self, name: str):
+        """Close and deletes a subdevice without permanently deleting
+        any config associated with it.  Should only be called by the
+        device itself.
+        """
         self.subdevices[name].close()
         del self.subdevices[name]
 
@@ -616,23 +622,10 @@ class Device:
         # Auto strip the values to clean them up
         self.config[key] = value
 
-    def set_defaults_from_schema(self):
-        if self.json_schema:
-            if "properties" not in self.json_schema:
-                raise ValueError("No properties key in json schema")
-            for i in self.json_schema["properties"]:
-                p = self.json_schema["properties"][i]
-                if "default" in p:
-                    if i not in self.config:
-                        self.config[i] = p["default"]
-
+    @final
     def set_config_default(self, key: str, value: str):
-        """sets an option in self.config if it does not exist or is blank.
+        """sets an top-level option in self.config if it does not exist or is blank.
         Calls into set_config_option, you should not need to subclass this.
-
-        Only for devices using strings-only configuration.
-
-        NOT deprecated because dynamic defaults can be useful.
         """
 
         if key not in self.config or (
@@ -652,9 +645,11 @@ class Device:
 
     def wait_ready(self, timeout: float = 15):  # pylint: disable=unused-argument
         """Call this to block for up to timeout seconds for the device to be fully initialized.
-        Use this in quick scripts with a devices that readies itself asynchronously
+        Use this in quick scripts with a devices that readies itself asynchronously.
+
+        May be implemented by the device, but is not required.
         """
-        return
+        warnings.warn("This device does not implement wait_ready", DeprecationWarning)
 
     def print(self, s: str, title: str = ""):
         """used by the device to print to the hosts live device message feed, if such a thing should happen to exist"""
@@ -1097,7 +1092,7 @@ class Device:
 
         the expression must look like "value > 90", where
         the operator can be any of the common comparision
-        operators.
+        operators(<,>,<=,>=,==,!= )
 
         you may set the trip delay to require it to stay
         tripped for a certain time,
@@ -1139,7 +1134,12 @@ class Device:
         """
 
     def update_config(self, config: dict[str, Any]):
-        "Update the config dynamically at runtime. May be subclassed by the device, not the host.  Uses set_config_option to notify the host."
+        """Update the config dynamically at runtime.
+        May be subclassed by the device, not the host.
+
+        By default just uses set_config_option once for every top-level key.
+        """
+
         for i in config:
             if not self.config.get(i, None) == config[i]:
                 self.set_config_option(i, config[i])

@@ -100,7 +100,7 @@ for i in sorted(d.keys()):
         if not c.json_schema:
             try:
                 inst = c("DeviceName", {"type": i})
-                props.update(inst.config_properties.raw)
+                props.update(inst._config_properties.raw)
 
                 for j in inst.config:
                     if not j in props:

@@ -12,6 +12,7 @@ Remove some low quality unmaintained devices, and add unit tests.
 * There is a fixed set of reserved keys.  No more device. prefixes.
 * Nonstandard additional properties added by the framework must go in a top level "extensions" section.
 * Closing subdevices is now the responsibilty of the main device, not the host.
+* Remove text_config_files
 
 ## 0.24.0
 
