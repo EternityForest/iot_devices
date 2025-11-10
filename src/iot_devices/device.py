@@ -422,6 +422,11 @@ class Device:
             "__auto_generated_by_iot_devices", False
         )
 
+    def delete_subdevice(self, name: str):
+        """Deletes a subdevice"""
+        self.subdevices[name].close()
+        del self.subdevices[name]
+
     def create_subdevice(
         self,
         cls: type[DeviceClassTypeVar],
@@ -458,8 +463,14 @@ class Device:
         It will override whatever config that you give this function
         with the user config.
 
-        Once the subdevice exists, the host cannot delete and recreate it,
-        it must instead update the config in place if the user wants to make changes
+        Once the subdevice exists, the host cannot close it, that is the responsibility
+        of the main device.  The host can only close the parent device.
+
+        it must update the config in place if the user wants to make changes,
+        using set_config_option or update_config.d
+
+        When closing a device, the device must close all of it's subdevices and
+        clean up after itself.  The default close() does this for you.
 
         The entry in self.subdevices will always be exactly as given
         to this function, referred to as the base name
