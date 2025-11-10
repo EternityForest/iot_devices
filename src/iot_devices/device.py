@@ -125,19 +125,23 @@ class Device:
     made by the driver.
     """
 
-    # this name must be the same as the name of the device itself
     device_type: str = "Device"
+    """Every device must have a unique device_type name"""
 
     # This represents either a long text readme or an absolute path beginning with / to such
     readme: str = ""
 
-    """Schema defining the config"""
     config_schema: dict[str, Any] = {}
+    """Schema defining the config"""
 
-    "DEPRECATED, use config_schema"
     json_schema: dict[str, Any] = {}
+    "DEPRECATED, use config_schema"
 
     upgrade_legacy_config_keys: dict[str, str] = {}
+    """__init__ uses this to auto rename old config keys to new ones
+        if your device renames things.  They are type coerced according
+        to the schema too.
+    """
 
     def __init__(
         self,
@@ -263,13 +267,13 @@ class Device:
             # ParentDevice.ChildDevice
             self.subdevices: dict[str, Device] = {}
 
+            self.metadata: dict[str, Any] = {}
             """This allows us to show large amounts of data that
             do not warrant a datapoint, as it is unlikely anyone
             would want to show them in a main listing,
             and nobody wants to see them clutter up anything
             or slow down the system when they change.
             Putting data here should have no side effects."""
-            self.metadata: dict[str, Any] = {}
 
             # Raise error on bad data.
             json.dumps(config)
@@ -279,13 +283,13 @@ class Device:
                 apply_defaults(config, self.config_schema)
                 validate(config, self.get_full_schema())
 
+            self.config: dict[str, Any] = config
             """This dict is the signle source of truth for the configuration.
                Device and host must both be aware that the other side may change
                this.
 
                Data involving lists must be updated atomically.
             """
-            self.config: dict[str, Any] = config
 
             # This is a legacy interface for very simple things, setting
             # this or any key will autogenerate JSON schemas
@@ -294,6 +298,7 @@ class Device:
             self.title: str = _key_to_title(
                 self.config.get("title", "").strip() or name
             )
+            """Title for UI display"""
 
             self.__datapointhandlers: dict[
                 str,
@@ -318,6 +323,8 @@ class Device:
             self.__datapoint_getters: dict[str, Callable[[], Any]] = {}
 
             self.name = name
+            """Device instanes all have unique names not shared with anything
+            else in that host."""
 
             # hasattr checked later
             self.__initial_setup = True  # pylint: disable=unused-private-member

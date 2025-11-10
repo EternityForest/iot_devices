@@ -54,7 +54,7 @@ doing anything, and other mixin classes used by the host may need to do the same
 
 #### Stateless services
 
-Nothing should be added here that would preclude a device from being used in a stateless service container with all persistent data on a remote host.
+Ideally, should be added here that would preclude a device from being used in a stateless service container with all persistent data on a remote host.
 
 #### Describing your data point type
 
@@ -78,11 +78,6 @@ If possible, use these names, hosts should know they are important and give them
 
 "rssi" for the recieved signal strength, "battery" with unit percent for the battery, "open" for the status of doors,
 "on" for things with an on/off state but that you do not control manually, "powered" to indicate something has full power and is not running on backup batteries.
-
-#### Documentation
-This project uses google style docstrings with pdoc3.
-
-`pdoc3 --html --output-dir=docs --force iot_devices` is used to generate the docs.
 
 ### Device tips
 

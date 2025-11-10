@@ -64,17 +64,23 @@ made by the driver.
 
 #### device_type *: str* *= 'Device'*
 
-#### readme *: str* *= ''*
+Every device must have a unique device_type name
 
-Schema defining the config
+#### readme *: str* *= ''*
 
 #### config_schema *: dict[str, Any]*
 
-DEPRECATED, use config_schema
+Schema defining the config
 
 #### json_schema *: dict[str, Any]*
 
+DEPRECATED, use config_schema
+
 #### upgrade_legacy_config_keys *: dict[str, str]*
+
+\_\_init_\_ uses this to auto rename old config keys to new ones
+if your device renames things.  They are type coerced according
+to the schema too.
 
 #### *property* is_subdevice *: bool*
 
