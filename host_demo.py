@@ -37,14 +37,10 @@ host.add_new_device(data)
 # Devices are accessed via containers so the host can store extra data on
 # them
 device_container = host.devices["demo_device"]
-device = device_container.device
-
+device = device_container.wait_device_ready()
 
 # One of the values this class exposes
 print(device.datapoints["random"])
-
-# This is an on-demand getter
-print(device.request_data_point("dyn_random"))
 
 print(device.subdevices["subdevice"].config)
 

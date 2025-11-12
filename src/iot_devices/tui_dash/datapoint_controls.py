@@ -1,5 +1,5 @@
 from iot_devices.host import Host
-from textual.widgets import Pretty, Button
+from textual.widgets import Pretty, Button, Switch
 
 
 def makeDataPointControl(
@@ -11,6 +11,20 @@ def makeDataPointControl(
     writable: bool = True,
 ):
     if type == "numeric":
+        if subtype in ("bool", "boolean"):
+
+            class MySwitch(Switch):
+                DEFAULT_CSS = """
+                MySwitch {
+                }
+                """
+
+                def on_switch_toggled(self, *a):
+                    v = self.value
+                    host.set_number(devname, pointname, v)
+
+            return MySwitch()
+
         if subtype == "trigger":
 
             class MyButton(Button):

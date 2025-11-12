@@ -54,12 +54,6 @@ class SimpleHost(Host[SimpleHostDeviceContainer]):
         """This is where the data point values are stored,
         with the format devicename.datapointname"""
 
-        # Functions that can be called to explicitly request a data point
-        # That return the new value
-        self.datapoint_getters: dict[str, Callable[[], Any]] = {}
-
-        self.datapoint_getter_last_values: dict[str, Any] = {}
-
         # Functions devices use that are called when a data point changes
         self.datapoint_handlers: dict[str, Callable[[Any, float, Any], Any] | None] = {}
 
@@ -275,15 +269,6 @@ class SimpleHost(Host[SimpleHostDeviceContainer]):
             if x is not None:
                 x(value, timestamp, annotation)
 
-    def register_datapoint_getter(
-        self, device: str, name: str, getter: Callable[[], Any]
-    ):
-        name = self.resolve_datapoint_name(device, name)
-        with self:
-            if name in self.datapoint_getters:
-                raise ValueError(f"Data point {name} already exists")
-            self.datapoint_getters[name] = getter
-
     def get_config_for_device(
         self, parent_device: DeviceHostContainer | None, full_device_name: str
     ) -> dict[str, Any]:
@@ -306,18 +291,6 @@ class SimpleHost(Host[SimpleHostDeviceContainer]):
 
     def get_bytes(self, device: str, datapoint: str) -> tuple[bytes, float, Any]:
         return self._get_data_point(device, datapoint)
-
-    def request_data_point(self, device: str, datapoint: str) -> None:
-        with self:
-            datapoint = self.resolve_datapoint_name(device, datapoint)
-            if datapoint in self.datapoint_getters:
-                x = self.datapoint_getters[datapoint]()
-                if (
-                    self.datapoint_vta[datapoint][1] == 0
-                    or not self.datapoint_vta[datapoint][0] == x
-                ):
-                    self.datapoint_vta[datapoint] = (x, time.time(), None)
-                    return x
 
     def get_config_folder(
         self, device: DeviceHostContainer, create: bool = True
@@ -354,8 +327,6 @@ class SimpleHost(Host[SimpleHostDeviceContainer]):
                         del self.datapoint_vta[i]
                     if i in self.datapoint_handlers:
                         del self.datapoint_handlers[i]
-                    if i in self.datapoint_getters:
-                        del self.datapoint_getters[i]
 
     def on_device_added(self, device: DeviceHostContainer):
         pass

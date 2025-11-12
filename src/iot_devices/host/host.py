@@ -6,6 +6,7 @@ import threading
 import time
 import logging
 import weakref
+import abc
 from collections.abc import Callable, Mapping
 
 from typing import Type, Any, final, Generic, TypeVar, TYPE_CHECKING
@@ -36,6 +37,7 @@ class DeviceHostContainer:
         self.parent = parent
         self.name = device_config["name"]
         self.device: device.Device | None = None
+        self._device_exception: Exception | None = None
 
         self.__initial_config: Mapping[str, Any] = device_config
 
@@ -51,6 +53,8 @@ class DeviceHostContainer:
     @final
     def wait_device_ready(self) -> device.Device:
         while self.device is None:
+            if self._device_exception is not None:
+                raise self._device_exception
             time.sleep(0.1)
 
         return self.device
@@ -274,6 +278,14 @@ class Host(Generic[_HostContainerTypeVar]):
         """
         raise NotImplementedError
 
+    @final
+    def request_data_point(self, device: str, name: str) -> Any:
+        """Ask a device to refresh it's data point"""
+        x = self.devices[device].device.datapoint_getter_functions.get(name, None)
+        if x is not None:
+            x()
+
+    @abc.abstractmethod
     def set_string(
         self,
         device: str,
@@ -286,6 +298,7 @@ class Host(Generic[_HostContainerTypeVar]):
         """Subclass to handle data points.  Must happen locklessly."""
         raise NotImplementedError
 
+    @abc.abstractmethod
     def set_number(
         self,
         device: str,
@@ -298,6 +311,7 @@ class Host(Generic[_HostContainerTypeVar]):
         """Subclass to handle data points.  Must happen locklessly."""
         raise NotImplementedError
 
+    @abc.abstractmethod
     def set_bytes(
         self,
         device: str,
@@ -320,8 +334,9 @@ class Host(Generic[_HostContainerTypeVar]):
         force_push_on_repeat: bool = False,
     ):
         """Subclass to handle data points.  Must happen locklessly."""
-        raise NotImplementedError
+        self.set_bytes(device, name, value, timestamp, annotation, force_push_on_repeat)
 
+    @abc.abstractmethod
     def set_object(
         self,
         device: str,
@@ -396,6 +411,7 @@ class Host(Generic[_HostContainerTypeVar]):
                 with self.__lock:
                     x = self.devices.pop(name, None)
                 if x is not None:
+                    x._device_exception = e
                     x.on_device_init_fail(e)
                 raise
 
@@ -426,31 +442,27 @@ class Host(Generic[_HostContainerTypeVar]):
     ):
         pass
 
-    def register_datapoint_getter(
-        self, device: str, name: str, getter: Callable[[], Any]
-    ):
-        raise NotImplementedError
-
     def get_config_for_device(
         self, parent_device: _HostContainerTypeVar | None, full_device_name: str
     ) -> dict[str, Any]:
         """Subclassable hook to load config on device creation"""
         return {}
 
-    def _get_data_point(self, device: str, datapoint: str) -> tuple[Any, float, Any]:
-        raise NotImplementedError
-
+    @abc.abstractmethod
     def get_number(self, device: str, datapoint: str) -> tuple[float | int, float, Any]:
         raise NotImplementedError
 
+    @abc.abstractmethod
     def get_string(self, device: str, datapoint: str) -> tuple[str, float, Any]:
         raise NotImplementedError
 
+    @abc.abstractmethod
     def get_object(
         self, device: str, datapoint: str
     ) -> tuple[dict[str, Any], float, Any]:
         raise NotImplementedError
 
+    @abc.abstractmethod
     def get_bytes(self, device: str, datapoint: str) -> tuple[bytes, float, Any]:
         raise NotImplementedError
 
@@ -460,8 +472,8 @@ class Host(Generic[_HostContainerTypeVar]):
         call it and listen with the handler.
         Must never block.
         """
-        raise NotImplementedError
 
+    @final
     def get_container_for_device(self, device: str) -> _HostContainerTypeVar:
         x = self.devices[device.name]
 

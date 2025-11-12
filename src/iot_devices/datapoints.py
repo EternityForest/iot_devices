@@ -39,6 +39,7 @@ class DataPoint(Generic[DataPointTypeVar]):
         raise NotImplementedError
 
     def request(self) -> None:
+        """Asynchronously ask the device to refresh it's data point"""
         self.device.host.request_data_point(self.device.name, self.datapoint_name)
 
 

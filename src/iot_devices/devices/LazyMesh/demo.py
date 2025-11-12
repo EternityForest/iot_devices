@@ -95,7 +95,7 @@ while True:
 
         remote_node.set_data_point("test", x)
         x += 1
-        remote_node.request_data_point("test")
+        # remote_node.request_data_point("test")
         time.sleep(1)
         print("Remote: " + str(remote_node.datapoints["test"]))
     else:

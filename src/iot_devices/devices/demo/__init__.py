@@ -32,9 +32,6 @@ class DemoDevice(device.Device):
             random.random() * float(self.config["device.fixed_number_multiplier"]),
         )
 
-        # On demand requestable data point pulled by application.
-        # All you have to do is set the val to a callable.
-        self.numeric_data_point("dyn_random", interval=10)
         self.numeric_data_point("useless_toggle", subtype="bool")
         self.numeric_data_point("do_nothing", subtype="trigger")
         self.numeric_data_point("read_only", writable=False)
@@ -45,8 +42,6 @@ class DemoDevice(device.Device):
         self.set_data_point("echo_number", float(self.config["device.echo_number"]))
 
         self.set_data_point("read_only", random.random())
-
-        self.set_data_point_getter("dyn_random", random.random)
 
         if not "gen2" in data:
             self.create_subdevice(DemoDevice, "subdevice", {"gen2": True})

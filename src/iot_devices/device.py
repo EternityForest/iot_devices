@@ -2,9 +2,7 @@ from __future__ import annotations
 import traceback
 from typing import Any, TypeVar, final
 from collections.abc import Callable, Mapping
-from types import MappingProxyType
 import logging
-import time
 import json
 import copy
 import weakref
@@ -88,6 +86,10 @@ def _properties_to_schema(properties: dict[str, dict[str, Any]]):
 # Gonna overwrite these functions insude functions...
 minimum = min
 maximum = max
+
+
+class DataRequest:
+    pass
 
 
 class Device:
@@ -192,6 +194,8 @@ class Device:
 
         self._normalize_legacy_config()
 
+        self.datapoint_getter_functions: dict[str, Callable] = {}
+
         # here is where we keep track of our list of
         # sub-devices for each device.
         # Sub-devices will always have a name like
@@ -237,10 +241,16 @@ class Device:
             _all_devices[self.name] = weakref.ref(self)
             all_devices = copy.deepcopy(_all_devices)
 
+    def __repr__(self) -> str:
+        return f"<{self.__class__.__name__} {self.title} ({self.name})>"
+
     @final
     @property
     def config(self) -> Mapping[str, Any]:
-        return MappingProxyType(self._config)
+        """Immutable snapshot of config.  Any changes will not
+        affect the device itself, you must use update_config for that.
+        """
+        return copy.deepcopy(self._config)
 
     def _normalize_legacy_config(self):
         with self.__config_lock:
@@ -602,6 +612,7 @@ class Device:
         subtype: str = "",  # pylint: disable=unused-argument
         writable: bool = True,  # pylint: disable=unused-argument
         dashboard: bool = True,  # pylint: disable=unused-argument
+        on_request: Callable[[DataRequest], Any] | None = None,
         **kwargs: Any,  # pylint: disable=unused-argument
     ) -> NumberDataPoint:
         """Register a new numeric data point with the given properties.
@@ -676,6 +687,9 @@ class Device:
             **kwargs,
         )
 
+        if on_request is not None:
+            self.datapoint_getter_functions[name] = on_request
+
         dp = NumberDataPoint(self, name)
         self.datapoints[name] = dp
         return dp
@@ -693,6 +707,7 @@ class Device:
         writable: bool = True,  # pylint: disable=unused-argument
         subtype: str = "",  # pylint: disable=unused-argument
         dashboard: bool = True,  # pylint: disable=unused-argument
+        on_request: Callable[[DataRequest], Any] | None = None,
         **kwargs: Any,  # pylint: disable=unused-argument
     ) -> StringDataPoint:
         """Register a new string data point with the given properties.
@@ -740,6 +755,8 @@ class Device:
             **kwargs,
         )
 
+        if on_request is not None:
+            self.datapoint_getter_functions[name] = on_request
         dp = StringDataPoint(self, name)
         self.datapoints[name] = dp
         return dp
@@ -756,6 +773,8 @@ class Device:
         writable: bool = True,  # pylint: disable=unused-argument
         subtype: str = "",  # pylint: disable=unused-argument
         dashboard: bool = True,  # pylint: disable=unused-argument
+        default: Mapping[str, Any] | None = None,
+        on_request: Callable[[DataRequest], Any] | None = None,
         **kwargs: Any,  # pylint: disable=unused-argument
     ) -> ObjectDataPoint:
         """Register a new object data point with the given properties.   Here "object"
@@ -798,6 +817,9 @@ class Device:
             **kwargs,
         )
 
+        if on_request is not None:
+            self.datapoint_getter_functions[name] = on_request
+
         dp = ObjectDataPoint(self, name)
         self.datapoints[name] = dp
         return dp
@@ -811,6 +833,7 @@ class Device:
         handler: Callable[[bytes, float, Any], Any] | None = None,
         writable: bool = True,  # pylint: disable=unused-argument
         dashboard: bool = True,  # pylint: disable=unused-argument
+        on_request: Callable[[DataRequest], Any] | None = None,
         **kwargs: Any,  # pylint: disable=unused-argument
     ):
         """register a new bytestream data point with the
@@ -835,6 +858,9 @@ class Device:
             **kwargs,
         )
 
+        if on_request is not None:
+            self.datapoint_getter_functions[name] = on_request
+
         dp = BytesDataPoint(self, name)
         self.datapoints[name] = dp
         return dp
@@ -853,29 +879,6 @@ class Device:
         annotation: Any | None = None,
     ):
         self.datapoints[name].set(value, timestamp, annotation)
-
-    @final
-    def set_data_point_getter(
-        self,
-        name: str,
-        getter: Callable[[], int | float | str | bytes | Mapping[str, Any] | None],
-    ):
-        """Set the Getter of a datapoint, making it into an
-        on-request point.
-        The callable may return either the new value,
-        or None if it has no new data.
-        """
-        self.host.register_datapoint_getter(self.name, name, getter)
-
-    def request_data_point(self, name: str) -> Any:
-        """Rather than just passively read, actively
-        request a data point's new value.
-        May return None and just cause the point to be updated later.
-
-        Meant to be called by external host code.
-        """
-        self.datapoints[name].request()
-        return self.datapoints[name].get()
 
     def set_alarm(
         self,
