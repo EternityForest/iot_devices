@@ -62,8 +62,8 @@ class WeatherClient(device.Device):
         "device.update_minutes": "update_minutes",
     }
 
-    def __init__(self, name, data, **kw):
-        device.Device.__init__(self, name, data, **kw)
+    def __init__(self, data, **kw):
+        device.Device.__init__(self, data, **kw)
 
         if "get_site_coordinates" in host.api:
             lat, lon = host.api["get_site_coordinates"]()

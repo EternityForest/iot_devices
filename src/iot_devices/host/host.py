@@ -1,0 +1,524 @@
+from __future__ import annotations
+import copy
+import asyncio
+import warnings
+import threading
+import time
+import logging
+import weakref
+from collections.abc import Callable, Mapping
+
+from typing import Type, Any, final, Generic, TypeVar, TYPE_CHECKING
+
+from .util import get_class
+
+if TYPE_CHECKING:
+    from . import device
+
+_logger = logging.getLogger(__name__)
+_host_context = threading.local()
+_host_context.host: list[Host] = []
+
+
+class DeviceHostContainer:
+    """Represents the host's associated state for one device.
+    Created and made available before the device itself.
+    """
+
+    def __init__(
+        self,
+        host: Host,
+        parent: DeviceHostContainer | None,
+        device_config: Mapping[str, Any],
+    ):
+        """MUST NOT block!"""
+        self.host = host
+        self.parent = parent
+        self.name = device_config["name"]
+        self.device: device.Device | None = None
+
+        self.__initial_config: Mapping[str, Any] = device_config
+
+    @property
+    def config(self) -> Mapping[str, Any]:
+        """Return the current device config, or the initial config
+        if the device has not been initialized yet."""
+        if self.device is not None:
+            return self.device.config
+        else:
+            return self.__initial_config
+
+    @final
+    def wait_device_ready(self) -> device.Device:
+        while self.device is None:
+            time.sleep(0.1)
+
+        return self.device
+
+    def on_device_ready(self, device: device.Device):
+        """Called when the device __init__ is done"""
+        self.device = device
+
+    def on_device_init_fail(self, exception: Exception):
+        pass
+
+
+_HostContainerTypeVar = TypeVar("_HostContainerTypeVar", bound=DeviceHostContainer)
+
+
+class Host(Generic[_HostContainerTypeVar]):
+    """Represents the host for device plugins, meant to be subclassed.
+
+    Locking rules: Code in the on_foo() methods must never be called under
+    lock, so it does not deadlock.
+
+    devices is mutable, if you must iterate, make a copy.
+
+    """
+
+    def __init__(self, container_type: Type[_HostContainerTypeVar]):
+        self.__container_type = container_type
+        self.devices: dict[str, _HostContainerTypeVar] = {}
+
+        self.closing = False
+
+        self.host_apis = {}
+
+        self.__async_loop: asyncio.AbstractEventLoop | None = None
+
+        # Bottom layer lock, out code cannot call user code
+        # While under this.  Just to protect iterable state
+        self.__lock = threading.RLock()
+
+        self.__load_order: list[weakref.ref(_HostContainerTypeVar)] = []
+
+    @final
+    def get_devices(self) -> Mapping[str, _HostContainerTypeVar]:
+        """Immutable snapshot of devices that is safe to iterate"""
+        with self.__lock:
+            return copy.copy(self.devices)
+
+    @final
+    def get_event_loop(self, device: device.Device) -> asyncio.AbstractEventLoop:
+        """Devices can request an event loop to avoid having to manage it.
+        Currently does nothing except managing loop lifetime.
+        """
+        with self.__lock:
+            if self.__async_loop is None:
+                self.__async_loop = asyncio.get_event_loop()
+                t = threading.Thread(
+                    target=self.__async_loop.run_forever,
+                    name="HostAsyncLoop",
+                )
+                t.start()
+            return self.__async_loop
+
+    @final
+    def close(self):
+        if self.closing:
+            return
+
+        with self.__lock:
+            self.closing = True
+            ordered = [i() for i in self.__load_order]
+            ordered = [i for i in ordered if i]
+            ordered.reverse()
+
+            x = list(self.devices.values())
+
+            if self.__async_loop:
+                self.__async_loop.stop()
+                # Reduce nuisance errors
+                for i in range(100):
+                    if self.__async_loop.is_running():
+                        break
+
+        for i in ordered:
+            try:
+                if not i.device.config.get("is_subdevice", False):
+                    i.close()
+            except Exception:
+                _logger.exception("Error closing device")
+            try:
+                x.remove(i)
+            except ValueError:
+                pass
+
+        # Close anything the ordered list somehow missed
+
+        # Close outside of lock for deadlock prevention
+        for i in x:
+            if not i.device.config.get("is_subdevice", False):
+                try:
+                    i.close()
+                except Exception:
+                    _logger.exception("Error closing device")
+
+        # Close any subdevices that the parent didn't close
+        for i in x:
+            try:
+                warnings.warn(
+                    f"Parent should have closed subdevice {i.device.name}",
+                    RuntimeWarning,
+                )
+                i.close()
+            except Exception:
+                _logger.exception("Error closing device")
+
+        with self.__lock:
+            self.devices.clear()
+
+    @final
+    def close_device(self, name: str):
+        """Thrad note:Do not reopen the device with the same name until this call returns"""
+        x = None
+        with self.__lock:
+            if name in self.devices:
+                x = self.devices[name].device
+                del self.devices[name]
+
+        if x:
+            x.close()
+
+    @final
+    def delete_device(self, name: str):
+        """Handle permanently deleting a device"""
+        self.devices[name].device.on_delete()
+        self.close_device(name)
+
+    def resolve_datapoint_name(self, device_name: str, datapoint_name: str) -> str:
+        """Given a device name and datapoint name, returns the full datapoint name in
+        the host-wide namespace."""
+        return f"{device_name}.{datapoint_name}"
+
+    def string_data_point(
+        self,
+        device: str,
+        name: str,
+        *,
+        description: str = "",  # pylint: disable=unused-argument
+        unit: str = "",  # pylint: disable=unused-argument
+        handler: Callable[[str, float, Any], Any] | None = None,
+        default: str | None = None,
+        interval: float = 0,  # pylint: disable=unused-argument
+        writable: bool = True,  # pylint: disable=unused-argument
+        subtype: str = "",  # pylint: disable=unused-argument
+        dashboard: bool = True,  # pylint: disable=unused-argument
+        **kwargs: Any,  # pylint: disable=unused-argument
+    ):
+        raise NotImplementedError
+
+    def object_data_point(
+        self,
+        device: str,
+        name: str,
+        *,
+        description: str = "",  # pylint: disable=unused-argument
+        unit: str = "",  # pylint: disable=unused-argument
+        handler: Callable[[Mapping[str, Any], float, Any], Any] | None = None,
+        interval: float = 0,  # pylint: disable=unused-argument
+        writable: bool = True,  # pylint: disable=unused-argument
+        subtype: str = "",  # pylint: disable=unused-argument
+        dashboard: bool = True,  # pylint: disable=unused-argument
+        default: Mapping[str, Any] | None = None,
+        **kwargs: Any,  # pylint: disable=unused-argument
+    ):
+        """Register a new object data point with the given properties.   Here "object"
+        means a JSON-like object.
+        """
+        raise NotImplementedError
+
+    def numeric_data_point(
+        self,
+        device: str,
+        name: str,
+        *,
+        min: float | None = None,
+        max: float | None = None,
+        hi: float | None = None,  # pylint: disable=unused-argument
+        lo: float | None = None,  # pylint: disable=unused-argument
+        default: float | None = None,
+        description: str = "",  # pylint: disable=unused-argument
+        unit: str = "",  # pylint: disable=unused-argument
+        handler: Callable[[float, float, Any], Any] | None = None,
+        interval: float = 0,  # pylint: disable=unused-argument
+        subtype: str = "",  # pylint: disable=unused-argument
+        writable: bool = True,  # pylint: disable=unused-argument
+        dashboard: bool = True,  # pylint: disable=unused-argument
+        **kwargs: Any,  # pylint: disable=unused-argument
+    ):
+        """Called by the device to get a new data point."""
+        raise NotImplementedError
+
+    def bytestream_data_point(
+        self,
+        device: str,
+        name: str,
+        *,
+        description: str = "",  # pylint: disable=unused-argument
+        unit: str = "",  # pylint: disable=unused-argument
+        handler: Callable[[bytes, float, Any], Any] | None = None,
+        writable: bool = True,  # pylint: disable=unused-argument
+        dashboard: bool = True,  # pylint: disable=unused-argument
+        **kwargs: Any,  # pylint: disable=unused-argument
+    ):
+        """register a new bytestream data point with the
+        given properties. handler will be called when it changes.
+        only meant to be called from within __init__.
+
+        Bytestream data points do not store data,
+        they only push it through.
+
+        Despite the name, buffers of bytes may not be broken up or combined, this is buffer oriented,
+
+        """
+        raise NotImplementedError
+
+    def set_string(
+        self,
+        device: str,
+        name: str,
+        value: str,
+        timestamp: float | None = None,
+        annotation: Any | None = None,
+        force_push_on_repeat: bool = False,
+    ):
+        """Subclass to handle data points.  Must happen locklessly."""
+        raise NotImplementedError
+
+    def set_number(
+        self,
+        device: str,
+        name: str,
+        value: float | int,
+        timestamp: float | None = None,
+        annotation: Any | None = None,
+        force_push_on_repeat: bool = False,
+    ):
+        """Subclass to handle data points.  Must happen locklessly."""
+        raise NotImplementedError
+
+    def set_bytes(
+        self,
+        device: str,
+        name: str,
+        value: bytes,
+        timestamp: float | None = None,
+        annotation: Any | None = None,
+        force_push_on_repeat: bool = False,
+    ):
+        """Subclass to handle data points.  Must happen locklessly."""
+        raise NotImplementedError
+
+    def fast_push_bytes(
+        self,
+        device: str,
+        name: str,
+        value: bytes,
+        timestamp: float | None = None,
+        annotation: Any | None = None,
+        force_push_on_repeat: bool = False,
+    ):
+        """Subclass to handle data points.  Must happen locklessly."""
+        raise NotImplementedError
+
+    def set_object(
+        self,
+        device: str,
+        name: str,
+        value: dict[str, Any],
+        timestamp: float | None = None,
+        annotation: Any | None = None,
+        force_push_on_repeat: bool = False,
+    ):
+        """Subclass to handle data points.  Must happen locklessly."""
+        raise NotImplementedError
+
+    @final
+    def add_new_device(
+        self, config: dict[str, Any], *args: Any, **kwargs: Any
+    ) -> _HostContainerTypeVar:
+        c = get_class(config)
+
+        # Make it visible and hang onto config for a while
+        if "is_subdevice" in config and config["is_subdevice"]:
+            c = device.UnusedSubdevice
+
+        return self.add_device_from_class(c, config, *args, **kwargs)
+
+    # This is the only function to actually add a device
+    @final
+    def add_device_from_class(
+        self,
+        cls: Type[device.Device],
+        data: dict[str, Any],
+        *args: Any,
+        parent: device.Device | None = None,
+        **kwargs: Any,
+    ) -> _HostContainerTypeVar:
+        with self:
+            name = data["name"]
+
+            data = copy.deepcopy(data)
+            data.update(self.get_config_for_device(None, data["name"]))
+
+            # Container available before device
+            with self.__lock:
+                if name in self.devices:
+                    if self.devices[name].device.device_type not in ("UnusedSubdevice"):
+                        raise Exception(f"Device with name {name} already exists")
+
+                parentContainer = None
+                if parent is not None:
+                    parentContainer = self.devices[parent.name]
+                    data["parent"] = parent
+
+                cont = self.__container_type(self, parentContainer, data)
+                self.devices[name] = cont
+
+            try:
+                self.on_before_device_added(name, cont)
+
+                d = cls(data, *args, **kwargs)
+
+                with self.__lock:
+                    self.__load_order.append(weakref.ref(cont))
+                    self.__load_order = [
+                        x for x in self.__load_order if x() is not None
+                    ]
+
+                cont.device = d
+                cont.on_device_ready(d)
+                self.on_device_added(self.devices[name])
+
+            # If device creation fails, remove the empty container
+            except Exception as e:
+                with self.__lock:
+                    x = self.devices.pop(name, None)
+                if x is not None:
+                    x.on_device_init_fail(e)
+                raise
+
+            return cont
+
+    @final
+    def __enter__(self):
+        if not hasattr(_host_context, "host"):
+            _host_context.host = []
+        _host_context.host.append(self)
+        return self
+
+    @final
+    def __exit__(self, *a: Any, **k: Any):
+        _host_context.host.pop()
+
+    def set_alarm(
+        self,
+        device: device.Device,
+        name: str,
+        datapoint: str,
+        expression: str,
+        priority: str = "info",
+        trip_delay: float = 0,
+        auto_ack: bool = False,
+        release_condition: str | None = None,
+        **kw,
+    ):
+        pass
+
+    def register_datapoint_getter(
+        self, device: str, name: str, getter: Callable[[], Any]
+    ):
+        raise NotImplementedError
+
+    def get_config_for_device(
+        self, parent_device: _HostContainerTypeVar | None, full_device_name: str
+    ) -> dict[str, Any]:
+        """Subclassable hook to load config on device creation"""
+        return {}
+
+    def _get_data_point(self, device: str, datapoint: str) -> tuple[Any, float, Any]:
+        raise NotImplementedError
+
+    def get_number(self, device: str, datapoint: str) -> tuple[float | int, float, Any]:
+        raise NotImplementedError
+
+    def get_string(self, device: str, datapoint: str) -> tuple[str, float, Any]:
+        raise NotImplementedError
+
+    def get_object(
+        self, device: str, datapoint: str
+    ) -> tuple[dict[str, Any], float, Any]:
+        raise NotImplementedError
+
+    def get_bytes(self, device: str, datapoint: str) -> tuple[bytes, float, Any]:
+        raise NotImplementedError
+
+    def request_data_point(self, device: str, datapoint: str) -> None:
+        """Request that the host fetch the latest value for a datapoint.
+        This may happen async, there is no guarantee of when it will happen,
+        call it and listen with the handler.
+        Must never block.
+        """
+        raise NotImplementedError
+
+    def get_container_for_device(self, device: str) -> _HostContainerTypeVar:
+        x = self.devices[device.name]
+
+        # Might not be set because it's still being initialized,
+        # Do a basic state corruption check
+        if x.device is not None:
+            assert x.device is device
+
+        return x
+
+    def get_config_folder(
+        self, device: _HostContainerTypeVar, create: bool = True
+    ) -> str | None:
+        # Can still call with create false just to check
+        if create:
+            raise NotImplementedError(
+                "Your framework probably doesn't support this device"
+            )
+
+    def on_device_exception(self, device: _HostContainerTypeVar, exception: Exception):
+        pass
+
+    def on_device_error(self, device: _HostContainerTypeVar, error: str):
+        pass
+
+    def on_device_print(self, device: _HostContainerTypeVar, message: str):
+        pass
+
+    def on_config_changed(
+        self, device: _HostContainerTypeVar, config: Mapping[str, Any]
+    ):
+        """Called when the device configuration has changed.
+        The host likely doesn't need to care about this
+        except to save the data.
+
+        Note that the device container might not actually have a device
+        set up yet, because this could be called from the init.
+        """
+
+    def on_device_removed(self, device: _HostContainerTypeVar):
+        pass
+
+    def on_device_added(self, device: _HostContainerTypeVar):
+        pass
+
+    def on_before_device_added(
+        self, name: str, device: _HostContainerTypeVar, *args: Any, **kwargs: Any
+    ):
+        pass
+
+
+def get_host() -> Host:
+    """Get the host that we are runing under, which is just
+    the last host in this thread doing a context manager.
+    """
+
+    if not _host_context.host:
+        raise RuntimeError("No host running in this thread")
+
+    return _host_context.host[-1]

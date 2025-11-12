@@ -29,8 +29,8 @@ class GPIOOutput(device.Device):
         "device.initial_value": "initial_value",
     }
 
-    def __init__(self, name, data, **kw):
-        device.Device.__init__(self, name, data, **kw)
+    def __init__(self, data, **kw):
+        device.Device.__init__(self, data, **kw)
 
         try:
             driver = None
@@ -61,7 +61,7 @@ class GPIOOutput(device.Device):
                         pin,
                         active_high=active_high,
                         # Host may have altered this default
-                        initial_value=self.datapoints["value"],
+                        initial_value=self.datapoints["value"].get()[0],
                         pin_factory=driver,
                         frequency=freq,
                     )
@@ -71,7 +71,7 @@ class GPIOOutput(device.Device):
                         pin,
                         active_high=active_high,
                         # Host may have altered this default
-                        initial_value=self.datapoints["value"],
+                        initial_value=self.datapoints["value"].get()[0],
                         pin_factory=driver,
                     )
 
@@ -88,10 +88,6 @@ class GPIOOutput(device.Device):
     def _set_pin(self, v, t, a):
         if self.pin:
             self.pin.value = v
-
-    @classmethod
-    def discover_devices(cls, config={}, current_device=None, intent=None, **kw):
-        return {}
 
 
 class GPIOInput(device.Device):
@@ -116,8 +112,8 @@ class GPIOInput(device.Device):
         "device.debounce_time_ms": "debounce_time_ms",
     }
 
-    def __init__(self, name, data, **kw):
-        device.Device.__init__(self, name, data, **kw)
+    def __init__(self, data, **kw):
+        device.Device.__init__(self, data, **kw)
 
         try:
             driver = None
@@ -181,9 +177,9 @@ class GPIOInput(device.Device):
     def test_val(self, x: bool):
         if self.pin:
             if x:
-                self.pin.drive_high()
+                self.pin.drive_high()  # type: ignore
             else:
-                self.pin.drive_low()
+                self.pin.drive_low()  # type: ignore
 
     def pressed(self):
         self.set_data_point("value", 1)

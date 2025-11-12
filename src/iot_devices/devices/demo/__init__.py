@@ -9,8 +9,8 @@ from iot_devices import device
 class DemoDevice(device.Device):
     device_type = "DemoDevice"
 
-    def __init__(self, name, data, **kw):
-        device.Device.__init__(self, name, data, **kw)
+    def __init__(self, data, **kw):
+        device.Device.__init__(self, data, **kw)
 
         self.text_config_files = ["test.conf"]
 
@@ -68,13 +68,13 @@ class DemoDevice(device.Device):
 
         self.numeric_data_point("test_errors", subtype="trigger", handler=fake_an_error)
 
-    def set_config_option(self, key: str, value: device.Any):
-        if key == "device.echo_number":
-            self.set_data_point("echo_number", float(value))
-        return super().set_config_option(key, value)
+    def update_config(self, config: dict[str, Any]):
+        if "echo_number" in self.datapoints:
+            self.set_data_point("echo_number", config.get("device.echo_number", 5))
+        return super().update_config(config)
 
-    @classmethod
-    def discover_devices(cls, config={}, current_device=None, intent=None, **kw):
+    @staticmethod
+    def discover_devices(config={}, current_device=None, intent=None, **kw):
         # Return a modified version of the existing.
         # Never get rid of existing user work for no reason
         cfg = {"device.fixed_number_multiplier": "1000"}

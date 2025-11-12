@@ -262,13 +262,12 @@ class ArduinoCogsClient(iot_devices.device.Device):
                         if not subtype == "trigger":
                             try:
                                 if not readonly:
-                                    if self.datapoint_timestamps.get(i, 0):
+                                    v, t, a = self.datapoints[i].get()
+                                    if t:
                                         # Uh oh race condition between data and timestamp
                                         # But I think it's irrelevant for now
-                                        self.update_remote_on_reconnect[i] = (
-                                            self.datapoints[i],
-                                            self.datapoint_timestamps[i],
-                                        )
+
+                                        self.update_remote_on_reconnect[i] = (v, t)
                             except Exception:
                                 logger.exception(
                                     "Failed to handle data that was set before the device connected"
@@ -341,8 +340,8 @@ class ArduinoCogsClient(iot_devices.device.Device):
         if self.should_run:
             self.set_data_point("api_connected", 0)
 
-    def __init__(self, name: str, data: dict[str, str], **kw: Any):
-        super().__init__(name, data, **kw)
+    def __init__(self, data, **kw):
+        iot_devices.device.Device.__init__(self, data, **kw)
 
         try:
             # We might get a variable via WS before getting it's
@@ -455,8 +454,8 @@ class ArduinoCogsServer(iot_devices.device.Device):
                 if self.should_run:
                     asyncio.run_coroutine_threadsafe(push(), self.loop)
 
-    def __init__(self, name: str, data: dict[str, Any], **kw: Any):
-        super().__init__(name, data, **kw)
+    def __init__(self, data, **kw):
+        iot_devices.device.Device.__init__(self, data, **kw)
         self.should_run = True
 
         for i in data.get("tagpoints", []):
@@ -557,11 +556,13 @@ class ArduinoCogsServer(iot_devices.device.Device):
         return starlette.responses.JSONResponse({})
 
     def handle_tags_list_request(self, request: starlette.requests.Request):
+        d = self.datapoints
+
         r = {
             "tags": {
-                i["name"]: self.datapoints[i["name"]] * i.get("scale", 16384)
+                i["name"]: d[i["name"]].get()[0] * i.get("scale", 16384)
                 for i in self.config.get("tagpoints", {})
-                if self.datapoints.get(i["name"], None) is not None
+                if d[i["name"]].get()[0] is not None
             }
         }
         return starlette.responses.JSONResponse(r)

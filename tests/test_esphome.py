@@ -31,7 +31,7 @@ def test_bad_pw():
 
     time.sleep(5)
 
-    assert not device.datapoints["native_api_connected"]
+    assert not device.datapoints["native_api_connected"].get()[0]
     print(device.datapoints)
     device.close()
     p.kill()
@@ -64,18 +64,18 @@ def test_native_api():
     time.sleep(2)
     for attempt in stamina.retry_context(on=AssertionError, attempts=20):
         with attempt:
-            assert device.datapoints["native_api_connected"]
+            assert device.datapoints["native_api_connected"].get()[0]
             assert "testbutton" in device.datapoints
 
     device.set_data_point("testbutton", 1)
 
     for attempt in stamina.retry_context(on=AssertionError, attempts=20):
         with attempt:
-            assert device.datapoints["button_counter"] == 1
+            assert device.datapoints["button_counter"].get()[0] == 1
 
     for attempt in stamina.retry_context(on=AssertionError, attempts=20):
         with attempt:
-            assert device.datapoints["seconds_counter"] > 0
+            assert device.datapoints["seconds_counter"].get()[0] > 0
 
     for attempt in stamina.retry_context(on=AssertionError, attempts=20):
         with attempt:
@@ -84,24 +84,25 @@ def test_native_api():
     for attempt in stamina.retry_context(on=AssertionError, attempts=20):
         with attempt:
             assert (
-                device.datapoints["myfixedtextsensor"] == "This is my fixed text value"
+                device.datapoints["myfixedtextsensor"].get()[0]
+                == "This is my fixed text value"
             )
 
     for attempt in stamina.retry_context(on=AssertionError, attempts=20):
         with attempt:
-            assert device.datapoints["loopback_num_out"] == 0
+            assert device.datapoints["loopback_num_out"].get()[0] == 0
 
     device.set_data_point("loopback_num_in", 5)
     for attempt in stamina.retry_context(on=AssertionError, attempts=20):
         with attempt:
-            assert device.datapoints["loopback_num_out"] == 5
+            assert device.datapoints["loopback_num_out"].get()[0] == 5
 
-    assert device.datapoints["loopback_bool_out"] == 0
+    assert device.datapoints["loopback_bool_out"].get()[0] == 0
 
     device.set_data_point("loopback_bool_in", 1)
     for attempt in stamina.retry_context(on=AssertionError, attempts=20):
         with attempt:
-            assert device.datapoints["loopback_bool_out"] == 1
+            assert device.datapoints["loopback_bool_out"].get()[0] == 1
 
     device.close()
     p.kill()

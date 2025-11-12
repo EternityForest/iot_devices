@@ -1,4 +1,4 @@
-from gpsdclient import GPSDClient as _gps
+from gpsdclient.client import GPSDClient as _gps
 
 from typing import Any
 import time
@@ -88,8 +88,8 @@ class GPSDClient(device.Device):
                 self.handle_exception()
                 time.sleep(60)
 
-    def __init__(self, name: str, config: dict[str, Any], **kw: Any):
-        device.Device.__init__(self, name, config, **kw)
+    def __init__(self, config: dict[str, Any], **kw: Any):
+        device.Device.__init__(self, config, **kw)
         self.should_run = True
         self.thread_handle = threading.Thread(target=self.thread, name="GPS Client")
         self.thread_handle.start()

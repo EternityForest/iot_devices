@@ -1,0 +1,8 @@
+[[devices]]
+name="Demo"
+type="DemoDevice"
+
+[[devices]]
+name="AnotherDemo"
+type="DemoDevice"
+

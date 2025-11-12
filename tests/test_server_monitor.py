@@ -12,6 +12,6 @@ def test_demo_device():
 
     for attempt in stamina.retry_context(on=AssertionError, attempts=20):
         with attempt:
-            assert my_device.datapoints["status"]
-            assert isinstance(my_device.datapoints["status"], int | float)
+            assert my_device.datapoints["status"].get()[0]
+            assert isinstance(my_device.datapoints["status"].get()[0], int | float)
     my_device.close()

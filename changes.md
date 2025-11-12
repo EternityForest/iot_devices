@@ -2,17 +2,30 @@
 
 ## 0.25.0
 
+Complete reimaginging of the API
+
+
 Remove some low quality unmaintained devices, and add unit tests.
 
 * :coffin: Remove RTL433 MQTT Client
 * :coffin: Remove RokuRemote
 * Switch to UV
 * Document send_ui_message removal
-* The legacy config_properties interface is deprecated.  It will still work for a while with the compatibility shims, but it raises warnings.
+* Remove legacy config_properties
+
 * There is a fixed set of reserved keys.  No more device. prefixes.
+
 * Nonstandard additional properties added by the framework must go in a top level "extensions" section.
+
 * Closing subdevices is now the responsibilty of the main device, not the host.
+
 * Remove text_config_files
+
+* New Host and HostDataContainer classes
+* Removed name param in device init.
+
+* tui-dash clean rewrite in Textual, currently just a proof of concept.
+
 
 ## 0.24.0
 

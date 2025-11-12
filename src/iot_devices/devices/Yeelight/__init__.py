@@ -91,9 +91,10 @@ def makeFlusher(wr):
 
 
 class YeelightDevice(iot_devices.device.Device):
-    def __init__(self, name, data, **kw):
-        self.lock = threading.Lock()
-        iot_devices.device.Device.__init__(self, name, data, **kw)
+    def __init__(self, data, **kw):
+        iot_devices.device.Device.__init__(self, data, **kw)
+
+        self.lock = threading.RLock()
 
         self.numeric_data_point("rssi", writable=False)
         self.set_alarm("Low Signal", "rssi", "value < -90")
@@ -109,7 +110,7 @@ class YeelightDevice(iot_devices.device.Device):
         with self.lock:
             "Returns the current RSSI value of the device"
             if time.time() - self.rssiCacheTime < cacheFor:
-                return self.datapoints["rssi"] or -75
+                return self.datapoints["rssi"].get()[0] or -75
 
             # Not ideal, but we really can't be retrying this too often.
             # if it's disconnected. Way too much slowdown
@@ -128,7 +129,7 @@ class YeelightDevice(iot_devices.device.Device):
                     self.lastLoggedUnreachable = time.time()
                 raise
 
-            return self.datapoints["rssi"] or -75
+            return self.datapoints["rssi"].get()[0] or -75
 
 
 class YeelightRGB(YeelightDevice):
@@ -156,7 +157,7 @@ class YeelightRGB(YeelightDevice):
         self.allowedOperations -= 1
         self.hasData = False
 
-        color = colorzero.Color(self.datapoints["color"] or "white")
+        color = colorzero.Color(self.datapoints["color"].get()[0] or "white")
         rgb = color.rgb
 
         # Very crappy color correction done by trial and error
@@ -164,7 +165,7 @@ class YeelightRGB(YeelightDevice):
             rgb[0], max(0, rgb[1] - rgb[0] * 0.1), max(0, rgb[2] - rgb[0] * 0.1)
         ).hsv
 
-        duration = self.datapoints["fade"] or 0
+        duration = self.datapoints["fade"].get()[0] or 0
 
         if hsv.v < 0.0001:
             self.wasOff = True
@@ -247,7 +248,7 @@ class YeelightRGB(YeelightDevice):
         self.set_data_point("fade", duration)
         self.set_data_point("switch", 1 if state else 0)
 
-        duration = self.datapoints["fade"] or 0
+        duration = self.datapoints["fade"].get()[0] or 0
 
         with self.lock:
             "Set the state of switch channel N"

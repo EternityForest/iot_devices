@@ -22,29 +22,22 @@ It can be installed with "pip3 install iot_devices".
 
 ## The tui-dash.py app
 
-To use it, edit the tui-dash.conf file and run the tui-dash command after installing the app.  You'll get a nice text UI with all the devices in your file.
+To use it, edit the tui-dash.conf file and run the tui-dash command in your virtual env with the project and any plugins.
 
-You can either put the file in ~/.config/tui-dash/tui-dash.conf, or pass the filename
-as the first argument.
+You'll get a nice text UI with all the devices in your file.
 
-
-Each section represents a device that will be added.  For example, here is the configuration
-to access YoLink's home automation devices via the TUI.
-
-Only one device is needed here, the top level service, all other devices are autodiscovered, but you  can add extra configuration on a per-device basis.
-
+This is being rewritten, so it doesn't do very much at the moment.
 
 ```ini
-[YoLinkService]
-key= Your UAC key here
-user_id=Your UAC password here
-type = YoLinkService
+[[devices]]
+name="Demo"
+type="DemoDevice"
 
-# Hide this, it just creates the subdevices
-hidden = True
+[[devices]]
+name="AnotherDemo"
+type="DemoDevice"
 
-[YoLinkService.Bedroom]
-title = Bedroom Sensor
+
 
 ```
 

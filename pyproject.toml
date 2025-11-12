@@ -9,7 +9,7 @@ requires-python = ">=3.11"
 
 dependencies = [
     "paho-mqtt",
-    "urwid",
+    "textual",
     "scullery >=0.2.0",
     "yeelight",
     "colorzero",

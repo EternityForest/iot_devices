@@ -2,6 +2,7 @@ from __future__ import annotations
 import traceback
 from typing import Any, TypeVar, final
 from collections.abc import Callable, Mapping
+from types import MappingProxyType
 import logging
 import time
 import json
@@ -11,6 +12,17 @@ import threading
 from jsonschema import validate
 import warnings
 from .util import str_to_bool
+from . import host
+from .datapoints import (
+    DataPoint,
+    NumberDataPoint,
+    StringDataPoint,
+    ObjectDataPoint,
+    BytesDataPoint,
+)
+
+# type alias
+
 
 DeviceClassTypeVar = TypeVar("DeviceClassTypeVar", bound="Device")
 
@@ -78,41 +90,6 @@ minimum = min
 maximum = max
 
 
-class LegacyConfigProperties:
-    """Represents the old style config properties dict,
-    and converts anything you do
-    """
-
-    def __init__(self, device: Device, config: dict[str, Any]):
-        self.device = device
-        self.config = config
-
-    @property
-    def raw(self):
-        return self.config
-
-    def __iter__(self):
-        return iter(self.config)
-
-    def __getitem__(self, key: str):
-        return self.config[key]
-
-    def __setitem__(self, key: str, value: dict[str, Any]):
-        warnings.warn(
-            "Setting config_properties is deprecated, use the schema",
-            DeprecationWarning,
-        )
-        self.config[key] = value
-
-        if self.device.json_schema and not self.device.json_schema.get(
-            "__auto_generated_by_iot_devices", False
-        ):
-            raise ValueError(
-                "Cannot set config_properties after json_schema has already been set"
-            )
-        self.device.json_schema = _properties_to_schema(self.config)
-
-
 class Device:
     """represents exactly one "device".
     should not be used to represent an interface to a large collection, use
@@ -145,9 +122,7 @@ class Device:
 
     def __init__(
         self,
-        name: str,
         config: dict[str, str],
-        subdevice_config: dict[str, Any] | None = None,
         **kw: Any,
     ):  # pylint: disable=unused-argument
         """
@@ -175,13 +150,12 @@ class Device:
 
 
         Args:
-            name: must be a special char free string.
-                It may contain slashes, for compatibility with hosts using that for heirarchy
-
             config:
                 Must contain a "type" field that matches the device type.
                 The idea is that the config object has everything needed to make
                 the device.
+
+                Must contain a "name" field that is the name of the device
 
                 Subdevice configuration must have is_subdevice: True in
                 save files so the host does not try to create it by itself.
@@ -205,11 +179,72 @@ class Device:
 
         """
 
-        # Due to complex inheritance patterns, this could be called more than once
-        if not hasattr(self, "__initial_setup"):
-            config = copy.deepcopy(config)
-            self.config = config
+        # Opens stricly before the host lock.
+        self.__config_lock = threading.RLock()
 
+        self.host: host.Host = host.get_host()
+
+        self.host_data: dict[str, Any] = {}
+
+        self.name = config["name"]
+
+        self._config = copy.deepcopy(config)
+
+        self._normalize_legacy_config()
+
+        # here is where we keep track of our list of
+        # sub-devices for each device.
+        # Sub-devices will always have a name like
+        # ParentDevice.ChildDevice
+        self.subdevices: dict[str, Device] = {}
+
+        self.metadata: dict[str, Any] = {}
+        """This allows us to show large amounts of data that
+        do not warrant a datapoint, as it is unlikely anyone
+        would want to show them in a main listing,
+        and nobody wants to see them clutter up anything
+        or slow down the system when they change.
+        Putting data here should have no side effects."""
+
+        # Raise error on bad data.
+        json.dumps(config)
+
+        # Use the defaults
+        if self.config_schema:
+            apply_defaults(config, self.config_schema)
+            validate(config, self.get_full_schema())
+
+        self._config: Mapping[str, Any] = config
+        """This dict is the signle source of truth for the configuration.
+            Device and host must both be aware that the other side may change
+            this.
+
+            Must be immutable!
+        """
+
+        self.title: str = _key_to_title(
+            self._config.get("title", "").strip() or self.name
+        )
+        """Title for UI display"""
+
+        self.datapoints: dict[str, DataPoint] = {}
+
+        """Device instanes all have unique names not shared with anything
+        else in that host."""
+
+        with devices_list_lock:
+            global all_devices
+            _all_devices[self.name] = weakref.ref(self)
+            all_devices = copy.deepcopy(_all_devices)
+
+    @final
+    @property
+    def config(self) -> Mapping[str, Any]:
+        return MappingProxyType(self._config)
+
+    def _normalize_legacy_config(self):
+        with self.__config_lock:
+            config = copy.deepcopy(self._config)
             # Even if we don't need it, keep for consistency.
             if "extensions" not in config:
                 config["extensions"] = {}
@@ -256,89 +291,14 @@ class Device:
                         + str((config["type"], self, type))
                     )
 
-            if subdevice_config and not callable(subdevice_config):
-                raise ValueError("subdevice_config must be callable")
-
-            self._subdevice_config = subdevice_config
-
-            # here is where we keep track of our list of
-            # sub-devices for each device.
-            # Sub-devices will always have a name like
-            # ParentDevice.ChildDevice
-            self.subdevices: dict[str, Device] = {}
-
-            self.metadata: dict[str, Any] = {}
-            """This allows us to show large amounts of data that
-            do not warrant a datapoint, as it is unlikely anyone
-            would want to show them in a main listing,
-            and nobody wants to see them clutter up anything
-            or slow down the system when they change.
-            Putting data here should have no side effects."""
-
-            # Raise error on bad data.
-            json.dumps(config)
-
-            # Use the defaults
-            if self.config_schema:
-                apply_defaults(config, self.config_schema)
-                validate(config, self.get_full_schema())
-
-            self.config: dict[str, Any] = config
-            """This dict is the signle source of truth for the configuration.
-               Device and host must both be aware that the other side may change
-               this.
-
-               Data involving lists must be updated atomically.
-            """
-
-            # This is a legacy interface for very simple things, setting
-            # this or any key will autogenerate JSON schemas
-            self._config_properties = LegacyConfigProperties(self, {})
-
-            self.title: str = _key_to_title(
-                self.config.get("title", "").strip() or name
-            )
-            """Title for UI display"""
-
-            self.__datapointhandlers: dict[
-                str,
-                Callable[
-                    [
-                        Any,
-                        float,
-                        Any,
-                    ],
-                    None,
-                ],
-            ] = {}
-            self.datapoints: dict[
-                str, int | float | str | bytes | Mapping[str, Any] | None
-            ] = {}
-
-            # Used mostly to determine if the data is still the default.
-            self.datapoint_timestamps: dict[str, float] = {}
-
-            # Functions that can be called to explicitly request a data point
-            # That return the new value
-            self.__datapoint_getters: dict[str, Callable[[], Any]] = {}
-
-            self.name = name
-            """Device instanes all have unique names not shared with anything
-            else in that host."""
-
-            # hasattr checked later
-            self.__initial_setup = True  # pylint: disable=unused-private-member
-
-            with devices_list_lock:
-                global all_devices
-                _all_devices[name] = weakref.ref(self)
-                all_devices = copy.deepcopy(_all_devices)
+        # Outside of lock but synchronous
+        self._update_config(config)
 
     @property
     def is_subdevice(self) -> bool:
         """True if this is a subdevice, as determine by the is_subdevice key in the config"""
 
-        x = self.config.get("is_subdevice", False)
+        x = self._config.get("is_subdevice", False)
         if not isinstance(x, bool):
             warnings.warn("is_subdevice must be boolean!", DeprecationWarning)
         return x in (
@@ -353,29 +313,10 @@ class Device:
             "True",
         )
 
-    @property
-    def config_properties(self) -> LegacyConfigProperties:
-        """Included for basic compatibility, hosts can stll work without the data but should
-        upgrade to JSON schemas.
-        """
-        return self._config_properties
-
-    @config_properties.setter
-    def config_properties(self, value: dict[str, Any]):
-        """Setter for devices using old style strings-only config files"""
-        warnings.warn(
-            "config_properties is deprecated, do not use old style string based config",
-            DeprecationWarning,
-        )
-        self._config_properties = LegacyConfigProperties(self, {})
-        for i in value:
-            self._config_properties[i] = value[i]
-
+    @final
     def get_full_schema(self) -> dict[str, Any]:
-        """Returns a full schema of the device. Including
-        auto-generated properties, and generic things all devices should have.
-
-        Frameworks may subclass to add their own extension properties.
+        """Returns a full normalized schema of the device. Including
+        generic things all devices should have.
         """
         d = copy.deepcopy(self.json_schema)
         if "properties" not in d:
@@ -387,9 +328,9 @@ class Device:
         d["additionalProperties"] = False
 
         if not self.json_schema and hasattr(self, "config"):
-            for i in self.config:
+            for i in self._config:
                 if i not in d["properties"]:
-                    v = self.config[i]
+                    v = self._config[i]
                     title = _key_to_title(i)
                     if isinstance(v, bool):
                         d["properties"][i] = {"type": "boolean", "title": title}
@@ -402,7 +343,7 @@ class Device:
                     else:
                         d["properties"][i] = {"type": "object", "title": title}
 
-        if "is_subdevice" in self.config and self.config["is_subdevice"]:
+        if "is_subdevice" in self._config and self._config["is_subdevice"]:
             d["properties"]["is_subdevice"] = {"type": "boolean", "const": True}
         else:
             d["properties"].pop("is_subdevice", None)  # type: ignore
@@ -440,6 +381,7 @@ class Device:
         self.subdevices[name].close()
         del self.subdevices[name]
 
+    @final
     def create_subdevice(
         self,
         cls: type[DeviceClassTypeVar],
@@ -480,7 +422,7 @@ class Device:
         of the main device.  The host can only close the parent device.
 
         it must update the config in place if the user wants to make changes,
-        using set_config_option or update_config.d
+        using update_config()
 
         When closing a device, the device must close all of it's subdevices and
         clean up after itself.  The default close() does this for you.
@@ -491,26 +433,26 @@ class Device:
         The host will add is_subdevice=True to the config dict.
         """
 
-        fn = f"{self.name}.{name}"
+        fn = self.name
         config = copy.deepcopy(config)
 
         # Mostly just there for quick scripts
-        if "subdevice_config" in self.config:
-            if name in self.config["subdevice_config"]:
-                config.update(copy.deepcopy(self.config["subdevice_config"][name]))
+        if "subdevice_config" in self._config:
+            if name in self._config["subdevice_config"]:
+                config.update(copy.deepcopy(self._config["subdevice_config"][name]))
 
-        config["name"] = fn
+        config["name"] = fn + "/" + name
         config["is_subdevice"] = "true"
         config["type"] = cls.device_type
         config["is_subdevice"] = "true"
 
         k = copy.copy(k)
 
-        sd = cls(fn, config, *a, **k)
-
-        self.subdevices[name] = sd
+        sd = self.host.add_device_from_class(cls, config, *a, **k)
+        self.subdevices[name] = sd.device
         return sd
 
+    @final
     def get_config_folder(self, create: bool = True):
         """
         Devices may, in some frameworks, have their own folder in which they can place additional
@@ -520,11 +462,7 @@ class Device:
             An absolute path
         """
 
-        # Can still call with create false just to check
-        if create:
-            raise NotImplementedError(
-                "Your framework probably doesn't support this device"
-            )
+        return self.host.get_config_folder(self, create)
 
     @staticmethod
     def discover_devices(
@@ -599,56 +537,27 @@ class Device:
 
         return {}
 
-    def set_config_option(self, key: str, value: Any):
-        """sets a top-level key in self.config. used for subclassing as you may want
-        to persist.
-
-        __init__ will automatically set the state.  this is used by the device
-        itself to set it's own persistent values at runtime, perhaps in response
-        to a websocket message.
-
-        __init__ will automatically set the state when passed the config dict,
-        you don't have to do that part.
-
-        This is used by the device itself to set it's own persistent values at
-        runtime, perhaps in response to a websocket message.
-
-        the host is responsible for subclassing this and actually saving the
-        data somehow, should that feature be needed.
-
-        The device may subclass this to respond to realtime config changes.
-
-        Devices should not clean up or get rid of keys they do not understand,
-        because the host application may use (suitably prefixed for uniqueness) extra
-        keys.
-        """
-
-        if isinstance(value, str):
-            value = value.strip()
-
-        # Auto strip the values to clean them up
-        self.config[key] = value
-
     @final
     def set_config_default(self, key: str, value: str):
-        """sets an top-level option in self.config if it does not exist or is blank.
-        Calls into set_config_option, you should not need to subclass this.
-        """
+        """sets an top-level option in self.config if it does not exist or is blank."""
+        with self.__config_lock:
+            if (
+                key not in self._config
+                or (
+                    isinstance(self._config[key], str) and not self._config[key].strip()
+                )
+                or self._config[key] is None
+            ):
+                self.set_config_option(key, value)
 
-        if key not in self.config or (
-            isinstance(self.config[key], str) and not self.config[key].strip()
-        ):
-            self.set_config_option(key, value.strip())
+    @final
+    def set_config_option(self, key: str, value: str):
+        """sets an top-level option in self.config."""
+        with self.__config_lock:
+            x = copy.deepcopy(self._config)
+            x[key] = value
 
-        if self.json_schema:
-            if "properties" in self.json_schema:
-                if key not in self.json_schema["properties"]:
-                    title = _key_to_title(key)
-                    self.json_schema["properties"][key] = {
-                        "type": "string",
-                        "default": value,
-                        title: title,
-                    }
+        self.update_config(x)
 
     def wait_ready(self, timeout: float = 15):  # pylint: disable=unused-argument
         """Call this to block for up to timeout seconds for the device to be fully initialized.
@@ -676,6 +585,7 @@ class Device:
     def handle_event(self, event: str, data: Any | None):
         "Handle arbitrary messages from the host"
 
+    @final
     def numeric_data_point(
         self,
         name: str,
@@ -693,7 +603,7 @@ class Device:
         writable: bool = True,  # pylint: disable=unused-argument
         dashboard: bool = True,  # pylint: disable=unused-argument
         **kwargs: Any,  # pylint: disable=unused-argument
-    ):
+    ) -> NumberDataPoint:
         """Register a new numeric data point with the given properties.
 
         Handler will be called when it changes.
@@ -750,40 +660,27 @@ class Device:
         else:
             maxval = max
 
-        self.datapoints[name] = default
+        self.host.numeric_data_point(
+            self.name,
+            name,
+            min=minval,
+            max=maxval,
+            default=default,
+            description=description,
+            unit=unit,
+            handler=handler,
+            interval=interval,
+            subtype=subtype,
+            writable=writable,
+            dashboard=dashboard,
+            **kwargs,
+        )
 
-        def on_change_attempt(v1: float | Callable[[], float] | None, t: float, a: Any):
-            if v1 is None:
-                return
+        dp = NumberDataPoint(self, name)
+        self.datapoints[name] = dp
+        return dp
 
-            if callable(v1):
-                v1 = v1()
-
-            v: float = float(v1)
-
-            v = float(v)
-
-            v = minimum(maxval, v)
-            v = maximum(minval, v)
-
-            t = t or time.time()
-
-            if self.datapoints[name] == v:
-                # It's still considered a change if the previous value
-                # was the default.
-                if self.datapoint_timestamps.get(name, 0):
-                    return
-
-            self.datapoints[name] = v
-
-            # Handler used by the device
-            if handler:
-                handler(v, t, a)
-
-            self.on_data_change(name, v, t, a)
-
-        self.__datapointhandlers[name] = on_change_attempt
-
+    @final
     def string_data_point(
         self,
         name: str,
@@ -797,7 +694,7 @@ class Device:
         subtype: str = "",  # pylint: disable=unused-argument
         dashboard: bool = True,  # pylint: disable=unused-argument
         **kwargs: Any,  # pylint: disable=unused-argument
-    ):
+    ) -> StringDataPoint:
         """Register a new string data point with the given properties.
 
         Handler will be called when it changes.
@@ -829,35 +726,25 @@ class Device:
             dashboard: Whether to show this data point in overview displays.
         """
 
-        self.datapoints[name] = default
+        self.host.string_data_point(
+            self.name,
+            name,
+            default=default,
+            description=description,
+            unit=unit,
+            handler=handler,
+            interval=interval,
+            subtype=subtype,
+            writable=writable,
+            dashboard=dashboard,
+            **kwargs,
+        )
 
-        def on_change_attempt(
-            v: str | Callable[[], str] | None, t: float | None, a: Any
-        ):
-            "This function handles the change detection by itself"
-            if v is None:
-                return
-            if callable(v):
-                v = v()
-            v = str(v)
-            t = t or time.time()
+        dp = StringDataPoint(self, name)
+        self.datapoints[name] = dp
+        return dp
 
-            if self.datapoints[name] == v:
-                # It's still considered a change if the previous value
-                # was the default.
-                if self.datapoint_timestamps.get(name, 0):
-                    return
-
-            self.datapoints[name] = v
-
-            # Handler used by the device
-            if handler:
-                handler(v, t, a)
-
-            self.on_data_change(name, v, t, a)
-
-        self.__datapointhandlers[name] = on_change_attempt
-
+    @final
     def object_data_point(
         self,
         name: str,
@@ -870,7 +757,7 @@ class Device:
         subtype: str = "",  # pylint: disable=unused-argument
         dashboard: bool = True,  # pylint: disable=unused-argument
         **kwargs: Any,  # pylint: disable=unused-argument
-    ):
+    ) -> ObjectDataPoint:
         """Register a new object data point with the given properties.   Here "object"
         means a JSON-like object.
 
@@ -898,44 +785,22 @@ class Device:
             dashboard: Whether to show this data point in overview displays.
         """
 
-        self.datapoints[name] = None
+        self.host.object_data_point(
+            self.name,
+            name,
+            handler=handler,
+            description=description,
+            unit=unit,
+            interval=interval,
+            subtype=subtype,
+            writable=writable,
+            dashboard=dashboard,
+            **kwargs,
+        )
 
-        def on_change_attempt(
-            v1: dict[str, Any] | Callable[[], Mapping[str, Any]] | None,
-            t: float | None,
-            a: Any,
-        ):
-            if v1 is None:
-                return
-
-            v = v1
-
-            if callable(v):
-                v = v()
-
-            # Validate
-            json.dumps(v)
-
-            # Mutability trouble
-            v = copy.deepcopy(v)
-
-            t = t or time.time()
-
-            if self.datapoints[name] == v:
-                # It's still considered a change if the previous value
-                # was the default.
-                if self.datapoint_timestamps.get(name, 0):
-                    return
-
-            self.datapoints[name] = v
-
-            # Handler used by the device
-            if handler:
-                handler(v, t, a)
-
-            self.on_data_change(name, v, t, a)
-
-        self.__datapointhandlers[name] = on_change_attempt
+        dp = ObjectDataPoint(self, name)
+        self.datapoints[name] = dp
+        return dp
 
     def bytestream_data_point(
         self,
@@ -959,32 +824,27 @@ class Device:
 
         """
 
-        self.datapoints[name] = None
+        self.host.bytestream_data_point(
+            self.name,
+            name,
+            handler=handler,
+            description=description,
+            unit=unit,
+            writable=writable,
+            dashboard=dashboard,
+            **kwargs,
+        )
 
-        def on_change_attempt(
-            v: bytes | Callable[[], bytes] | None, t: float | None, a: Any
-        ):
-            if not v:
-                return
-            t = t or time.time()
+        dp = BytesDataPoint(self, name)
+        self.datapoints[name] = dp
+        return dp
 
-            if callable(v):
-                v = v()
-
-            self.datapoints[name] = v
-
-            # Handler used by the device
-            if handler:
-                handler(v, t, a)
-
-            self.on_data_change(name, v, t, a)
-
-        self.__datapointhandlers[name] = on_change_attempt
-
+    @final
     def push_bytes(self, name: str, value: bytes):
         """Same as set_data_point but for bytestream data"""
         self.set_data_point(name, value)
 
+    @final
     def set_data_point(
         self,
         name: str,
@@ -992,49 +852,9 @@ class Device:
         timestamp: float | None = None,
         annotation: Any | None = None,
     ):
-        """
-        Set a data point of the device. may be called by the device itself or by user code.
+        self.datapoints[name].set(value, timestamp, annotation)
 
-        This is the primary api and we try to funnel as much as absolutely possible into it.
-
-        things like button presses that are not actually
-        "data points" can be represented as things like
-        (button_event_name, timestamp) tuples in object_tags.
-
-        things like autodiscovered ui can be done just by
-        adding more descriptive metadata to a data point.
-
-        Args:
-            name: The data point to set
-
-            value: The literal value.
-                Use set_data_point_getter for a
-                callable which will return such.
-
-            timestamp: if present is a time.time() time.
-
-            annotation: is an arbitrary object meant to be
-                compared for identity,
-                for various uses, such as loop prevention
-                when dealting with network sync, when you need
-                to know where a value came from.
-
-
-        This must be thread safe, but the change detection
-        could glitch out and discard if you go from A to B
-        and back to A again.
-
-        When there is multiple writers you will want
-        to either do your own lock or ensure that
-        dyou use unique values,
-        like with an event counter.
-
-        """
-        if timestamp is None:
-            timestamp = time.time()
-        self.datapoint_timestamps[name] = timestamp
-        self.__datapointhandlers[name](value, timestamp, annotation)
-
+    @final
     def set_data_point_getter(
         self,
         name: str,
@@ -1045,11 +865,7 @@ class Device:
         The callable may return either the new value,
         or None if it has no new data.
         """
-        self.__datapoint_getters[name] = getter
-
-    def on_data_change(self, name: str, value: Any, timestamp: float, annotation: Any):
-        """Used for subclassing, this is how you watch for
-        data changes"""
+        self.host.register_datapoint_getter(self.name, name, getter)
 
     def request_data_point(self, name: str) -> Any:
         """Rather than just passively read, actively
@@ -1057,27 +873,9 @@ class Device:
         May return None and just cause the point to be updated later.
 
         Meant to be called by external host code.
-
         """
-        if name in self.__datapoint_getters:
-            ret: int | float | str | bytes | Mapping[str, Any] | None = (
-                self.__datapoint_getters[name]()
-            )
-            if ret is not None:
-                timestamp = time.time()
-                if isinstance(ret, (dict, Mapping)):
-                    x = copy.deepcopy(ret)
-                else:
-                    x = ret
-
-                # there has been a change! Maybe!  call a handler
-                self.__datapointhandlers[name](x, timestamp, "From getter")
-
-                self.datapoint_timestamps[name] = timestamp
-                self.datapoints[name] = x
-                return x
-
-        return self.datapoints[name]
+        self.datapoints[name].request()
+        return self.datapoints[name].get()
 
     def set_alarm(
         self,
@@ -1125,6 +923,17 @@ class Device:
         limit it to easily semantically parsible strings.
 
         """
+        self.host.set_alarm(
+            self,
+            name,
+            f"{self.name}.{datapoint}",
+            expression,
+            priority,
+            trip_delay,
+            auto_ack,
+            release_condition,
+            **kw,
+        )
 
     def close(self):
         "Release all resources and clean up"
@@ -1140,15 +949,32 @@ class Device:
         may be used to delete any files automatically created.
         """
 
+    @final
+    def _update_config(self, config: dict[str, Any]):
+        """Update without calling user functions"""
+        with self.__config_lock:
+            if config == self._config:
+                return
+            config = copy.deepcopy(config)
+            self._config = config
+            self.title = self._config.get("title", "").strip() or self.name
+
+        self.host.on_config_changed(self.host.get_container_for_device(self), config)
+
+    # Never call this under config lock
     def update_config(self, config: dict[str, Any]):
         """Update the config dynamically at runtime.
-        May be subclassed by the device, not the host.
-
-        By default just uses set_config_option once for every top-level key.
+        May be subclassed by the device to respond to config changes.
         """
+        self._update_config(config)
 
-        for i in config:
-            if not self.config.get(i, None) == config[i]:
-                self.set_config_option(i, config[i])
 
-        self.title = self.config.get("title", "").strip() or self.name
+class UnusedSubdevice(Device):
+    description = "Someone created configuration for a subdevice that is no longer in use or has not yet loaded"
+    device_type = "UnusedSubdevice"
+
+    def warn(self):
+        self.handle_error("This device's parent never properly set it up.'")
+
+    def __init__(self, name, data):
+        super().__init__(name, data)

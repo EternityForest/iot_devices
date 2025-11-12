@@ -1,16 +1,15 @@
-import weakref
-
+from __future__ import annotations
 import sys
 import os
 import importlib
 import json
 import copy
 import logging
-import threading
-import traceback
-from collections.abc import Callable
-from typing import Dict, Type, Any
-from . import device
+import weakref
+from typing import Dict, Any, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .. import device
 
 
 _known_device_types: dict[str, dict[str, Any]] = {}
@@ -26,53 +25,6 @@ device_classes: weakref.WeakValueDictionary[str, type[device.Device]] = (
 """
 This dict lets you programmatically add new devices
 """
-
-
-app_exit_functions: list[Callable[[], None]] = []
-"""
-These are called on exit
-"""
-
-app_exit_lock = threading.Lock()
-
-already_did_cleanup = False
-
-
-api = {}
-"""
-The host may place functions here to make available to all device plugins.  Functions must have
-string keys, and use UUID, com.site.foo, or some other similar notation.
-
-Host functions should be very simple and not need changes later!
-"""
-
-
-def app_exit_cleanup(*a: Any, **k: Any):
-    """
-    Called by the host to clean up all devices and also close them.
-    """
-    global already_did_cleanup
-    with app_exit_lock:
-        if not already_did_cleanup:
-            already_did_cleanup = True
-
-            for i in app_exit_functions:
-                if callable(i):
-                    try:
-                        i()
-                    except Exception:
-                        print(traceback.format_exc())
-
-
-def app_exit_register(f: Callable[[], None]):
-    """
-    A device type plugin registers a cleanup function here
-    """
-    with app_exit_lock:
-        if already_did_cleanup:
-            f()
-        else:
-            app_exit_functions.append(f)
 
 
 def discover() -> Dict[str, Dict[str, Any]]:
@@ -169,25 +121,3 @@ def get_description(t: str) -> str:
         return _known_device_types[t].get("description", t)
     except KeyError:
         return "No description"
-
-
-def register_subdevice(parent: object, child: object):
-    """
-    A device can create other devices.  This lets a host do something with them.
-    """
-
-
-def create_device(
-    cls: Type[device.Device], name: str, data: dict[str, Any]
-) -> device.Device:
-    """
-    Create a new device from it's data, given the device class,
-    and add any framework specific hooks.
-    This function is meant to be overriden by the host app,
-    to add framework specific functionality
-    """
-    d = copy.deepcopy(data)
-    if not d.get("name", None):
-        d["name"] = name
-
-    return cls(name, data)

@@ -1,0 +1,231 @@
+from typing import Any, Mapping, Callable
+import weakref
+import tomllib
+import sys
+
+from iot_devices.host.simple_host import SimpleHost, SimpleHostDeviceContainer
+from iot_devices.datapoints import DataPoint
+
+from textual.app import App, ComposeResult, RenderResult
+from textual.widget import Widget
+from textual.screen import Screen
+from textual.widgets import Label, Button, Placeholder, Pretty
+from textual.containers import VerticalScroll, HorizontalScroll
+
+from .datapoint_controls import makeDataPointControl
+
+dev_to_widgets = weakref.WeakValueDictionary()
+point_to_widgets = weakref.WeakValueDictionary()
+
+
+class Host(SimpleHost):
+    def get_config_for_device(self, parent_device: Any | None, full_device_name: str):
+        """When a device wants to add a subdevice,
+        The host can give it extra config
+        """
+        return {"device.fixed_number_multiplier": "10000000"}
+
+    def set_data_point(
+        self,
+        name: str,
+        value: int | float | str | bytes | Mapping[str, Any] | list[Any],
+        timestamp: float | None = None,
+        annotation: Any | None = None,
+        force_push_on_repeat: bool = False,
+    ):
+        "This is how devices send data to hosts"
+        print(
+            f"set_data_point({self}, {name}, {value}, {timestamp}, {annotation}, {force_push_on_repeat})"
+        )
+        super().set_data_point(name, value, timestamp, annotation, force_push_on_repeat)
+        if name in point_to_widgets:
+            point_to_widgets[name].val_display.update(value)
+
+    def numeric_data_point(
+        self,
+        device: str,
+        name: str,
+        *,
+        min: float | None = None,
+        max: float | None = None,
+        hi: float | None = None,
+        lo: float | None = None,
+        default: float | None = None,
+        description: str = "",
+        unit: str = "",
+        handler: Callable[[float, float, Any], Any] | None = None,
+        interval: float = 0,
+        subtype: str = "",
+        writable: bool = True,
+        dashboard: bool = True,
+        **kwargs: Any,
+    ):
+        super().numeric_data_point(
+            device,
+            name,
+            min=min,
+            max=max,
+            hi=hi,
+            lo=lo,
+            default=default,
+            description=description,
+            unit=unit,
+            handler=handler,
+            interval=interval,
+            subtype=subtype,
+            writable=writable,
+            dashboard=dashboard,
+            **kwargs,
+        )
+        if device in dev_to_widgets:
+            dev_to_widgets[device].scroll.mount(
+                OneDataPointWidget(device, name, "numeric", subtype)
+            )
+
+    def on_before_device_added(
+        self, name: str, device: SimpleHostDeviceContainer, *args: Any, **kwargs: Any
+    ):
+        devices_screen.devs.mount(OneDeviceDashboardWidget(device))
+        return super().on_before_device_added(name, device, *args, **kwargs)
+
+
+host = Host()
+
+
+class OneDataPointWidget(Widget):
+    DEFAULT_CSS = """
+    OneDataPointWidget {
+        border: solid $accent;
+        text-wrap: wrap;
+        width: 100%;
+        margin: 1;
+        height: auto;
+        layout: vertical;
+    }
+    """
+
+    def __init__(
+        self, devname: str, pointname: str, point_type: str, point_subtype: str
+    ):
+        super().__init__()
+
+        self.header = Label(pointname)
+        self.header.styles.text_align = "center"
+        self.header.styles.width = "100%"
+        full = host.resolve_datapoint_name(devname, pointname)
+        self.val_display = makeDataPointControl(
+            host, devname, pointname, point_type, point_subtype
+        )
+
+        point_to_widgets[full] = self
+
+    def compose(self) -> ComposeResult:
+        yield self.header
+        yield self.val_display
+
+
+class OneDeviceDashboardWidget(Widget):
+    DEFAULT_CSS = """
+    OneDeviceDashboardWidget {
+        border: solid $accent;
+        text-wrap: wrap;
+        width: 28;
+        height: auto;
+        layout: vertical;
+    }
+    """
+
+    def __init__(self, device: SimpleHostDeviceContainer):
+        super().__init__()
+        self.device = device
+
+        self.header = Label(device.name)
+        self.header.styles.text_align = "center"
+        self.header.styles.width = "100%"
+
+        self.scroll = VerticalScroll()
+
+        dev_to_widgets[device.name] = self
+
+    def compose(self) -> ComposeResult:
+        yield self.header
+        yield self.scroll
+
+
+class Header(Placeholder):
+    DEFAULT_CSS = """
+    Header {
+        height: 1;
+        dock: top;
+    }
+    """
+
+
+class Footer(Placeholder):
+    DEFAULT_CSS = """
+    Footer {
+        height: 1;
+        dock: bottom;
+    }
+    """
+
+
+class DevicesGrid(Widget):
+    DEFAULT_CSS = """
+    DevicesGrid {
+    layout: grid;
+    width: 100%;
+    border: solid $accent;
+    grid-size: 5;
+    }
+    """
+
+
+class TweetScreen(Screen):
+    DEFAULT_CSS = """
+    TweetScreen {
+    }"""
+
+    def __init__(self):
+        super().__init__()
+        self.devs = DevicesGrid()
+
+    def on_mount(self) -> None:
+        self.devs.styles.grid_size_columns = int(max(1, self.size.width / 30))
+
+    def compose(self) -> ComposeResult:
+        yield Header(id="Header")
+        yield Footer(id="Footer")
+        with VerticalScroll():
+            yield self.devs
+
+
+devices_screen = TweetScreen()
+
+
+config = {}
+
+
+class LayoutApp(App):
+    BINDINGS = [
+        ("up", "move_up", "Up"),
+        ("down", "move_down", "Down"),
+    ]
+
+    def on_mount(self) -> None:
+        self.push_screen(devices_screen)
+
+        x = config["devices"]
+        s = sorted(x, key=lambda i: i["name"])
+
+        for d in s:
+            host.add_new_device(d)
+
+
+if __name__ == "__main__":
+    fn = sys.argv[1]
+    with open(fn, "rb") as f:
+        cfg = tomllib.load(f)
+    config.update(cfg)
+    app = LayoutApp()
+    app.run()

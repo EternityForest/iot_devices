@@ -1,6 +1,6 @@
 import time
 import stamina
-from iot_devices.host import get_class, create_device
+from iot_devices.host.simple_host import SimpleHost
 
 
 def test_basic_loop():
@@ -20,44 +20,31 @@ def test_basic_loop():
         ],
     }
 
-    s = create_device(get_class(server_conf), "MyServerDevice", server_conf)
+    h = SimpleHost()
+    dc = h.add_new_device(server_conf)
+    s = dc.wait_device_ready()
 
     while "test_bool" not in s.datapoints:
         time.sleep(1)
 
-    assert s.datapoints["test_bool"] == 0
+    assert s.datapoints["test_bool"].get()[0] == 0
     s.set_data_point("test_bool", 1)
-    assert s.datapoints["test_bool"] == 1
+    assert s.datapoints["test_bool"].get()[0] == 1
 
     client_conf = {
         "type": "ArduinoCogsClient",
+        "name": "MyClientDevice",
         "url": "127.0.0.1:6741",
     }
 
     time.sleep(2)
-    client = create_device(get_class(client_conf), "MyClientDevice", client_conf)
+    clientcontainer = h.add_new_device(client_conf)
+    client = clientcontainer.wait_device_ready()
 
     for attempt in stamina.retry_context(on=Exception, attempts=20):
         with attempt:
-            assert client.datapoints["test_bool"] == 1
+            assert client.datapoints["test_bool"].get()[0] == 1
 
-
-# def physical_device():
-#     client_conf = {
-#         "type": "ArduinoCogsClient",
-#         "url": "gbremote.local",
-#     }
-
-#     time.sleep(2)
-#     client = create_device(get_class(client_conf), "MyClientDevice", client_conf)
-#     time.sleep(2)
-
-#     client.set_data_point("board.backlight", 255)
-
-
-#     for i in range(10):
-#         print(client.datapoints)
-#         time.sleep(0.5)
 
 if __name__ == "__main__":
     test_basic_loop()

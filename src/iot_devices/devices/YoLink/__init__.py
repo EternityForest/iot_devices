@@ -182,8 +182,9 @@ class YoLinkDevice(device.Device):
 
     has_battery = True
 
-    def __init__(self, name: str, config: Dict[str, str], **kw):
-        super().__init__(name, config, **kw)
+    def __init__(self, data, **kw):
+        super().__init__(data, **kw)
+
         self.numeric_data_point(
             "rssi", min=-120, max=8, lo=-100, writable=False, default=-99
         )
@@ -239,8 +240,8 @@ class YoLinkDevice(device.Device):
 class YoLinkDoorSensor(YoLinkDevice):
     device_type = "YoLinkDoorSensor"
 
-    def __init__(self, name: str, config: Dict[str, str], **kw):
-        super().__init__(name, config, **kw)
+    def __init__(self, data, **kw):
+        super().__init__(data, **kw)
         self.numeric_data_point("open", min=0, max=1, subtype="bool", writable=False)
 
     def onData(self, data):
@@ -260,8 +261,8 @@ class YoLinkOutlet(YoLinkDevice):
     device_type = "YoLinkOutlet"
     has_battery = False
 
-    def __init__(self, name: str, config: Dict[str, str], **kw):
-        super().__init__(name, config, **kw)
+    def __init__(self, data, **kw):
+        super().__init__(data, **kw)
         self.numeric_data_point(
             "switch", min=0, max=1, subtype="bool", handler=self.setState
         )
@@ -304,8 +305,8 @@ class YoLinkOutlet(YoLinkDevice):
 class YoLinkLeakSensor(YoLinkDevice):
     device_type = "YoLinkLeakSensor"
 
-    def __init__(self, name: str, config: Dict[str, str], **kw):
-        super().__init__(name, config, **kw)
+    def __init__(self, data, **kw):
+        super().__init__(data, **kw)
         self.numeric_data_point("leak", min=0, max=1, subtype="bool", writable=False)
 
         self.set_alarm(
@@ -333,8 +334,8 @@ class YoLinkLeakSensor(YoLinkDevice):
 class YoLinkMotionSensor(YoLinkDevice):
     device_type = "YoLinkMotionSensor"
 
-    def __init__(self, name: str, config: Dict[str, str], **kw):
-        super().__init__(name, config, **kw)
+    def __init__(self, data, **kw):
+        super().__init__(data, **kw)
         self.numeric_data_point("motion", min=0, max=1, subtype="bool", writable=False)
 
     def onData(self, data):
@@ -353,8 +354,8 @@ class YoLinkMotionSensor(YoLinkDevice):
 class YoLinkVibrationSensor(YoLinkDevice):
     device_type = "YoLinkVibrationSensor"
 
-    def __init__(self, name: str, config: Dict[str, str], **kw):
-        super().__init__(name, config, **kw)
+    def __init__(self, data, **kw):
+        super().__init__(data, **kw)
         self.numeric_data_point("motion", min=0, max=1, subtype="bool", writable=False)
 
     def onData(self, data):
@@ -373,8 +374,8 @@ class YoLinkVibrationSensor(YoLinkDevice):
 class YoLinkSiren(YoLinkDevice):
     device_type = "YoLinkSiren"
 
-    def __init__(self, name: str, config: Dict[str, str], **kw):
-        super().__init__(name, config, **kw)
+    def __init__(self, data, **kw):
+        super().__init__(data, **kw)
         self.numeric_data_point("on", min=0, max=1, subtype="bool", writable=False)
 
         self.numeric_data_point(
@@ -434,8 +435,8 @@ class YoLinkSiren(YoLinkDevice):
 class YoLinkTemperatureSensor(YoLinkDevice):
     device_type = "YoLinkTemperatureSensor"
 
-    def __init__(self, name: str, config: Dict[str, str], **kw):
-        super().__init__(name, config, **kw)
+    def __init__(self, data, **kw):
+        super().__init__(data, **kw)
         self.numeric_data_point(
             "temperature", min=-40, max=100, unit="degC", writable=False
         )

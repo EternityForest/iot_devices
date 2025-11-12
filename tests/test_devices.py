@@ -60,16 +60,16 @@ def test_random():
     # Auto generated property
     assert r.get_full_schema()["properties"]["device.steamedhams"]["type"] == "string"
 
-    assert r.datapoints["steamedhams"] == "foo"
-    assert r.datapoints["steamedhams3"] == b"foo"
+    assert r.datapoints["steamedhams"].get()[0] == "foo"
+    assert r.datapoints["steamedhams3"].get()[0] == b"foo"
 
     r.request_data_point("str")
     r.request_data_point("bytes")
     r.request_data_point("obj")
 
-    assert r.datapoints["str"] == "foo"
-    assert r.datapoints["bytes"] == b"foo"
-    assert r.datapoints["obj"] == {"foo": 1}
+    assert r.datapoints["str"].get()[0] == "foo"
+    assert r.datapoints["bytes"].get()[0] == b"foo"
+    assert r.datapoints["obj"].get()[0] == {"foo": 1}
 
     # It should have been copyed to prevent
     # mutating the source object, not that people should be
@@ -77,7 +77,7 @@ def test_random():
     assert id(r.datapoints["obj"]) != id(r.obj)
 
     r.request_data_point("obj")
-    assert r.datapoints["obj"] == {"foo": 2}
+    assert r.datapoints["obj"].get()[0] == {"foo": 2}
 
 
 def test_demo_device():
@@ -87,8 +87,8 @@ def test_demo_device():
     my_device = create_device(c, "A Device", data)
 
     assert isinstance(my_device.datapoints["random"], (float, int))
-    assert my_device.datapoints["random"] > 0
-    assert my_device.datapoints["random"] < 1
+    assert my_device.datapoints["random"].get()[0] > 0
+    assert my_device.datapoints["random"].get()[0] < 1
 
     v = my_device.request_data_point("dyn_random")
     v2 = my_device.request_data_point("dyn_random")

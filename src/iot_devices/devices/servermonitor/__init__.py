@@ -62,8 +62,8 @@ class ServerMonitor(device.Device):
 
     config_schema = schema
 
-    def __init__(self, name, data, **kw):
-        device.Device.__init__(self, name, data, **kw)
+    def __init__(self, data, **kw):
+        device.Device.__init__(self, data, **kw)
 
         # Push type data point set by the device
         self.numeric_data_point("status", subtype="bool", writable=False)

@@ -8,5 +8,7 @@
         "tag",
         "data",
         "ws"
-    ]
+    ],
+    "python.analysis.typeCheckingMode": "standard",
+    "typescript.suggest.includeAutomaticOptionalChainCompletions": true
 }

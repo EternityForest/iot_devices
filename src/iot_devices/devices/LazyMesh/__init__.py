@@ -38,8 +38,8 @@ class RemoteLazyMeshNode(Device):
         },
     }
 
-    def __init__(self, name: str, data: dict[str, Any], **kw: Any):
-        Device.__init__(self, name, data, **kw)
+    def __init__(self, data: dict[str, Any], **kw: Any):
+        Device.__init__(self, data, **kw)
         self.device_id = 0
 
         self.ids_to_numeric_points: dict[int, str] = {}
@@ -430,12 +430,12 @@ class LazyMeshNode(Device):
                             if j in self.ids_to_numeric_points:
                                 point_name = self.ids_to_numeric_points[j]
                                 resolution = self.ids_to_numeric_points_resolution[j]
-                                d = self.datapoints[point_name]
+                                d = self.datapoints[point_name].get()[0]
                                 if isinstance(d, (int, float)):
                                     p.add_data(j, d * resolution)
                             elif j in self.ids_to_string_points:
                                 point_name = self.ids_to_string_points[j]
-                                d = self.datapoints[point_name]
+                                d = self.datapoints[point_name].get()[0]
                                 if isinstance(d, str):
                                     if len(d) < 65:
                                         p.add_data(j, d)

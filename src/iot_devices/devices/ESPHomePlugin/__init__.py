@@ -38,7 +38,7 @@ class ESPHomeDevice(iot_devices.device.Device):
     def wait_ready(self, timeout=15):
         # Wait for connection ready
         s = time.time()
-        while not self.datapoints["native_api_connected"]:
+        while not self.datapoints["native_api_connected"].get()[0]:
             if (time.time() - s) > timeout:
                 raise RuntimeError("Could not connect")
             time.sleep(timeout / 100)
@@ -226,8 +226,8 @@ class ESPHomeDevice(iot_devices.device.Device):
         except Exception:
             self.handle_exception()
 
-    def __init__(self, name: str, config: Dict[str, str], subdevice_config=None, **kw):
-        super().__init__(name, config, subdevice_config, **kw)
+    def __init__(self, name: str, config: Dict[str, str], **kw):
+        super().__init__(name, config, **kw)
 
         self.name_to_key = {}
         self.key_to_name = {}
