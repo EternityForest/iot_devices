@@ -125,24 +125,3 @@ class GPSDClient(device.Device):
     def close(self):
         device.Device.close(self)
         self.should_run = False
-
-
-# from iot_devices.host import get_class, create_device
-
-
-# # Make an instance of that device.
-# # Create device is very simple, it just calls cls(name, data),
-# # But you can override it to add hooks whenever a device is created.
-# device = create_device(GPSDClient ,"Random Device", {"device":"", "host":"127.0.0.1"})
-
-# #One of the values this class exposes.
-# # Note that values here can be "None" if there is no data yet.
-# print(device.datapoints['has_fix'])
-
-# # This is an on-demand getter.
-# # This explicitly calls the getter we set.
-# # It also sets the key in device.datapoints
-# #print(device.request_data_point('dyn_random'))
-
-# time.sleep(9)
-# # clean up

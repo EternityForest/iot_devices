@@ -9,9 +9,10 @@ import weakref
 import abc
 from collections.abc import Callable, Mapping
 
-from typing import Type, Any, final, Generic, TypeVar, TYPE_CHECKING
+from typing import type, Any, final, Generic, TypeVar, TYPE_CHECKING
 
 from .util import get_class
+
 
 if TYPE_CHECKING:
     from . import device
@@ -80,7 +81,7 @@ class Host(Generic[_HostContainerTypeVar]):
 
     """
 
-    def __init__(self, container_type: Type[_HostContainerTypeVar]):
+    def __init__(self, container_type: type[_HostContainerTypeVar]):
         self.__container_type = container_type
         self.devices: dict[str, _HostContainerTypeVar] = {}
 
@@ -94,7 +95,7 @@ class Host(Generic[_HostContainerTypeVar]):
         # While under this.  Just to protect iterable state
         self.__lock = threading.RLock()
 
-        self.__load_order: list[weakref.ref(_HostContainerTypeVar)] = []
+        self.__load_order: list[weakref.ref[_HostContainerTypeVar]] = []
 
     @final
     def get_devices(self) -> Mapping[str, _HostContainerTypeVar]:
@@ -138,34 +139,40 @@ class Host(Generic[_HostContainerTypeVar]):
                         break
 
         for i in ordered:
-            try:
-                if not i.device.config.get("is_subdevice", False):
-                    i.close()
-            except Exception:
-                _logger.exception("Error closing device")
-            try:
-                x.remove(i)
-            except ValueError:
-                pass
+            d = i.device
+            if d:
+                try:
+                    if not d.config.get("is_subdevice", False):
+                        d.close()
+                except Exception:
+                    _logger.exception("Error closing device")
+                try:
+                    x.remove(i)
+                except ValueError:
+                    pass
 
         # Close anything the ordered list somehow missed
 
         # Close outside of lock for deadlock prevention
         for i in x:
-            if not i.device.config.get("is_subdevice", False):
-                try:
-                    i.close()
-                except Exception:
-                    _logger.exception("Error closing device")
+            d = i.device
+            if d:
+                if not d.config.get("is_subdevice", False):
+                    try:
+                        d.close()
+                    except Exception:
+                        _logger.exception("Error closing device")
 
         # Close any subdevices that the parent didn't close
         for i in x:
             try:
-                warnings.warn(
-                    f"Parent should have closed subdevice {i.device.name}",
-                    RuntimeWarning,
-                )
-                i.close()
+                d = i.device
+                if d:
+                    warnings.warn(
+                        f"Parent should have closed subdevice {d.name}",
+                        RuntimeWarning,
+                    )
+                    d.close()
             except Exception:
                 _logger.exception("Error closing device")
 
@@ -187,7 +194,14 @@ class Host(Generic[_HostContainerTypeVar]):
     @final
     def delete_device(self, name: str):
         """Handle permanently deleting a device"""
-        self.devices[name].device.on_delete()
+        d = self.devices.get(name, None)
+        if d is None:
+            return
+        dev = d.device
+        if not dev:
+            raise Exception(f"Device with name {name} exists but is not ready")
+
+        dev.on_delete()
         self.close_device(name)
 
     def resolve_datapoint_name(self, device_name: str, datapoint_name: str) -> str:
@@ -281,7 +295,13 @@ class Host(Generic[_HostContainerTypeVar]):
     @final
     def request_data_point(self, device: str, name: str) -> Any:
         """Ask a device to refresh it's data point"""
-        x = self.devices[device].device.datapoint_getter_functions.get(name, None)
+
+        d = self.devices[device]
+        dev = d.device
+        if not dev:
+            raise Exception(f"Device with name {device} exists but is not ready")
+
+        x = dev.datapoint_getter_functions.get(name, None)
         if x is not None:
             x()
 
@@ -365,7 +385,7 @@ class Host(Generic[_HostContainerTypeVar]):
     @final
     def add_device_from_class(
         self,
-        cls: Type[device.Device],
+        cls: type[device.Device],
         data: dict[str, Any],
         *args: Any,
         parent: device.Device | None = None,
@@ -380,7 +400,14 @@ class Host(Generic[_HostContainerTypeVar]):
             # Container available before device
             with self.__lock:
                 if name in self.devices:
-                    if self.devices[name].device.device_type not in ("UnusedSubdevice"):
+                    d = self.devices[name]
+                    dev = d.device
+                    if not dev:
+                        raise Exception(
+                            f"Device with name {name} already exists but is not ready"
+                        )
+
+                    if dev.device_type not in ("UnusedSubdevice"):
                         raise Exception(f"Device with name {name} already exists")
 
                 parentContainer = None
@@ -466,16 +493,9 @@ class Host(Generic[_HostContainerTypeVar]):
     def get_bytes(self, device: str, datapoint: str) -> tuple[bytes, float, Any]:
         raise NotImplementedError
 
-    def request_data_point(self, device: str, datapoint: str) -> None:
-        """Request that the host fetch the latest value for a datapoint.
-        This may happen async, there is no guarantee of when it will happen,
-        call it and listen with the handler.
-        Must never block.
-        """
-
     @final
     def get_container_for_device(self, device: str) -> _HostContainerTypeVar:
-        x = self.devices[device.name]
+        x = self.devices[device]
 
         # Might not be set because it's still being initialized,
         # Do a basic state corruption check

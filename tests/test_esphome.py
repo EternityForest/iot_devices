@@ -2,10 +2,12 @@ import subprocess
 import os
 import time
 import stamina
-from iot_devices.host import get_class, create_device
+from iot_devices.host.simple_host import SimpleHost
 
 
 esphome_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "esphome_test"))
+
+h = SimpleHost()
 
 
 def test_bad_pw():
@@ -23,11 +25,12 @@ def test_bad_pw():
 
     deviceData = {
         "type": "ESPHomeDevice",
-        "device.hostname": "127.0.0.1",
-        "device.apikey": "LkNUUoOtGdp0C2aiVGjnerDtF1/lBe7nNq142V12Zj0=",
+        "name": "MyDevice",
+        "hostname": "127.0.0.1",
+        "apikey": "LkNUUoOtGdp0C2aiVGjnerDtF1/lBe7nNq142V12Zj0=",
     }
 
-    device = create_device(get_class(deviceData), "MyDevice", deviceData)
+    device = h.add_new_device(deviceData).wait_device_ready()
 
     time.sleep(5)
 
@@ -52,11 +55,12 @@ def test_native_api():
 
     deviceData = {
         "type": "ESPHomeDevice",
+        "name": "MyDevice",
         "device.hostname": "127.0.0.1",
         "device.apikey": "LkMUUoOtGdp0C2aiVGjnerDtF1/lBe7nNq142V12Zj0=",
     }
 
-    device = create_device(get_class(deviceData), "MyDevice", deviceData)
+    device = h.add_new_device(deviceData).wait_device_ready()
 
     while "native_api_connected" not in device.datapoints:
         time.sleep(1)

@@ -49,45 +49,12 @@ def _key_to_title(k: str) -> str:
     return title
 
 
-def _properties_to_schema(properties: dict[str, dict[str, Any]]):
-    """Converts an old style legacy config properties dict to a json schema"""
-
-    if properties:
-        warnings.warn(
-            "config_properties is deprecated and will be removed", DeprecationWarning
-        )
-
-    schema: dict[str, Any] = {
-        "type": "object",
-        "properties": {},
-        "__auto_generated_by_iot_devices": True,
-    }
-    for i in properties:
-        if i in ("name", "type"):
-            continue
-        title = _key_to_title(i)
-
-        schema["properties"][i] = {
-            "type": "string",
-            "description": properties[i].get("description", ""),
-            "title": title,
-        }
-
-        if "enum" in properties[i]:
-            schema["properties"][i]["enum"] = properties[i]["enum"]
-        if "secret" in properties[i]:
-            schema["properties"][i]["format"] = "password"
-        if properties[i].get("type", False) in ("bool", "boolean"):
-            schema["properties"][i]["enum"] = ["true", "false"]
-
-    return schema
-
-
 # Gonna overwrite these functions insude functions...
 minimum = min
 maximum = max
 
 
+@final
 class DataRequest:
     pass
 
@@ -112,9 +79,6 @@ class Device:
 
     config_schema: dict[str, Any] = {}
     """Schema defining the config"""
-
-    json_schema: dict[str, Any] = {}
-    "DEPRECATED, use config_schema"
 
     upgrade_legacy_config_keys: dict[str, str] = {}
     """__init__ uses this to auto rename old config keys to new ones
@@ -259,16 +223,6 @@ class Device:
             if "extensions" not in config:
                 config["extensions"] = {}
 
-            if self.json_schema:
-                if not self.config_schema:
-                    warnings.warn(
-                        "json_schema is deprecated, and has been replaced by config_schema",
-                        DeprecationWarning,
-                    )
-                self.config_schema = copy.deepcopy(self.json_schema)
-
-            self.json_schema = self.config_schema
-
             for i in self.upgrade_legacy_config_keys:
                 if i in config:
                     warnings.warn(
@@ -328,7 +282,7 @@ class Device:
         """Returns a full normalized schema of the device. Including
         generic things all devices should have.
         """
-        d = copy.deepcopy(self.json_schema)
+        d = copy.deepcopy(self.config_schema)
         if "properties" not in d:
             d["properties"] = {}
         assert "properties" in d
@@ -337,7 +291,7 @@ class Device:
         d["type"] = "object"
         d["additionalProperties"] = False
 
-        if not self.json_schema and hasattr(self, "config"):
+        if not self.config_schema and hasattr(self, "config"):
             for i in self._config:
                 if i not in d["properties"]:
                     v = self._config[i]
@@ -375,12 +329,6 @@ class Device:
             "title": "Description",
         }
         return d
-
-    @property
-    def _uses_old_style_config(self):
-        return not self.json_schema or self.json_schema.get(
-            "__auto_generated_by_iot_devices", False
-        )
 
     @final
     def close_subdevice(self, name: str):
@@ -642,7 +590,7 @@ class Device:
                 or may be framework defined. Default does not trigger handler.
 
             handler: A function taking the value,timestamp,
-                and annotation on changes.
+                and annotation on changes.  Must be threadsafe.
 
             interval :annotates the default data rate the point
                 will produce, for use in setting default poll
@@ -658,6 +606,9 @@ class Device:
                 type of this value, as a hint to UI generation.
 
             dashboard: Whether to show this data point in overview displays.
+
+            on_request: If set, will be called when the host
+                requests the value of this datapoint.  Must be threadsafe.
 
         """
 
@@ -726,7 +677,7 @@ class Device:
 
             default: If unset default value is None, or may be framework defined. Default does not trigger handler.
 
-            handler: A function taking the value,timestamp, and annotation on changes.
+            handler: A function taking the value,timestamp, and annotation on changes. Must be threadsafe.
 
             interval: annotates the default data rate the point will produce, for use in setting default poll
                 rates by the host if the host wants to poll.
@@ -739,7 +690,9 @@ class Device:
             subtype: A string further describing the data type of this value, as a hint to UI generation.
 
             dashboard: Whether to show this data point in overview displays.
-        """
+
+            on_request: If set, will be called when the host
+                requests the value of this datapoint.  Must be threadsafe."""
 
         self.host.string_data_point(
             self.name,
@@ -791,7 +744,7 @@ class Device:
         Args:
             description: Free text
 
-            handler: A function taking the value,timestamp, and annotation on changes
+            handler: A function taking the value,timestamp, and annotation on changes. Must be thread safe.
 
             interval :annotates the default data rate the point will produce, for use in setting default poll
                 rates by the host, if the host wants to poll.  It does not mean the host SHOULD poll this,
@@ -801,9 +754,9 @@ class Device:
 
             subtype: A string further describing the data type of this value, as a hint to UI generation.
 
-            dashboard: Whether to show this data point in overview displays.
+            on_request: If set, will be called when the host
+                requests the value of this datapoint.  Must be threadsafe.
         """
-
         self.host.object_data_point(
             self.name,
             name,
@@ -845,6 +798,8 @@ class Device:
 
         Despite the name, buffers of bytes may not be broken up or combined, this is buffer oriented,
 
+        on_request: If set, will be called when the host
+            requests the value of this datapoint.  Must be threadsafe.
         """
 
         self.host.bytestream_data_point(
@@ -962,7 +917,9 @@ class Device:
             self._config = config
             self.title = self._config.get("title", "").strip() or self.name
 
-        self.host.on_config_changed(self.host.get_container_for_device(self), config)
+        self.host.on_config_changed(
+            self.host.get_container_for_device(self.name), config
+        )
 
     # Never call this under config lock
     def update_config(self, config: dict[str, Any]):

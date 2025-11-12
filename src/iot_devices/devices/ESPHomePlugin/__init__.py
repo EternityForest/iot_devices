@@ -10,10 +10,6 @@ import time
 import iot_devices.device
 import iot_devices.host
 
-zc = zeroconf.Zeroconf()
-
-iot_devices.host.app_exit_register(zc.close)
-
 
 class ESPHomeDevice(iot_devices.device.Device):
     device_type = "ESPHomeDevice"
@@ -229,6 +225,8 @@ class ESPHomeDevice(iot_devices.device.Device):
     def __init__(self, name: str, config: Dict[str, str], **kw):
         super().__init__(name, config, **kw)
 
+        self.zc = zeroconf.Zeroconf()
+
         self.name_to_key = {}
         self.key_to_name = {}
         self.input_units = {}
@@ -298,6 +296,11 @@ class ESPHomeDevice(iot_devices.device.Device):
                 break
             time.sleep(0.1)
 
+        try:
+            self.zc.close()
+        except Exception:
+            pass
+
         return super().close()
 
     async def main(self, *a, **k):
@@ -317,7 +320,7 @@ class ESPHomeDevice(iot_devices.device.Device):
                 client=self.api,
                 on_connect=self.on_connect,
                 on_disconnect=self.on_disconnect,
-                zeroconf_instance=zc,
+                zeroconf_instance=self.zc,
             )
 
             self.reconnect_logic = reconnect_logic

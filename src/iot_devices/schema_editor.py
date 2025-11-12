@@ -68,7 +68,7 @@ class WidgetFactory:
 
     @classmethod
     def create(cls, schema, path, value):
-        fmt = schema.get("format")
+        fmt = schema.get("type") or schema.get("format")
         widget_cls = cls.registry.get(fmt, DefaultInput)
         return widget_cls(schema, path, value)
 

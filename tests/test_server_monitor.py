@@ -1,13 +1,14 @@
 import time
 import stamina
-from iot_devices.host import get_class, create_device
+from iot_devices.host.simple_host import SimpleHost
+
+h = SimpleHost()
 
 
 def test_demo_device():
-    data = {"type": "ServerMonitor", "target": "localhost"}
+    data = {"type": "ServerMonitor", "name": "ServerMonitor", "target": "localhost"}
 
-    c = get_class(data)
-    my_device = create_device(c, "ADevice", data)
+    my_device = h.add_new_device(data).wait_device_ready()
     time.sleep(0.5)
 
     for attempt in stamina.retry_context(on=AssertionError, attempts=20):

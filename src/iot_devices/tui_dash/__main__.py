@@ -98,7 +98,6 @@ class OneDataPointWidget(Widget):
         border: solid $accent;
         text-wrap: wrap;
         width: 100%;
-        margin: 1;
         height: auto;
         layout: vertical;
     }
@@ -110,12 +109,13 @@ class OneDataPointWidget(Widget):
         super().__init__()
 
         self.header = Label(pointname)
-        self.header.styles.text_align = "center"
+        self.header.styles.text_align = "left"
         self.header.styles.width = "100%"
         full = host.resolve_datapoint_name(devname, pointname)
         self.val_display = makeDataPointControl(
             host, devname, pointname, point_type, point_subtype
         )
+        self.val_display.styles.text_align = "center"
 
         point_to_widgets[full] = self
 
@@ -130,6 +130,7 @@ class OneDeviceDashboardWidget(Widget):
         border: solid $accent;
         text-wrap: wrap;
         width: 28;
+        margin: 1;
         height: auto;
         layout: vertical;
     }
@@ -140,7 +141,8 @@ class OneDeviceDashboardWidget(Widget):
         self.device = device
 
         self.header = Label(device.name)
-        self.header.styles.text_align = "center"
+        self.header.styles.text_style = "bold"
+        self.header.styles.text_align = "left"
         self.header.styles.width = "100%"
 
         self.scroll = VerticalScroll()

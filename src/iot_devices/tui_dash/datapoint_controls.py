@@ -30,9 +30,14 @@ def makeDataPointControl(
             class MyButton(Button):
                 DEFAULT_CSS = """
                 MyButton {
+                width: 100%;
 
                 }
                 """
+
+                def __init__(self, label):
+                    super().__init__(label=label)
+                    self.compact = True
 
                 def on_button_pressed(self, *a):
                     old_value = host.get_number(devname, pointname)
