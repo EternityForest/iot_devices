@@ -43,7 +43,7 @@ class DemoDevice(device.Device):
 
         self.set_data_point("read_only", random.random())
 
-        if not "gen2" in data:
+        if "gen2" not in data:
             self.create_subdevice(DemoDevice, "subdevice", {"gen2": True})
 
         self.bytestream_data_point("bytestream")

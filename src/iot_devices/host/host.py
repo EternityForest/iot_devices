@@ -9,7 +9,7 @@ import weakref
 import abc
 from collections.abc import Callable, Mapping
 
-from typing import type, Any, final, Generic, TypeVar, TYPE_CHECKING
+from typing import Type, Any, final, Generic, TypeVar, TYPE_CHECKING
 
 from .util import get_class
 
@@ -81,7 +81,7 @@ class Host(Generic[_HostContainerTypeVar]):
 
     """
 
-    def __init__(self, container_type: type[_HostContainerTypeVar]):
+    def __init__(self, container_type: Type[_HostContainerTypeVar]):
         self.__container_type = container_type
         self.devices: dict[str, _HostContainerTypeVar] = {}
 
@@ -385,7 +385,7 @@ class Host(Generic[_HostContainerTypeVar]):
     @final
     def add_device_from_class(
         self,
-        cls: type[device.Device],
+        cls: Type[device.Device],
         data: dict[str, Any],
         *args: Any,
         parent: device.Device | None = None,
@@ -494,8 +494,8 @@ class Host(Generic[_HostContainerTypeVar]):
         raise NotImplementedError
 
     @final
-    def get_container_for_device(self, device: str) -> _HostContainerTypeVar:
-        x = self.devices[device]
+    def get_container_for_device(self, device: device.Device) -> _HostContainerTypeVar:
+        x = self.devices[device.name]
 
         # Might not be set because it's still being initialized,
         # Do a basic state corruption check

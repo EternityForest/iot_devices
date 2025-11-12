@@ -918,7 +918,7 @@ class Device:
             self.title = self._config.get("title", "").strip() or self.name
 
         self.host.on_config_changed(
-            self.host.get_container_for_device(self.name), config
+            self.host.get_container_for_device(self), config
         )
 
     # Never call this under config lock
