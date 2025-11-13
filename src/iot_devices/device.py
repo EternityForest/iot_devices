@@ -2,7 +2,6 @@ from __future__ import annotations
 import traceback
 from typing import Any, TypeVar, final
 from collections.abc import Callable, Mapping
-import logging
 import json
 import pydantic
 import copy
@@ -10,7 +9,6 @@ import weakref
 import threading
 from jsonschema import validate
 import warnings
-from .util import str_to_bool
 from . import host
 from .datapoints import (
     DataPoint,
@@ -26,7 +24,7 @@ from .datapoints import (
 DeviceClassTypeVar = TypeVar("DeviceClassTypeVar", bound="Device")
 
 
-devices_list_lock = threading.RLock()
+_devices_list_lock = threading.RLock()
 
 all_devices: dict[str, weakref.ref[Device]] = {}
 _all_devices: dict[str, weakref.ref[Device]] = {}
@@ -38,11 +36,6 @@ def _key_to_title(k: str) -> str:
         title = title.split("device.", 1)[-1]
     title = title.replace("_", " ").title()
     return title
-
-
-# Gonna overwrite these functions insude functions...
-minimum = min
-maximum = max
 
 
 @final
@@ -190,7 +183,7 @@ class Device:
         """Device instanes all have unique names not shared with anything
         else in that host."""
 
-        with devices_list_lock:
+        with _devices_list_lock:
             global all_devices
             _all_devices[self.name] = weakref.ref(self)
             all_devices = copy.deepcopy(_all_devices)
@@ -935,3 +928,6 @@ class UnusedSubdevice(Device):
 
     def __init__(self, name, data):
         super().__init__(name, data)
+
+
+__all__ = ["Device", "UnusedSubdevice", "DeviceClassTypeVar"]

@@ -4,54 +4,18 @@
 
 | [`DeviceClassTypeVar`](#iot_devices.device.DeviceClassTypeVar)   |    |
 |------------------------------------------------------------------|----|
-| [`devices_list_lock`](#iot_devices.device.devices_list_lock)     |    |
-| [`all_devices`](#iot_devices.device.all_devices)                 |    |
-| [`minimum`](#iot_devices.device.minimum)                         |    |
-| [`maximum`](#iot_devices.device.maximum)                         |    |
 
 ## Classes
 
-| [`LegacyConfigProperties`](#iot_devices.device.LegacyConfigProperties)   | Represents the old style config properties dict,   |
-|--------------------------------------------------------------------------|----------------------------------------------------|
-| [`Device`](#iot_devices.device.Device)                                   | represents exactly one "device".                   |
-
-## Functions
-
-| [`apply_defaults`](#iot_devices.device.apply_defaults)(data, schema)   |    |
-|------------------------------------------------------------------------|----|
+| [`Device`](#iot_devices.device.Device)                   | represents exactly one "device".   |
+|----------------------------------------------------------|------------------------------------|
+| [`UnusedSubdevice`](#iot_devices.device.UnusedSubdevice) | represents exactly one "device".   |
 
 ## Module Contents
 
 ### iot_devices.device.DeviceClassTypeVar
 
-### iot_devices.device.apply_defaults(data, schema)
-
-### iot_devices.device.devices_list_lock
-
-### iot_devices.device.all_devices *: dict[str, weakref.ref[[Device](#iot_devices.device.Device)]]*
-
-### iot_devices.device.minimum
-
-### iot_devices.device.maximum
-
-### *class* iot_devices.device.LegacyConfigProperties(device: [Device](#iot_devices.device.Device), config: dict[str, Any])
-
-Represents the old style config properties dict,
-and converts anything you do
-
-#### device
-
-#### config
-
-#### *property* raw
-
-#### \_\_iter_\_()
-
-#### \_\_getitem_\_(key: str)
-
-#### \_\_setitem_\_(key: str, value: dict[str, Any])
-
-### *class* iot_devices.device.Device(name: str, config: dict[str, str], subdevice_config: dict[str, Any] | None = None, \*\*kw: Any)
+### *class* iot_devices.device.Device(config: dict[str, str], \*\*kw: Any)
 
 represents exactly one "device".
 should not be used to represent an interface to a large collection, use
@@ -72,31 +36,59 @@ Every device must have a unique device_type name
 
 Schema defining the config
 
-#### json_schema *: dict[str, Any]*
-
-DEPRECATED, use config_schema
-
 #### upgrade_legacy_config_keys *: dict[str, str]*
 
 \_\_init_\_ uses this to auto rename old config keys to new ones
 if your device renames things.  They are type coerced according
 to the schema too.
 
+#### \_\_config_lock
+
+#### \_\_closing *= False*
+
+#### host *: [iot_devices.host.Host](../host/index.md#iot_devices.host.Host)*
+
+#### host_data *: dict[str, Any]*
+
+#### name
+
+#### datapoint_getter_functions *: dict[str, collections.abc.Callable]*
+
+#### subdevices *: dict[str, [Device](#iot_devices.device.Device)]*
+
+#### metadata *: dict[str, Any]*
+
+This allows us to show large amounts of data that
+do not warrant a datapoint, as it is unlikely anyone
+would want to show them in a main listing,
+and nobody wants to see them clutter up anything
+or slow down the system when they change.
+Putting data here should have no side effects.
+
+#### title *: str*
+
+Title for UI display
+
+#### datapoints *: dict[str, [iot_devices.datapoints.DataPoint](../datapoints/index.md#iot_devices.datapoints.DataPoint)]*
+
+Device instanes all have unique names not shared with anything
+else in that host.
+
+#### \_\_repr_\_() → str
+
+#### *property* config *: collections.abc.Mapping[str, Any]*
+
+Immutable snapshot of config.  Any changes will not
+affect the device itself, you must use update_config for that.
+
 #### *property* is_subdevice *: bool*
 
 True if this is a subdevice, as determine by the is_subdevice key in the config
 
-#### *property* config_properties *: [LegacyConfigProperties](#iot_devices.device.LegacyConfigProperties)*
-
-Included for basic compatibility, hosts can stll work without the data but should
-upgrade to JSON schemas.
-
 #### get_full_schema() → dict[str, Any]
 
-Returns a full schema of the device. Including
-auto-generated properties, and generic things all devices should have.
-
-Frameworks may subclass to add their own extension properties.
+Returns a full normalized schema of the device. Including
+generic things all devices should have.
 
 #### close_subdevice(name: str)
 
@@ -104,7 +96,7 @@ Close and deletes a subdevice without permanently deleting
 any config associated with it.  Should only be called by the
 device itself.
 
-#### create_subdevice(cls: type[DeviceClassTypeVar], name: str, config: dict[str, Any], \*a: Any, \*\*k: Any) → DeviceClassTypeVar
+#### create_subdevice(cls: type[DeviceClassTypeVar], name: str, config: dict[str, Any]) → DeviceClassTypeVar
 
 Creates a subdevice
 Args:
@@ -139,7 +131,7 @@ Once the subdevice exists, the host cannot close it, that is the responsibility
 of the main device.  The host can only close the parent device.
 
 it must update the config in place if the user wants to make changes,
-using set_config_option or update_config.d
+using update_config()
 
 When closing a device, the device must close all of it's subdevices and
 clean up after itself.  The default close() does this for you.
@@ -216,34 +208,13 @@ Returns:
 : A dict of device data dicts that could be used
   to create a new device, indexed by a descriptive name.
 
-#### set_config_option(key: str, value: Any)
-
-sets a top-level key in self.config. used for subclassing as you may want
-to persist.
-
-\_\_init_\_ will automatically set the state.  this is used by the device
-itself to set it's own persistent values at runtime, perhaps in response
-to a websocket message.
-
-\_\_init_\_ will automatically set the state when passed the config dict,
-you don't have to do that part.
-
-This is used by the device itself to set it's own persistent values at
-runtime, perhaps in response to a websocket message.
-
-the host is responsible for subclassing this and actually saving the
-data somehow, should that feature be needed.
-
-The device may subclass this to respond to realtime config changes.
-
-Devices should not clean up or get rid of keys they do not understand,
-because the host application may use (suitably prefixed for uniqueness) extra
-keys.
-
 #### set_config_default(key: str, value: str)
 
 sets an top-level option in self.config if it does not exist or is blank.
-Calls into set_config_option, you should not need to subclass this.
+
+#### set_config_option(key: str, value: str)
+
+sets an top-level option in self.config.
 
 #### wait_ready(timeout: float = 15)
 
@@ -268,7 +239,7 @@ Helper function that just calls handle_error with a traceback.
 
 Handle arbitrary messages from the host
 
-#### numeric_data_point(name: str, , min: float | None = None, max: float | None = None, hi: float | None = None, lo: float | None = None, default: float | None = None, description: str = '', unit: str = '', handler: collections.abc.Callable[[float, float, Any], Any] | None = None, interval: float = 0, subtype: str = '', writable: bool = True, dashboard: bool = True, \*\*kwargs: Any)
+#### numeric_data_point(name: str, , min: float | None = None, max: float | None = None, hi: float | None = None, lo: float | None = None, default: float | None = None, description: str = '', unit: str = '', handler: collections.abc.Callable[[float, float, Any], Any] | None = None, interval: float = 0, subtype: str = '', writable: bool = True, dashboard: bool = True, on_request: collections.abc.Callable[[DataRequest], Any] | None = None, \*\*kwargs: Any) → [iot_devices.datapoints.NumericDataPoint](../datapoints/index.md#iot_devices.datapoints.NumericDataPoint)
 
 Register a new numeric data point with the given properties.
 
@@ -298,7 +269,7 @@ Args:
   : or may be framework defined. Default does not trigger handler.
   <br/>
   handler: A function taking the value,timestamp,
-  : and annotation on changes.
+  : and annotation on changes.  Must be threadsafe.
   <br/>
   interval :annotates the default data rate the point
   : will produce, for use in setting default poll
@@ -314,8 +285,11 @@ Args:
   : type of this value, as a hint to UI generation.
   <br/>
   dashboard: Whether to show this data point in overview displays.
+  <br/>
+  on_request: If set, will be called when the host
+  : requests the value of this datapoint.  Must be threadsafe.
 
-#### string_data_point(name: str, , description: str = '', unit: str = '', handler: collections.abc.Callable[[str, float, Any], Any] | None = None, default: str | None = None, interval: float = 0, writable: bool = True, subtype: str = '', dashboard: bool = True, \*\*kwargs: Any)
+#### string_data_point(name: str, , description: str = '', unit: str = '', handler: collections.abc.Callable[[str, float, Any], Any] | None = None, default: str | None = None, interval: float = 0, writable: bool = True, subtype: str = '', dashboard: bool = True, on_request: collections.abc.Callable[[DataRequest], Any] | None = None, \*\*kwargs: Any) → [iot_devices.datapoints.StringDataPoint](../datapoints/index.md#iot_devices.datapoints.StringDataPoint)
 
 Register a new string data point with the given properties.
 
@@ -332,7 +306,7 @@ Args:
   <br/>
   default: If unset default value is None, or may be framework defined. Default does not trigger handler.
   <br/>
-  handler: A function taking the value,timestamp, and annotation on changes.
+  handler: A function taking the value,timestamp, and annotation on changes. Must be threadsafe.
   <br/>
   interval: annotates the default data rate the point will produce, for use in setting default poll
   : rates by the host if the host wants to poll.
@@ -345,8 +319,11 @@ Args:
   subtype: A string further describing the data type of this value, as a hint to UI generation.
   <br/>
   dashboard: Whether to show this data point in overview displays.
+  <br/>
+  on_request: If set, will be called when the host
+  : requests the value of this datapoint.  Must be threadsafe.
 
-#### object_data_point(name: str, , description: str = '', unit: str = '', handler: collections.abc.Callable[[collections.abc.Mapping[str, Any], float, Any], Any] | None = None, interval: float = 0, writable: bool = True, subtype: str = '', dashboard: bool = True, \*\*kwargs: Any)
+#### object_data_point(name: str, , description: str = '', unit: str = '', handler: collections.abc.Callable[[collections.abc.Mapping[str, Any], float, Any], Any] | None = None, interval: float = 0, writable: bool = True, subtype: str = '', dashboard: bool = True, default: collections.abc.Mapping[str, Any] | None = None, on_request: collections.abc.Callable[[DataRequest], Any] | None = None, \*\*kwargs: Any) → [iot_devices.datapoints.ObjectDataPoint](../datapoints/index.md#iot_devices.datapoints.ObjectDataPoint)
 
 Register a new object data point with the given properties.   Here "object"
 means a JSON-like object.
@@ -362,7 +339,7 @@ Most fields are just extra annotations to the host.
 Args:
 : description: Free text
   <br/>
-  handler: A function taking the value,timestamp, and annotation on changes
+  handler: A function taking the value,timestamp, and annotation on changes. Must be thread safe.
   <br/>
   interval :annotates the default data rate the point will produce, for use in setting default poll
   : rates by the host, if the host wants to poll.  It does not mean the host SHOULD poll this,
@@ -372,9 +349,10 @@ Args:
   <br/>
   subtype: A string further describing the data type of this value, as a hint to UI generation.
   <br/>
-  dashboard: Whether to show this data point in overview displays.
+  on_request: If set, will be called when the host
+  : requests the value of this datapoint.  Must be threadsafe.
 
-#### bytestream_data_point(name: str, , description: str = '', unit: str = '', handler: collections.abc.Callable[[bytes, float, Any], Any] | None = None, writable: bool = True, dashboard: bool = True, \*\*kwargs: Any)
+#### bytestream_data_point(name: str, , description: str = '', unit: str = '', handler: collections.abc.Callable[[bytes, float, Any], Any] | None = None, writable: bool = True, dashboard: bool = True, on_request: collections.abc.Callable[[DataRequest], Any] | None = None, \*\*kwargs: Any)
 
 register a new bytestream data point with the
 given properties. handler will be called when it changes.
@@ -385,66 +363,16 @@ they only push it through.
 
 Despite the name, buffers of bytes may not be broken up or combined, this is buffer oriented,
 
+on_request: If set, will be called when the host
+: requests the value of this datapoint.  Must be threadsafe.
+
 #### push_bytes(name: str, value: bytes)
 
 Same as set_data_point but for bytestream data
 
 #### set_data_point(name: str, value: int | float | str | bytes | collections.abc.Mapping[str, Any] | list[Any], timestamp: float | None = None, annotation: Any | None = None)
 
-Set a data point of the device. may be called by the device itself or by user code.
-
-This is the primary api and we try to funnel as much as absolutely possible into it.
-
-things like button presses that are not actually
-"data points" can be represented as things like
-(button_event_name, timestamp) tuples in object_tags.
-
-things like autodiscovered ui can be done just by
-adding more descriptive metadata to a data point.
-
-Args:
-: name: The data point to set
-  <br/>
-  value: The literal value.
-  : Use set_data_point_getter for a
-    callable which will return such.
-  <br/>
-  timestamp: if present is a time.time() time.
-  <br/>
-  annotation: is an arbitrary object meant to be
-  : compared for identity,
-    for various uses, such as loop prevention
-    when dealting with network sync, when you need
-    to know where a value came from.
-
-This must be thread safe, but the change detection
-could glitch out and discard if you go from A to B
-and back to A again.
-
-When there is multiple writers you will want
-to either do your own lock or ensure that
-dyou use unique values,
-like with an event counter.
-
-#### set_data_point_getter(name: str, getter: collections.abc.Callable[[], int | float | str | bytes | collections.abc.Mapping[str, Any] | None])
-
-Set the Getter of a datapoint, making it into an
-on-request point.
-The callable may return either the new value,
-or None if it has no new data.
-
-#### on_data_change(name: str, value: Any, timestamp: float, annotation: Any)
-
-Used for subclassing, this is how you watch for
-data changes
-
-#### request_data_point(name: str) → Any
-
-Rather than just passively read, actively
-request a data point's new value.
-May return None and just cause the point to be updated later.
-
-Meant to be called by external host code.
+Callable by the device or by the host, thread safe.
 
 #### set_alarm(name: str, datapoint: str, expression: str, priority: str = 'info', trip_delay: float = 0, auto_ack: bool = False, release_condition: str | None = None, \*\*kw: Any)
 
@@ -483,7 +411,11 @@ limit it to easily semantically parsible strings.
 
 #### close()
 
-Release all resources and clean up
+Prefer calling the host's close device call
+
+#### on_before_close()
+
+Subclass defined cleanup handler.
 
 #### on_delete()
 
@@ -495,6 +427,34 @@ may be used to delete any files automatically created.
 #### update_config(config: dict[str, Any])
 
 Update the config dynamically at runtime.
-May be subclassed by the device, not the host.
+May be subclassed by the device to respond to config changes.
 
-By default just uses set_config_option once for every top-level key.
+#### get_host_container()
+
+Get the Host Data Container.  Only the host should call this,
+not the device itself, which should not need to know about
+the container objects.
+
+The only time the device should need to call this is when
+passing the value as a black box to the host.
+
+### *class* iot_devices.device.UnusedSubdevice(name, data)
+
+Bases: [`Device`](#iot_devices.device.Device)
+
+represents exactly one "device".
+should not be used to represent an interface to a large collection, use
+one instance per device.
+
+Note that this is meant to be subclassed twice.
+Once by the actual driver, and again by the
+host application, to detemine how to handle calls
+made by the driver.
+
+#### description *= 'Someone created configuration for a subdevice that is no longer in use or has not yet loaded'*
+
+#### device_type *= 'UnusedSubdevice'*
+
+Every device must have a unique device_type name
+
+#### warn()
