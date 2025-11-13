@@ -91,14 +91,13 @@ def test_native_api():
                 == "This is my fixed text value"
             )
 
-    for attempt in stamina.retry_context(on=AssertionError, attempts=20):
-        with attempt:
-            assert device.datapoints["loopback_num_out"].get()[0] == 0
+    old = device.datapoints["loopback_num_out"].get()[0]
 
-    device.set_data_point("loopback_num_in", 7654)
+    device.set_data_point("loopback_num_in", 123)
+
     for attempt in stamina.retry_context(on=AssertionError, attempts=20):
         with attempt:
-            assert device.datapoints["loopback_num_out"].get()[0] == 7654
+            assert device.datapoints["loopback_num_out"].get()[0] == old + 1
 
     assert device.datapoints["loopback_bool_out"].get()[0] == 0
 

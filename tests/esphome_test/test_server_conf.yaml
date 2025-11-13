@@ -76,9 +76,8 @@ number:
     step: 1
     set_action:
       then:
-        - lambda: |-
-            id(loopback_num_out) = id(loopback_num_in);
-            id(loopback_num_out).publish_state(id(loopback_num_in));
+        - number.increment:
+            id: loopback_num_out
 
   - platform: template
     name: "Seconds Counter"
