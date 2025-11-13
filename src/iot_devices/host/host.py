@@ -3,6 +3,7 @@ import copy
 import asyncio
 import warnings
 import threading
+import traceback
 import time
 import logging
 import weakref
@@ -66,6 +67,9 @@ class DeviceHostContainer:
 
     def on_device_init_fail(self, exception: Exception):
         pass
+
+    def __repr__(self) -> str:
+        return f"<{self.__class__.__name__} for {repr(self.device)}>"
 
 
 _HostContainerTypeVar = TypeVar("_HostContainerTypeVar", bound=DeviceHostContainer)
@@ -513,13 +517,15 @@ class Host(Generic[_HostContainerTypeVar]):
                 "Your framework probably doesn't support this device"
             )
 
-    def on_device_exception(self, device: _HostContainerTypeVar, exception: Exception):
-        pass
+    def on_device_exception(self, device: _HostContainerTypeVar):
+        self.on_device_error(device, traceback.format_exc())
 
     def on_device_error(self, device: _HostContainerTypeVar, error: str):
         pass
 
-    def on_device_print(self, device: _HostContainerTypeVar, message: str):
+    def on_device_print(
+        self, device: _HostContainerTypeVar, message: str, title: str = ""
+    ):
         pass
 
     def on_config_changed(

@@ -301,13 +301,12 @@ class SimpleHost(Host[SimpleHostDeviceContainer]):
                 "Your framework probably doesn't support this device"
             )
 
-    def on_device_exception(self, device: DeviceHostContainer, exception: Exception):
-        pass
-
     def on_device_error(self, device: DeviceHostContainer, error: str):
         pass
 
-    def on_device_print(self, device: DeviceHostContainer, message: str):
+    def on_device_print(
+        self, device: DeviceHostContainer, message: str, title: str = ""
+    ):
         pass
 
     def on_config_changed(self, device: DeviceHostContainer, config: Mapping[str, Any]):

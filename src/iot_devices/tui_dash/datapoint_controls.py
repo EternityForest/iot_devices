@@ -1,5 +1,5 @@
 from iot_devices.host import Host
-from textual.widgets import Pretty, Button, Switch
+from textual.widgets import Pretty, Button, Switch, Input
 
 
 def makeDataPointControl(
@@ -53,5 +53,28 @@ def makeDataPointControl(
                         self.label = "Go!"
 
             return MyButton("Go!")
+
+        else:
+
+            class MyNumInput(Input):
+                DEFAULT_CSS = """
+                MyNumInput {
+                    width: 100%;
+                }
+                """
+
+                def __init__(self):
+                    super().__init__()
+                    self.compact = True
+                    self.type = "number"
+
+                def on_input_changed(self, *a):
+                    v = self.value
+                    host.set_number(devname, pointname, float(v))
+
+                def update(self, v):
+                    self.value = str(v)
+
+            return MyNumInput()
 
     return Pretty("")

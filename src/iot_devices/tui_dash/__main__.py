@@ -1,18 +1,18 @@
 from typing import Any, Mapping, Callable
 import weakref
 import tomllib
-import sys
+import sys, os
 
+from iot_devices.host.host import DeviceHostContainer
 from iot_devices.host.simple_host import SimpleHost, SimpleHostDeviceContainer
-from iot_devices.datapoints import DataPoint
 
-from textual.app import App, ComposeResult, RenderResult
+from textual.app import App, ComposeResult
 from textual.widget import Widget
 from textual.screen import Screen
-from textual.widgets import Label, Button, Placeholder, Pretty
-from textual.containers import VerticalScroll, HorizontalScroll
+from textual.widgets import Label, Button, Placeholder, Pretty, RichLog
+from textual.containers import VerticalScroll
 
-from .datapoint_controls import makeDataPointControl
+from iot_devices.tui_dash.datapoint_controls import makeDataPointControl
 
 dev_to_widgets = weakref.WeakValueDictionary()
 point_to_widgets = weakref.WeakValueDictionary()
@@ -87,6 +87,10 @@ class Host(SimpleHost):
     ):
         devices_screen.devs.mount(OneDeviceDashboardWidget(device))
         return super().on_before_device_added(name, device, *args, **kwargs)
+
+    def on_device_error(self, device: DeviceHostContainer, error: str):
+        log.write(f"{device.name}: {error}")
+        return super().on_device_error(device, error)
 
 
 host = Host()
@@ -177,15 +181,20 @@ class DevicesGrid(Widget):
     DevicesGrid {
     layout: grid;
     width: 100%;
-    border: solid $accent;
     grid-size: 5;
     }
     """
 
 
+log = RichLog()
+log.styles.height = 8
+log.styles.dock = "bottom"
+
+
 class TweetScreen(Screen):
     DEFAULT_CSS = """
     TweetScreen {
+    border: solid $accent;
     }"""
 
     def __init__(self):
@@ -196,10 +205,11 @@ class TweetScreen(Screen):
         self.devs.styles.grid_size_columns = int(max(1, self.size.width / 30))
 
     def compose(self) -> ComposeResult:
-        yield Header(id="Header")
-        yield Footer(id="Footer")
+        yield Header(sys.argv[1])
         with VerticalScroll():
             yield self.devs
+
+        yield log
 
 
 devices_screen = TweetScreen()
@@ -223,11 +233,26 @@ class LayoutApp(App):
         for d in s:
             host.add_new_device(d)
 
+        log.write("Running...")
 
-if __name__ == "__main__":
+
+def main():
+    if not len(sys.argv) > 1:
+        sys.argv.append(
+            os.path.normpath(
+                os.path.join(
+                    os.path.dirname(__file__),
+                    "../../../tui-dash.toml",
+                )
+            )
+        )
     fn = sys.argv[1]
     with open(fn, "rb") as f:
         cfg = tomllib.load(f)
     config.update(cfg)
     app = LayoutApp()
     app.run()
+
+
+if __name__ == "__main__":
+    main()

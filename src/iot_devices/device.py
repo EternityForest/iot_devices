@@ -4,6 +4,7 @@ from typing import Any, TypeVar, final
 from collections.abc import Callable, Mapping
 import logging
 import json
+import pydantic
 import copy
 import weakref
 import threading
@@ -527,16 +528,18 @@ class Device:
 
     def print(self, s: str, title: str = ""):
         """used by the device to print to the hosts live device message feed, if such a thing should happen to exist"""
-        logging.info(f"{title}: {str(s)}")
+        self.host.on_device_print(self.get_host_container(), s, title)
 
+    @final
     def handle_error(self, s: str, title: str = ""):
         """like print but specifically marked as error. may get special notification.  should not be used for brief network loss"""
-        logging.error(f"{title}: {str(s)}")
+        self.host.on_device_error(self.get_host_container(), s)
 
+    @final
     def handle_exception(self):
         "Helper function that just calls handle_error with a traceback."
         try:
-            self.handle_error(traceback.format_exc())
+            self.host.on_device_exception(self.get_host_container())
         except Exception:
             print(traceback.format_exc())  # pragma: no cover
 
@@ -544,6 +547,7 @@ class Device:
         "Handle arbitrary messages from the host"
 
     @final
+    @pydantic.validate_call
     def numeric_data_point(
         self,
         name: str,
@@ -646,6 +650,7 @@ class Device:
         return dp
 
     @final
+    @pydantic.validate_call
     def string_data_point(
         self,
         name: str,
@@ -715,6 +720,7 @@ class Device:
         return dp
 
     @final
+    @pydantic.validate_call
     def object_data_point(
         self,
         name: str,
@@ -777,6 +783,8 @@ class Device:
         self.datapoints[name] = dp
         return dp
 
+    @final
+    @pydantic.validate_call
     def bytestream_data_point(
         self,
         name: str,
@@ -833,8 +841,10 @@ class Device:
         timestamp: float | None = None,
         annotation: Any | None = None,
     ):
+        """Callable by the device or by the host, thread safe."""
         self.datapoints[name].set(value, timestamp, annotation)
 
+    @pydantic.validate_call
     def set_alarm(
         self,
         name: str,
@@ -917,16 +927,26 @@ class Device:
             self._config = config
             self.title = self._config.get("title", "").strip() or self.name
 
-        self.host.on_config_changed(
-            self.host.get_container_for_device(self), config
-        )
+        self.host.on_config_changed(self.get_host_container(), config)
 
     # Never call this under config lock
+    @pydantic.validate_call
     def update_config(self, config: dict[str, Any]):
         """Update the config dynamically at runtime.
         May be subclassed by the device to respond to config changes.
         """
         self._update_config(config)
+
+    @final
+    def get_host_container(self):
+        """Get the Host Data Container.  Only the host should call this,
+        not the device itself, which should not need to know about
+        the container objects.
+
+        The only time the device should need to call this is when
+        passing the value as a black box to the host.
+        """
+        return self.host.get_container_for_device(self)
 
 
 class UnusedSubdevice(Device):

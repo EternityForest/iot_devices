@@ -8,9 +8,10 @@ readme = "README.md"
 requires-python = ">=3.11"
 
 dependencies = [
-    "paho-mqtt",
     "textual",
-    "scullery >=0.2.0",
+    "scullery >=0.2.0",    
+    "pydantic",
+    "paho-mqtt",
     "yeelight",
     "colorzero",
     "gpiozero",
@@ -45,7 +46,7 @@ asyncio_mode = "auto"
 
 
 [project.scripts]
-"tui-dash" = "iot_devices.tui_dash:main"
+"tui-dash" = "iot_devices.tui_dash:__main__"
 
 [build-system]
 requires = ["uv_build>=0.8.14,<0.9.0"]
