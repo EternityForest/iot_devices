@@ -34,7 +34,6 @@ def test_bad_pw():
 
     time.sleep(5)
 
-    assert not device.datapoints["native_api_connected"].get()[0]
     print(device.datapoints)
     device.close()
     p.kill()

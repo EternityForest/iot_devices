@@ -8,7 +8,7 @@ from .mesh import MeshNode, ITransport, Payload
 
 
 class RemoteLazyMeshNode(Device):
-    json_schema: dict[str, Any] = {
+    config_schema: dict[str, Any] = {
         "type": "object",
         "properties": {
             "custom_properties": {
@@ -126,7 +126,7 @@ class RemoteLazyMeshNode(Device):
                     self.ids_to_string_points[i.id], i.data, None, "from_remote"
                 )
 
-    def close(self):
+    def on_before_close(self):
         self.should_run = False
         return super().close()
 
@@ -191,7 +191,7 @@ class RemoteLazyMeshNode(Device):
 
 
 class LazyMeshNode(Device):
-    json_schema: dict[str, Any] = {
+    config_schema: dict[str, Any] = {
         "type": "object",
         "properties": {
             "local_device_id": {
@@ -472,7 +472,7 @@ class LazyMeshNode(Device):
             print(traceback.format_exc())
             self.handle_error("Failed to handle lm message")
 
-    def close(self):
+    def on_before_close(self):
         try:
             self.node.close()
         except Exception:

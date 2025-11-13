@@ -6,6 +6,7 @@ import asyncio
 import threading
 import zeroconf
 import time
+from typing import Any
 
 import iot_devices.device
 import iot_devices.host
@@ -222,8 +223,8 @@ class ESPHomeDevice(iot_devices.device.Device):
         except Exception:
             self.handle_exception()
 
-    def __init__(self, name: str, config: Dict[str, str], **kw):
-        super().__init__(name, config, **kw)
+    def __init__(self, config: Dict[str, Any], **kw):
+        super().__init__(config, **kw)
 
         self.zc = zeroconf.Zeroconf()
 
@@ -255,7 +256,7 @@ class ESPHomeDevice(iot_devices.device.Device):
     def asyncloop(self):
         self.loop.run_until_complete(self.main())
 
-    def close(self):
+    def on_before_close(self):
         if hasattr(self, "api") and self.api:
             try:
                 t = asyncio.run_coroutine_threadsafe(self.api.disconnect(), self.loop)

@@ -6,6 +6,7 @@ from iot_devices.host.simple_host import SimpleHost
 def test_basic_loop():
     server_conf = {
         "type": "ArduinoCogsServer",
+        "name": "MyServerDevice",
         "port": 6741,
         "tagpoints": [
             {

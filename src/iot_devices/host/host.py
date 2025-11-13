@@ -13,7 +13,7 @@ from collections.abc import Callable, Mapping
 from typing import Type, Any, final, Generic, TypeVar, TYPE_CHECKING
 
 from .util import get_class
-
+from ..util import str_to_bool
 
 if TYPE_CHECKING:
     from . import device
@@ -21,6 +21,50 @@ if TYPE_CHECKING:
 _logger = logging.getLogger(__name__)
 _host_context = threading.local()
 _host_context.host: list[Host] = []
+
+
+def apply_defaults(data, schema):
+    if "properties" in schema and isinstance(data, dict):
+        for prop, prop_schema in schema["properties"].items():
+            if prop not in data and "default" in prop_schema:
+                data[prop] = prop_schema["default"]
+            elif isinstance(data.get(prop), dict) and "properties" in prop_schema:
+                apply_defaults(data[prop], prop_schema)
+    return data
+
+
+def normalize_legacy_config(cls, config: dict[str, Any]):
+    # Even if we don't need it, keep for consistency.
+    if "extensions" not in config:
+        config["extensions"] = {}
+
+    for i in cls.upgrade_legacy_config_keys:
+        if i in config:
+            warnings.warn(f"Auto upgrading legacy config key {i}", DeprecationWarning)
+            v = config[i]
+            del config[i]
+
+            t = cls.config_schema.get("properties", {}).get(i, {}).get("type", None)
+            if t in ("bool", "boolean"):
+                v = str_to_bool(v)
+            elif t in ("int", "integer"):
+                v = int(v)
+            elif t in ("float", "number"):
+                v = float(v)
+
+            config[cls.upgrade_legacy_config_keys[i]] = v
+
+    if config.get("type", cls.device_type) != cls.device_type:
+        # Special placeholder
+        if cls.device_type not in ("unsupported", "placeholder"):
+            raise ValueError(
+                "Configured type "
+                + config.get("type", cls.device_type)
+                + " does not match this class type:"
+                + str((config["type"], cls, type))
+            )
+
+    return config
 
 
 class DeviceHostContainer:
@@ -185,8 +229,10 @@ class Host(Generic[_HostContainerTypeVar]):
 
     @final
     def close_device(self, name: str):
-        """Thrad note:Do not reopen the device with the same name until this call returns"""
+        """
+        Thread note:Do not reopen the device with the same name until this call returns"""
         x = None
+
         with self.__lock:
             if name in self.devices:
                 x = self.devices[name].device
@@ -375,7 +421,11 @@ class Host(Generic[_HostContainerTypeVar]):
 
     @final
     def add_new_device(
-        self, config: dict[str, Any], *args: Any, **kwargs: Any
+        self,
+        config: dict[str, Any],
+        *,
+        host_container_kwargs: dict[str, Any] = {},
+        **kwargs: Any,
     ) -> _HostContainerTypeVar:
         c = get_class(config)
 
@@ -383,7 +433,9 @@ class Host(Generic[_HostContainerTypeVar]):
         if "is_subdevice" in config and config["is_subdevice"]:
             c = device.UnusedSubdevice
 
-        return self.add_device_from_class(c, config, *args, **kwargs)
+        return self.add_device_from_class(
+            c, config, host_container_kwargs=host_container_kwargs, **kwargs
+        )
 
     # This is the only function to actually add a device
     @final
@@ -391,7 +443,8 @@ class Host(Generic[_HostContainerTypeVar]):
         self,
         cls: Type[device.Device],
         data: dict[str, Any],
-        *args: Any,
+        *,
+        host_container_kwargs: dict[str, Any] = {},
         parent: device.Device | None = None,
         **kwargs: Any,
     ) -> _HostContainerTypeVar:
@@ -399,6 +452,11 @@ class Host(Generic[_HostContainerTypeVar]):
             name = data["name"]
 
             data = copy.deepcopy(data)
+
+            data = apply_defaults(data, cls.config_schema)
+
+            data = normalize_legacy_config(cls, data)
+
             data.update(self.get_config_for_device(None, data["name"]))
 
             # Container available before device
@@ -416,16 +474,17 @@ class Host(Generic[_HostContainerTypeVar]):
 
                 parentContainer = None
                 if parent is not None:
-                    parentContainer = self.devices[parent.name]
-                    data["parent"] = parent
+                    parentContainer = self.get_container_for_device(parent)
 
-                cont = self.__container_type(self, parentContainer, data)
+                cont = self.__container_type(
+                    self, parentContainer, data, **host_container_kwargs
+                )
                 self.devices[name] = cont
 
             try:
                 self.on_before_device_added(name, cont)
 
-                d = cls(data, *args, **kwargs)
+                d = cls(data)
 
                 with self.__lock:
                     self.__load_order.append(weakref.ref(cont))

@@ -26,16 +26,6 @@ from .datapoints import (
 DeviceClassTypeVar = TypeVar("DeviceClassTypeVar", bound="Device")
 
 
-def apply_defaults(data, schema):
-    if "properties" in schema and isinstance(data, dict):
-        for prop, prop_schema in schema["properties"].items():
-            if prop not in data and "default" in prop_schema:
-                data[prop] = prop_schema["default"]
-            elif isinstance(data.get(prop), dict) and "properties" in prop_schema:
-                apply_defaults(data[prop], prop_schema)
-    return data
-
-
 devices_list_lock = threading.RLock()
 
 all_devices: dict[str, weakref.ref[Device]] = {}
@@ -146,8 +136,10 @@ class Device:
 
         """
 
-        # Opens stricly before the host lock.
+        # Protects config data and subdevices list
         self.__config_lock = threading.RLock()
+
+        self.__closing = False
 
         self.host: host.Host = host.get_host()
 
@@ -156,8 +148,6 @@ class Device:
         self.name = config["name"]
 
         self._config = copy.deepcopy(config)
-
-        self._normalize_legacy_config()
 
         self.datapoint_getter_functions: dict[str, Callable] = {}
 
@@ -180,7 +170,6 @@ class Device:
 
         # Use the defaults
         if self.config_schema:
-            apply_defaults(config, self.config_schema)
             validate(config, self.get_full_schema())
 
         self._config: Mapping[str, Any] = config
@@ -216,48 +205,6 @@ class Device:
         affect the device itself, you must use update_config for that.
         """
         return copy.deepcopy(self._config)
-
-    def _normalize_legacy_config(self):
-        with self.__config_lock:
-            config = copy.deepcopy(self._config)
-            # Even if we don't need it, keep for consistency.
-            if "extensions" not in config:
-                config["extensions"] = {}
-
-            for i in self.upgrade_legacy_config_keys:
-                if i in config:
-                    warnings.warn(
-                        f"Auto upgrading legacy config key {i}", DeprecationWarning
-                    )
-                    v = config[i]
-                    del config[i]
-
-                    t = (
-                        self.config_schema.get("properties", {})
-                        .get(i, {})
-                        .get("type", None)
-                    )
-                    if t in ("bool", "boolean"):
-                        v = str_to_bool(v)
-                    elif t in ("int", "integer"):
-                        v = int(v)
-                    elif t in ("float", "number"):
-                        v = float(v)
-
-                    config[self.upgrade_legacy_config_keys[i]] = v
-
-            if config.get("type", self.device_type) != self.device_type:
-                # Special placeholder
-                if self.device_type not in ("unsupported", "placeholder"):
-                    raise ValueError(
-                        "Configured type "
-                        + config.get("type", self.device_type)
-                        + " does not match this class type:"
-                        + str((config["type"], self, type))
-                    )
-
-        # Outside of lock but synchronous
-        self._update_config(config)
 
     @property
     def is_subdevice(self) -> bool:
@@ -342,12 +289,7 @@ class Device:
 
     @final
     def create_subdevice(
-        self,
-        cls: type[DeviceClassTypeVar],
-        name: str,
-        config: dict[str, Any],
-        *a: Any,
-        **k: Any,
+        self, cls: type[DeviceClassTypeVar], name: str, config: dict[str, Any]
     ) -> DeviceClassTypeVar:
         """Creates a subdevice
         Args:
@@ -405,9 +347,7 @@ class Device:
         config["type"] = cls.device_type
         config["is_subdevice"] = "true"
 
-        k = copy.copy(k)
-
-        sd = self.host.add_device_from_class(cls, config, *a, **k)
+        sd = self.host.add_device_from_class(cls, config)
         self.subdevices[name] = sd.device
         return sd
 
@@ -903,11 +843,38 @@ class Device:
             **kw,
         )
 
+    @final
     def close(self):
+        """Prefer calling the host's close device call"""
+        with self.__config_lock:
+            if self.__closing:
+                return
+
+            self.__closing = True
+
+        try:
+            self.on_before_close()
+        except Exception:
+            self.host.on_device_exception(self.get_host_container())
+
+        with self.__config_lock:
+            x = list(self.subdevices.keys())
+
         "Release all resources and clean up"
-        for i in list(self.subdevices.keys()):
-            self.subdevices[i].close()
-            del self.subdevices[i]
+        for i in x:
+            try:
+                self.subdevices[i].close()
+                del self.subdevices[i]
+            except Exception:
+                self.host.on_device_exception(self.get_host_container())
+        del x
+
+        self.host.close_device(self.name)
+
+    def on_before_close(self):
+        """
+        Subclass defined cleanup handler.
+        """
 
     def on_delete(self):
         """
@@ -935,6 +902,16 @@ class Device:
         """Update the config dynamically at runtime.
         May be subclassed by the device to respond to config changes.
         """
+        if not config["name"] == self.name:
+            raise ValueError(
+                f"Device name changed from {self.name} to {config['name']}"
+            )
+
+        if not config["type"] == self.device_type:
+            raise ValueError(
+                f"Device type changed from {self.device_type} to {config['type']}"
+            )
+
         self._update_config(config)
 
     @final

@@ -194,7 +194,7 @@ class YeelightRGB(YeelightDevice):
                 self.wasOff = False
                 self.setSwitch(0, True, duration)
 
-    def close(self):
+    def on_before_close(self):
         return super().close()
         self.closed = True
 

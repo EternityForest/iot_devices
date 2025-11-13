@@ -12,13 +12,12 @@ Remove some low quality unmaintained devices, and add unit tests.
 * Switch to UV
 * Document send_ui_message removal
 * Remove legacy config_properties
-
 * There is a fixed set of reserved keys.  No more device. prefixes.
-
 * Nonstandard additional properties added by the framework must go in a top level "extensions" section.
 
 * Closing subdevices is now the responsibilty of the main device, not the host.
-
+* Cannot override device.close, use on_before_close to define handlers
+*
 * Remove text_config_files
 
 * New Host and HostDataContainer classes

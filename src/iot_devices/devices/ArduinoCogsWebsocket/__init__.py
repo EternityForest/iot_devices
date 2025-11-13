@@ -386,7 +386,7 @@ class ArduinoCogsClient(iot_devices.device.Device):
             self.handle_exception()
             return
 
-    def close(self):
+    def on_before_close(self):
         self.should_run = False
 
         try:
@@ -567,7 +567,7 @@ class ArduinoCogsServer(iot_devices.device.Device):
         }
         return starlette.responses.JSONResponse(r)
 
-    def close(self):
+    def on_before_close(self):
         self.should_run = False
         try:
             self.loop.call_soon_threadsafe(self.server.shutdown)

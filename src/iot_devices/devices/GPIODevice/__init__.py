@@ -81,7 +81,7 @@ class GPIOOutput(device.Device):
         except Exception:
             self.handle_exception()
 
-    def close(self):
+    def on_before_close(self):
         if self.pin:
             self.pin.close()
 
@@ -187,6 +187,6 @@ class GPIOInput(device.Device):
     def released(self):
         self.set_data_point("value", 0)
 
-    def close(self):
+    def on_before_close(self):
         if self.pin:
             self.pin.close()

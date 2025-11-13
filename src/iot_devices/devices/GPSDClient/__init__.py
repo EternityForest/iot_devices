@@ -13,7 +13,7 @@ class GPSDClient(device.Device):
 
     # This schema determines the config a host will give us.
     # The host will also give us a few extra special keys.
-    json_schema = {
+    config_schema = {
         "properties": {
             "device": {
                 "type": "string",
@@ -122,6 +122,6 @@ class GPSDClient(device.Device):
         )
         self.object_data_point("heading", writable=False, unit="deg")
 
-    def close(self):
+    def on_before_close(self):
         device.Device.close(self)
         self.should_run = False

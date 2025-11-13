@@ -78,7 +78,7 @@ class ServerMonitor(device.Device):
         )
         t.start()
 
-    def close(self):
+    def on_before_close(self):
         self.stop_flag = False
         return super().close()
 

@@ -506,19 +506,19 @@ class YoLinkService(device.Device):
         r = copy.deepcopy(r)
         r["time"] = int(time.time())
 
-        return json.loads(
-            niquests.post(
-                server_url + "/open/yolink/v2/api",
-                headers={
-                    "Content-Type": "application/json",
-                    "Authorization": "Bearer " + self.token,
-                },
-                data=json.dumps(r),
-                timeout=5,
-            ).text
-        )["data"]
+        x = niquests.post(
+            server_url + "/open/yolink/v2/api",
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": "Bearer " + self.token,
+            },
+            data=json.dumps(r),
+            timeout=5,
+        ).text
+        assert x
+        return json.loads(x)["data"]
 
-    def close(self):
+    def on_before_close(self):
         try:
             self.client.close()
         except Exception:
@@ -613,8 +613,9 @@ class YoLinkService(device.Device):
             except Exception:
                 self.handle_error(traceback.format_exc())
 
-    def __init__(self, name, data, **kw):
-        device.Device.__init__(self, name, data, **kw)
+    def __init__(self, data, **kw):
+        device.Device.__init__(self, data, **kw)
+        name = self.name
         self.shouldRun = False
         try:
             self.numeric_data_point("connected", subtype="bool", writable=False)
