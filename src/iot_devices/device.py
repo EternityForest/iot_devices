@@ -14,7 +14,7 @@ from .util import str_to_bool
 from . import host
 from .datapoints import (
     DataPoint,
-    NumberDataPoint,
+    NumericDataPoint,
     StringDataPoint,
     ObjectDataPoint,
     BytesDataPoint,
@@ -506,7 +506,7 @@ class Device:
         dashboard: bool = True,  # pylint: disable=unused-argument
         on_request: Callable[[DataRequest], Any] | None = None,
         **kwargs: Any,  # pylint: disable=unused-argument
-    ) -> NumberDataPoint:
+    ) -> NumericDataPoint:
         """Register a new numeric data point with the given properties.
 
         Handler will be called when it changes.
@@ -585,7 +585,7 @@ class Device:
         if on_request is not None:
             self.datapoint_getter_functions[name] = on_request
 
-        dp = NumberDataPoint(self, name)
+        dp = NumericDataPoint(self, name)
         self.datapoints[name] = dp
         return dp
 

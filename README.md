@@ -37,8 +37,6 @@ type="DemoDevice"
 name="AnotherDemo"
 type="DemoDevice"
 
-
-
 ```
 
 
@@ -59,7 +57,7 @@ class RandomDevice(device.Device):
 
     # This schema determines the config a host will give us.
     # The host will also give us a few extra special keys.
-    json_schema = {
+    config_schema = {
         "properties":{
             "demo_param":
                 {
@@ -72,14 +70,8 @@ class RandomDevice(device.Device):
         device.Device.__init__(self,name, config, **kw)
 
         # Push type data point set by the device
-        self.numeric_data_point("random")
-        self.set_data_point("random",random.random())
-
-
-        # On demand requestable data point pulled by application.
-        # All you have to do is set the val to a callable.
-        self.numeric_data_point("dyn_random")
-        self.set_data_point_getter("dyn_random", random.random)
+        d = self.numeric_data_point("random")
+        d.set(random.random())
 ```
 
 ## Declare a module has devices
@@ -110,32 +102,18 @@ Note: We never have to import the module ourselves. It is imported on demand bas
 [Full host API docs](https://eternityforest.github.io/iot_devices/docs/iot_devices/host.html)
 
 ``` python
-from iot_devices.host import get_class, create_device
+from iot_devices.host.simple_host import SimpleHost
 
 data = {
-    "type": "DemoDevice"
+    "type": "DemoDevice",
+    "name": "MyDemo"
 }
 
+h = SimpleHost()
+dev = h.add_new_device(data).wait_device_ready()
 
-# Get the class that would be able to construct a matching device given the data
-c = get_class(data)
-
-# Make an instance of that device.
-# Create device is very simple, it just calls cls(name, data),
-# But you can override it to add hooks whenever a device is created.
-device = create_device(c ,"Random Device", data)
-
-#One of the values this class exposes.
-# Note that values here can be "None" if there is no data yet.
-print(device.datapoints['random'])
-
-# This is an on-demand getter.
-# This explicitly calls the getter we set.
-# It also sets the key in device.datapoints
-print(device.request_data_point('dyn_random'))
-
-# clean up
-device.close()
+print(dev.datapoints)
+dev.close()
 ```
 
 ### Using subdevices

@@ -53,7 +53,7 @@ class StringDataPoint(DataPoint[str]):
         self.device.host.set_string(self.device.name, self.datapoint_name, value)
 
 
-class NumberDataPoint(DataPoint[float]):
+class NumericDataPoint(DataPoint[float]):
     def get(self) -> tuple[float, float, Any]:
         return self.device.host.get_number(self.device.name, self.datapoint_name)
 
