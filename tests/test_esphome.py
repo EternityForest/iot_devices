@@ -14,7 +14,7 @@ def test_bad_pw():
     subprocess.check_call(
         ["esphome", "compile", "test_server_conf.yaml"], cwd=esphome_dir
     )
-    subprocess.call(["pkill", "-f", "esphome_test"])
+    subprocess.call(["pkill", "-f", ".pioenvs/hosttest"])
 
     p = subprocess.Popen(
         [".esphome/build/hosttest/.pioenvs/hosttest/program"], cwd=esphome_dir
@@ -95,10 +95,10 @@ def test_native_api():
         with attempt:
             assert device.datapoints["loopback_num_out"].get()[0] == 0
 
-    device.set_data_point("loopback_num_in", 5)
+    device.set_data_point("loopback_num_in", 7654)
     for attempt in stamina.retry_context(on=AssertionError, attempts=20):
         with attempt:
-            assert device.datapoints["loopback_num_out"].get()[0] == 5
+            assert device.datapoints["loopback_num_out"].get()[0] == 7654
 
     assert device.datapoints["loopback_bool_out"].get()[0] == 0
 
