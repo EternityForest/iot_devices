@@ -9,10 +9,15 @@ from iot_devices import device
 class DemoDevice(device.Device):
     device_type = "DemoDevice"
 
+    config_schema = {
+        "device.fixed_number_multiplier": {"type": "number", "default": 1},
+        "device.echo_number": {"type": "number", "default": 5},
+        "set_by_device_itself": {"type": "string"},
+        "requested_subdevice_number": {"type": "number", "default": 0},
+    }
+
     def __init__(self, data, **kw):
         device.Device.__init__(self, data, **kw)
-
-        self.text_config_files = ["test.conf"]
 
         try:
             if not os.path.exists(os.path.join(self.get_config_folder(), "test.conf")):
@@ -22,6 +27,8 @@ class DemoDevice(device.Device):
                     f.write("Testing")
         except Exception:
             pass
+
+        self.set_config_option("set_by_device_itself", "hello world")
 
         self.set_config_default("device.fixed_number_multiplier", "1")
 
@@ -53,6 +60,20 @@ class DemoDevice(device.Device):
         self.set_data_point("object", {"a": 1, "b": 2, "c": 3})
         self.set_data_point("string", "hello world")
         self.set_data_point("bytestream", b"hello world")
+
+        def addsub(v: float, t: float, a: Any):
+            self.create_subdevice(
+                DemoDevice,
+                f"requested_{v}",
+                {"gen2": True, "requested_subdevice_number": v},
+            )
+
+        self.numeric_data_point(
+            "add_a_subdevice",
+            subtype="trigger",
+            description="Add a subdevice",
+            handler=addsub,
+        )
 
         def fake_an_error(v: float, t: float, a: Any):
             try:

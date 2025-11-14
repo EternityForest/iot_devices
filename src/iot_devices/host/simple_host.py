@@ -34,7 +34,6 @@ class SimpleHostDeviceContainer(DeviceHostContainer):
         self, host: Host, parent: DeviceHostContainer | None, config: Mapping[str, Any]
     ):
         super().__init__(host, parent, config)
-
         self.alerts: list[SimpleAlert] = []
 
 

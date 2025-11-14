@@ -82,12 +82,12 @@ class DeviceHostContainer:
     def __init__(
         self,
         host: Host,
-        parent: Self | None,
+        parent_container: DeviceHostContainer | None,
         device_config: Mapping[str, Any],
     ):
         """MUST NOT block!"""
         self.host = host
-        self.parent = parent
+        self.parent: Self | None = parent_container  # type: ignore
         self.name = device_config["name"]
         self.device: device.Device | None = None
         self._device_exception: Exception | None = None
@@ -140,7 +140,7 @@ class Host(Generic[_HostContainerTypeVar]):
 
     """
 
-    def __init__(self, container_type: Type[_HostContainerTypeVar]):
+    def __init__(self, container_type: type[_HostContainerTypeVar]):
         self.__container_type = container_type
         self.devices: dict[str, _HostContainerTypeVar] = {}
 
@@ -461,7 +461,7 @@ class Host(Generic[_HostContainerTypeVar]):
     @final
     def add_device_from_class(
         self,
-        cls: Type[device.Device],
+        cls: type[device.Device],
         data: dict[str, Any],
         *,
         host_container_kwargs: dict[str, Any] = {},
@@ -553,7 +553,9 @@ class Host(Generic[_HostContainerTypeVar]):
         pass
 
     def get_config_for_device(
-        self, parent_device: _HostContainerTypeVar | None, full_device_name: str
+        self,
+        parent_device_container: _HostContainerTypeVar | None,
+        full_device_name: str,
     ) -> dict[str, Any]:
         """Subclassable hook to load config on device creation"""
         return {}
@@ -588,7 +590,7 @@ class Host(Generic[_HostContainerTypeVar]):
         return x
 
     def get_config_folder(
-        self, device: _HostContainerTypeVar, create: bool = True
+        self, device_container: _HostContainerTypeVar, create: bool = True
     ) -> str | None:
         # Can still call with create false just to check
         if create:
@@ -596,19 +598,21 @@ class Host(Generic[_HostContainerTypeVar]):
                 "Your framework probably doesn't support this device"
             )
 
-    def on_device_exception(self, device: _HostContainerTypeVar) -> None:
-        self.on_device_error(device, traceback.format_exc())
+    def on_device_exception(self, device_container: _HostContainerTypeVar) -> None:
+        self.on_device_error(device_container, traceback.format_exc())
 
-    def on_device_error(self, device: _HostContainerTypeVar, error: str) -> None:
+    def on_device_error(
+        self, device_container: _HostContainerTypeVar, error: str
+    ) -> None:
         pass
 
     def on_device_print(
-        self, device: _HostContainerTypeVar, message: str, title: str = ""
+        self, device_container: _HostContainerTypeVar, message: str, title: str = ""
     ) -> None:
         pass
 
     def on_config_changed(
-        self, device: _HostContainerTypeVar, config: Mapping[str, Any]
+        self, device_container: _HostContainerTypeVar, config: Mapping[str, Any]
     ) -> None:
         """Called when the device configuration has changed.
         The host likely doesn't need to care about this
@@ -618,14 +622,18 @@ class Host(Generic[_HostContainerTypeVar]):
         set up yet, because this could be called from the init.
         """
 
-    def on_after_device_removed(self, device: _HostContainerTypeVar) -> None:
+    def on_after_device_removed(self, device_container: _HostContainerTypeVar) -> None:
         pass
 
-    def on_device_added(self, device: _HostContainerTypeVar) -> None:
+    def on_device_added(self, device_container: _HostContainerTypeVar) -> None:
         pass
 
     def on_before_device_added(
-        self, name: str, device: _HostContainerTypeVar, *args: Any, **kwargs: Any
+        self,
+        name: str,
+        device_container: _HostContainerTypeVar,
+        *args: Any,
+        **kwargs: Any,
     ) -> None:
         pass
 

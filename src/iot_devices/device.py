@@ -128,6 +128,7 @@ class Device:
                         this alone.
 
         """
+        self.title = ""
 
         # Protects config data and subdevices list
         self.__config_lock = threading.RLock()
@@ -251,21 +252,34 @@ class Device:
             d["properties"]["is_subdevice"] = {"type": "boolean", "const": True}
         else:
             d["properties"].pop("is_subdevice", None)  # type: ignore
-        d["properties"]["name"] = {"type": "string", "title": "Name"}
-        d["properties"]["type"] = {"type": "string", "title": "Type", "readOnly": True}
+        d["properties"]["name"] = {
+            "type": "string",
+            "title": "Name",
+            "propertyOrder": -1,
+        }
+        d["properties"]["type"] = {
+            "type": "string",
+            "title": "Type",
+            "readOnly": True,
+            "propertyOrder": -1,
+        }
         d["properties"]["title"] = {
             "type": "string",
             "title": "Title",
+            "propertyOrder": -1,
         }
         d["properties"]["extensions"] = {
             "type": "object",
             "title": "Extensions",
+            "options": {"collapsed": True},
+            "propertyOrder": 1000000,
         }
 
         d["properties"]["notes"] = {
             "type": "string",
             "format": "markdown",
             "title": "Notes on this specific device instance",
+            "propertyOrder": 1000000,
         }
         return d
 
@@ -334,9 +348,9 @@ class Device:
                 config.update(copy.deepcopy(self._config["subdevice_config"][name]))
 
         config["name"] = fn + "/" + name
-        config["is_subdevice"] = "true"
+        config["is_subdevice"] = True
         config["type"] = cls.device_type
-        config["is_subdevice"] = "true"
+        config["is_subdevice"] = True
 
         sd = self.host.add_device_from_class(cls, config)
         self.subdevices[name] = sd.device
@@ -441,11 +455,17 @@ class Device:
                 self.set_config_option(key, value)
 
     @final
-    def set_config_option(self, key: str, value: str):
+    def set_config_option(self, key: str, value: Any):
         """sets an top-level option in self.config."""
+
+        json.dumps(value)
+
         with self.__config_lock:
-            x = copy.deepcopy(self._config)
+            x = dict(copy.deepcopy(self._config))
             x[key] = value
+
+        if self.config_schema:
+            validate(x, self.get_full_schema())
 
         self.update_config(x)
 
@@ -908,6 +928,9 @@ class Device:
             raise ValueError(
                 f"Device type changed from {self.device_type} to {config['type']}"
             )
+
+        if self.config_schema:
+            validate(config, self.get_full_schema())
 
         self._update_config(config)
 
