@@ -713,7 +713,7 @@ wheels = [
 
 [[package]]
 name = "iot-devices"
-version = "0.25.0"
+version = "0.30.0"
 source = { editable = "." }
 dependencies = [
     { name = "aioesphomeapi" },

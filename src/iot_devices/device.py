@@ -72,7 +72,7 @@ class Device:
 
     def __init__(
         self,
-        config: dict[str, str],
+        config: dict[str, Any],
         **kw: Any,
     ):  # pylint: disable=unused-argument
         """
@@ -230,7 +230,6 @@ class Device:
         assert isinstance(d["properties"], dict)
 
         d["type"] = "object"
-        d["additionalProperties"] = False
 
         if not self.config_schema and hasattr(self, "config"):
             for i in self._config:
@@ -253,7 +252,7 @@ class Device:
         else:
             d["properties"].pop("is_subdevice", None)  # type: ignore
         d["properties"]["name"] = {"type": "string", "title": "Name"}
-        d["properties"]["type"] = {"type": "string", "title": "Type"}
+        d["properties"]["type"] = {"type": "string", "title": "Type", "readOnly": True}
         d["properties"]["title"] = {
             "type": "string",
             "title": "Title",
@@ -261,13 +260,12 @@ class Device:
         d["properties"]["extensions"] = {
             "type": "object",
             "title": "Extensions",
-            "additionalProperties": True,
         }
 
-        d["properties"]["description"] = {
+        d["properties"]["notes"] = {
             "type": "string",
             "format": "markdown",
-            "title": "Description",
+            "title": "Notes on this specific device instance",
         }
         return d
 
@@ -932,8 +930,8 @@ class UnusedSubdevice(Device):
     def warn(self):
         self.handle_error("This device's parent never properly set it up.'")
 
-    def __init__(self, name, data):
-        super().__init__(name, data)
+    def __init__(self, data):
+        super().__init__(data)
 
 
 __all__ = ["Device", "UnusedSubdevice", "DeviceClassTypeVar"]

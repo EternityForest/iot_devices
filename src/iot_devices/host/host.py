@@ -10,17 +10,22 @@ import weakref
 import abc
 from collections.abc import Callable, Mapping
 
-from typing import Type, Any, final, Generic, TypeVar, TYPE_CHECKING
+from typing import Type, Any, final, Generic, TypeVar, Self, TYPE_CHECKING
 
 from .util import get_class
 from ..util import str_to_bool
 
 if TYPE_CHECKING:
-    from . import device
+    from iot_devices import device
+
+
+class _ThreadLocalData(threading.local):
+    host: list[Host]
+
 
 _logger = logging.getLogger(__name__)
-_host_context = threading.local()
-_host_context.host: list[Host] = []
+_host_context = _ThreadLocalData()
+_host_context.host = []
 
 
 def apply_defaults(data, schema):
@@ -57,9 +62,11 @@ def normalize_legacy_config(cls, config: dict[str, Any]):
     if config.get("type", cls.device_type) != cls.device_type:
         # Special placeholder
         if cls.device_type not in ("unsupported", "placeholder"):
+            tp = config.get("type", cls.device_type)
+            assert isinstance(tp, str)
             raise ValueError(
                 "Configured type "
-                + config.get("type", cls.device_type)
+                + tp
                 + " does not match this class type:"
                 + str((config["type"], cls, type))
             )
@@ -75,7 +82,7 @@ class DeviceHostContainer:
     def __init__(
         self,
         host: Host,
-        parent: DeviceHostContainer | None,
+        parent: Self | None,
         device_config: Mapping[str, Any],
     ):
         """MUST NOT block!"""
@@ -91,8 +98,9 @@ class DeviceHostContainer:
     def config(self) -> Mapping[str, Any]:
         """Return the current device config, or the initial config
         if the device has not been initialized yet."""
-        if self.device is not None:
-            return self.device.config
+        d = self.device
+        if d is not None:
+            return d.config
         else:
             return self.__initial_config
 
@@ -280,8 +288,9 @@ class Host(Generic[_HostContainerTypeVar]):
         writable: bool = True,  # pylint: disable=unused-argument
         subtype: str = "",  # pylint: disable=unused-argument
         dashboard: bool = True,  # pylint: disable=unused-argument
+        on_request: Callable[[], Any] | None = None,
         **kwargs: Any,  # pylint: disable=unused-argument
-    ):
+    ) -> None:
         raise NotImplementedError
 
     def object_data_point(
@@ -297,8 +306,9 @@ class Host(Generic[_HostContainerTypeVar]):
         subtype: str = "",  # pylint: disable=unused-argument
         dashboard: bool = True,  # pylint: disable=unused-argument
         default: Mapping[str, Any] | None = None,
+        on_request: Callable[[], Any] | None = None,
         **kwargs: Any,  # pylint: disable=unused-argument
-    ):
+    ) -> None:
         """Register a new object data point with the given properties.   Here "object"
         means a JSON-like object.
         """
@@ -321,8 +331,9 @@ class Host(Generic[_HostContainerTypeVar]):
         subtype: str = "",  # pylint: disable=unused-argument
         writable: bool = True,  # pylint: disable=unused-argument
         dashboard: bool = True,  # pylint: disable=unused-argument
+        on_request: Callable[[], Any] | None = None,
         **kwargs: Any,  # pylint: disable=unused-argument
-    ):
+    ) -> None:
         """Called by the device to get a new data point."""
         raise NotImplementedError
 
@@ -336,8 +347,9 @@ class Host(Generic[_HostContainerTypeVar]):
         handler: Callable[[bytes, float, Any], Any] | None = None,
         writable: bool = True,  # pylint: disable=unused-argument
         dashboard: bool = True,  # pylint: disable=unused-argument
+        on_request: Callable[[], Any] | None = None,
         **kwargs: Any,  # pylint: disable=unused-argument
-    ):
+    ) -> None:
         """register a new bytestream data point with the
         given properties. handler will be called when it changes.
         only meant to be called from within __init__.
@@ -351,7 +363,7 @@ class Host(Generic[_HostContainerTypeVar]):
         raise NotImplementedError
 
     @final
-    def request_data_point(self, device: str, name: str) -> Any:
+    def request_data_point(self, device: str, name: str) -> None:
         """Ask a device to refresh it's data point"""
 
         d = self.devices[device]
@@ -372,7 +384,7 @@ class Host(Generic[_HostContainerTypeVar]):
         timestamp: float | None = None,
         annotation: Any | None = None,
         force_push_on_repeat: bool = False,
-    ):
+    ) -> None:
         """Subclass to handle data points.  Must happen locklessly."""
         raise NotImplementedError
 
@@ -385,7 +397,7 @@ class Host(Generic[_HostContainerTypeVar]):
         timestamp: float | None = None,
         annotation: Any | None = None,
         force_push_on_repeat: bool = False,
-    ):
+    ) -> None:
         """Subclass to handle data points.  Must happen locklessly."""
         raise NotImplementedError
 
@@ -398,7 +410,7 @@ class Host(Generic[_HostContainerTypeVar]):
         timestamp: float | None = None,
         annotation: Any | None = None,
         force_push_on_repeat: bool = False,
-    ):
+    ) -> None:
         """Subclass to handle data points.  Must happen locklessly."""
         raise NotImplementedError
 
@@ -410,7 +422,7 @@ class Host(Generic[_HostContainerTypeVar]):
         timestamp: float | None = None,
         annotation: Any | None = None,
         force_push_on_repeat: bool = False,
-    ):
+    ) -> None:
         """Subclass to handle data points.  Must happen locklessly."""
         self.set_bytes(device, name, value, timestamp, annotation, force_push_on_repeat)
 
@@ -423,7 +435,7 @@ class Host(Generic[_HostContainerTypeVar]):
         timestamp: float | None = None,
         annotation: Any | None = None,
         force_push_on_repeat: bool = False,
-    ):
+    ) -> None:
         """Subclass to handle data points.  Must happen locklessly."""
         raise NotImplementedError
 
@@ -584,20 +596,20 @@ class Host(Generic[_HostContainerTypeVar]):
                 "Your framework probably doesn't support this device"
             )
 
-    def on_device_exception(self, device: _HostContainerTypeVar):
+    def on_device_exception(self, device: _HostContainerTypeVar) -> None:
         self.on_device_error(device, traceback.format_exc())
 
-    def on_device_error(self, device: _HostContainerTypeVar, error: str):
+    def on_device_error(self, device: _HostContainerTypeVar, error: str) -> None:
         pass
 
     def on_device_print(
         self, device: _HostContainerTypeVar, message: str, title: str = ""
-    ):
+    ) -> None:
         pass
 
     def on_config_changed(
         self, device: _HostContainerTypeVar, config: Mapping[str, Any]
-    ):
+    ) -> None:
         """Called when the device configuration has changed.
         The host likely doesn't need to care about this
         except to save the data.
@@ -606,15 +618,15 @@ class Host(Generic[_HostContainerTypeVar]):
         set up yet, because this could be called from the init.
         """
 
-    def on_after_device_removed(self, device: _HostContainerTypeVar):
+    def on_after_device_removed(self, device: _HostContainerTypeVar) -> None:
         pass
 
-    def on_device_added(self, device: _HostContainerTypeVar):
+    def on_device_added(self, device: _HostContainerTypeVar) -> None:
         pass
 
     def on_before_device_added(
         self, name: str, device: _HostContainerTypeVar, *args: Any, **kwargs: Any
-    ):
+    ) -> None:
         pass
 
 

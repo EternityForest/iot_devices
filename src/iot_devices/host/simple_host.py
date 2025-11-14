@@ -70,8 +70,9 @@ class SimpleHost(Host[SimpleHostDeviceContainer]):
         writable: bool = True,  # pylint: disable=unused-argument
         subtype: str = "",  # pylint: disable=unused-argument
         dashboard: bool = True,  # pylint: disable=unused-argument
+        on_request: Callable[[], Any] | None = None,
         **kwargs: Any,  # pylint: disable=unused-argument
-    ):
+    ) -> None:
         name = self.resolve_datapoint_name(device, name)
         self.datapoint_vta[name] = (default, 0, None)
         self.datapoint_handlers[name] = handler
@@ -89,6 +90,7 @@ class SimpleHost(Host[SimpleHostDeviceContainer]):
         subtype: str = "",  # pylint: disable=unused-argument
         dashboard: bool = True,  # pylint: disable=unused-argument
         default: Mapping[str, Any] | None = None,
+        on_request: Callable[[], Any] | None = None,
         **kwargs: Any,  # pylint: disable=unused-argument
     ):
         """Register a new object data point with the given properties.   Here "object"
@@ -139,6 +141,7 @@ class SimpleHost(Host[SimpleHostDeviceContainer]):
         subtype: str = "",  # pylint: disable=unused-argument
         writable: bool = True,  # pylint: disable=unused-argument
         dashboard: bool = True,  # pylint: disable=unused-argument
+        on_request: Callable[[], Any] | None = None,
         **kwargs: Any,  # pylint: disable=unused-argument
     ):
         """Called by the device to get a new data point."""
