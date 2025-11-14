@@ -777,6 +777,12 @@ class Device:
         """Callable by the device or by the host, thread safe."""
         self.datapoints[name].set(value, timestamp, annotation)
 
+    def request_data_point(self, name: str):
+        """Callable by the device or by the host, thread safe.
+        Request that the data be updated at some future time.
+        """
+        self.datapoints[name].request()
+
     @pydantic.validate_call
     def set_alarm(
         self,
