@@ -1,6 +1,6 @@
 [project]
 name = "iot-devices"
-version = "0.25.0"
+version = "0.30.0"
 description = "Framework for creating and using device drives, and a library of devices."
 authors = [{ name = "Daniel Dunn" }]
 license = "MIT"
@@ -9,24 +9,24 @@ requires-python = ">=3.11"
 
 dependencies = [
     "textual",
-    "scullery >=0.2.0",    
+    "scullery >=0.4.0",    
     "pydantic",
     "paho-mqtt",
     "yeelight",
     "colorzero",
     "gpiozero",
     "aioesphomeapi==42.7.0",
-    "websockets ~=13.1",
-    "niquests ~=3.9.1",
-    "uvicorn ~=0.34.0",
+    "websockets",
+    "niquests",
+    "uvicorn",
     "starlette",
     "jsonschema",
     "cryptography",
     "msgpack",
     "msgpack-types",
-    "aiostream~=0.7.0",
-    "bleak ~=1.0.1",
-    "gpsdclient~=1.3.2",
+    "aiostream",
+    "bleak",
+    "gpsdclient",
 ]
 
 [dependency-groups]

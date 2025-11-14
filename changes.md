@@ -1,6 +1,6 @@
 # Change Log
 
-## 0.25.0
+## 0.30.0
 
 Complete reimaginging of the API
 
