@@ -581,19 +581,13 @@ class YoLinkService(device.Device):
 
             if t in deviceTypes:
                 if i["name"] not in self.subdevices:
-                    d = self.create_subdevice(deviceTypes[t], i["name"], d)
+                    d = self.create_subdevice(deviceTypes[t], i["name"], d).wait_ready()
 
                 d.deviceId = i["deviceId"]
                 d.token = i["token"]
                 d.parent = self
 
                 self.devices_by_id[i["deviceId"]] = d
-
-        for i in self.devices_by_id:
-            try:
-                self.devices_by_id[i].refresh()
-            except Exception:
-                self.handle_error(traceback.format_exc())
 
         self.initialConnectionDone = True
 

@@ -316,7 +316,7 @@ class SimpleHost(Host[SimpleHostDeviceContainer]):
         """
         _logger.debug(f"on_config_changed {device.name}")
 
-    def on_device_removed(self, device: DeviceHostContainer):
+    def on_after_device_removed(self, device: DeviceHostContainer):
         with self:
             dev = device.device
             if dev:

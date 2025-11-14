@@ -107,10 +107,13 @@ class DeviceHostContainer:
 
     def on_device_ready(self, device: device.Device):
         """Called when the device __init__ is done"""
-        self.device = device
 
     def on_device_init_fail(self, exception: Exception):
         pass
+
+    def on_after_device_removed(self):
+        """Note that the Host Container also has this method,
+        you can handle the action in either place as fits your architecture."""
 
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__} for {repr(self.device)}>"
@@ -232,14 +235,19 @@ class Host(Generic[_HostContainerTypeVar]):
         """
         Thread note:Do not reopen the device with the same name until this call returns"""
         x = None
+        c = None
 
         with self.__lock:
             if name in self.devices:
-                x = self.devices[name].device
+                c = self.devices[name]
+                x = c.device
                 del self.devices[name]
 
-        if x:
-            x.close()
+        if c:
+            if x:
+                x.close()
+            c.on_after_device_removed()
+            self.on_after_device_removed(c)
 
     @final
     def delete_device(self, name: str):
@@ -598,7 +606,7 @@ class Host(Generic[_HostContainerTypeVar]):
         set up yet, because this could be called from the init.
         """
 
-    def on_device_removed(self, device: _HostContainerTypeVar):
+    def on_after_device_removed(self, device: _HostContainerTypeVar):
         pass
 
     def on_device_added(self, device: _HostContainerTypeVar):

@@ -342,7 +342,7 @@ class Device:
 
         sd = self.host.add_device_from_class(cls, config)
         self.subdevices[name] = sd.device
-        return sd
+        return sd.device
 
     @final
     def get_config_folder(self, create: bool = True):
