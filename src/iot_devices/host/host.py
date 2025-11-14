@@ -471,6 +471,9 @@ class Host(Generic[_HostContainerTypeVar]):
         with self:
             name = data["name"]
 
+            if data.get("is_subdevice", False) and parent is None:
+                raise Exception("Subdevice must have a parent")
+
             data = copy.deepcopy(data)
 
             data = apply_defaults(data, cls.config_schema)
@@ -556,7 +559,7 @@ class Host(Generic[_HostContainerTypeVar]):
         self,
         parent_device_container: _HostContainerTypeVar | None,
         full_device_name: str,
-    ) -> dict[str, Any]:
+    ) -> Mapping[str, Any]:
         """Subclassable hook to load config on device creation"""
         return {}
 

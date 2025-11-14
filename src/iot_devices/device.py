@@ -352,7 +352,7 @@ class Device:
         config["type"] = cls.device_type
         config["is_subdevice"] = True
 
-        sd = self.host.add_device_from_class(cls, config)
+        sd = self.host.add_device_from_class(cls, config, parent=self)
         self.subdevices[name] = sd.device
         return sd.device
 
