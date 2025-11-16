@@ -1,6 +1,9 @@
 # Change Log
 
 ## 0.30.0
+* Fix subdevices getter, add test
+
+## 0.30.0
 
 Complete reimaginging of the API
 

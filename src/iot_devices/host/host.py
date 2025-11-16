@@ -257,6 +257,11 @@ class Host(Generic[_HostContainerTypeVar]):
             c.on_after_device_removed()
             self.on_after_device_removed(c)
 
+            if x.subdevices:
+                warnings.warn(
+                    f"Device {name} had subdevices and did not close them.",
+                )
+
     @final
     def delete_device(self, name: str):
         """Handle permanently deleting a device"""

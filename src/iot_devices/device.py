@@ -149,7 +149,7 @@ class Device:
         # sub-devices for each device.
         # Sub-devices will always have a name like
         # ParentDevice.ChildDevice
-        self.subdevices: dict[str, Device] = {}
+        self._subdevices: dict[str, Device] = {}
 
         self.metadata: dict[str, Any] = {}
         """This allows us to show large amounts of data that
@@ -191,6 +191,12 @@ class Device:
 
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__} {self.title} ({self.name})>"
+
+    @property
+    def subdevices(self) -> Mapping[str, Device]:
+        """Immutable snapshot of subdevices.  Any changes will not
+        affect the device itself"""
+        return dict(self._subdevices)
 
     @final
     @property
@@ -289,8 +295,9 @@ class Device:
         any config associated with it.  Should only be called by the
         device itself.
         """
-        self.subdevices[name].close()
-        del self.subdevices[name]
+        self._subdevices[name].close()
+        with self.__config_lock:
+            del self.subdevices[name]
 
     @final
     def create_subdevice(
@@ -339,22 +346,37 @@ class Device:
         The host will add is_subdevice=True to the config dict.
         """
 
-        fn = self.name
-        config = copy.deepcopy(config)
+        with self.__config_lock:
+            if name in self._subdevices:
+                raise ValueError(f"Subdevice {name} already exists")
+            # Placeholder to reserve the name
+            self._subdevices[name] = None
 
-        # Mostly just there for quick scripts
-        if "subdevice_config" in self._config:
-            if name in self._config["subdevice_config"]:
-                config.update(copy.deepcopy(self._config["subdevice_config"][name]))
+        try:
+            fn = self.name
+            config = copy.deepcopy(config)
 
-        config["name"] = fn + "/" + name
-        config["is_subdevice"] = True
-        config["type"] = cls.device_type
-        config["is_subdevice"] = True
+            # Mostly just there for quick scripts
+            if "subdevice_config" in self._config:
+                if name in self._config["subdevice_config"]:
+                    config.update(copy.deepcopy(self._config["subdevice_config"][name]))
 
-        sd = self.host.add_device_from_class(cls, config, parent=self)
-        self.subdevices[name] = sd.device
-        return sd.device
+            config["name"] = fn + "/" + name
+            config["is_subdevice"] = True
+            config["type"] = cls.device_type
+            config["is_subdevice"] = True
+
+            sd = self.host.add_device_from_class(cls, config, parent=self)
+            with self.__config_lock:
+                self._subdevices[name] = sd.device
+
+            return sd.device
+        except Exception:
+            with self.__config_lock:
+                # Delete placeholder so we can try again
+                if name in self._subdevices and self._subdevices[name] is None:
+                    del self._subdevices[name]
+            raise
 
     @final
     def get_config_folder(self, create: bool = True):
@@ -862,7 +884,7 @@ class Device:
 
     @final
     def close(self):
-        """Prefer calling the host's close device call"""
+        """Close all subdevices and tell the host to remove this device"""
         with self.__config_lock:
             if self.__closing:
                 return
@@ -875,13 +897,14 @@ class Device:
             self.host.on_device_exception(self.get_host_container())
 
         with self.__config_lock:
-            x = list(self.subdevices.keys())
+            x = list(self._subdevices.keys())
 
         "Release all resources and clean up"
         for i in x:
             try:
-                self.subdevices[i].close()
-                del self.subdevices[i]
+                self._subdevices[i].close()
+                with self.__config_lock:
+                    del self._subdevices[i]
             except Exception:
                 self.host.on_device_exception(self.get_host_container())
         del x
@@ -903,7 +926,19 @@ class Device:
 
     @final
     def _update_config(self, config: dict[str, Any]):
-        """Update without calling user functions"""
+        if not config["name"] == self.name:
+            raise ValueError(
+                f"Device name changed from {self.name} to {config['name']}"
+            )
+
+        if not config["type"] == self.device_type:
+            raise ValueError(
+                f"Device type changed from {self.device_type} to {config['type']}"
+            )
+
+        if self.config_schema:
+            validate(config, self.get_full_schema())
+
         with self.__config_lock:
             if config == self._config:
                 return
@@ -919,19 +954,6 @@ class Device:
         """Update the config dynamically at runtime.
         May be subclassed by the device to respond to config changes.
         """
-        if not config["name"] == self.name:
-            raise ValueError(
-                f"Device name changed from {self.name} to {config['name']}"
-            )
-
-        if not config["type"] == self.device_type:
-            raise ValueError(
-                f"Device type changed from {self.device_type} to {config['type']}"
-            )
-
-        if self.config_schema:
-            validate(config, self.get_full_schema())
-
         self._update_config(config)
 
     @final

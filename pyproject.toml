@@ -1,6 +1,6 @@
 [project]
 name = "iot-devices"
-version = "0.30.0"
+version = "0.30.1"
 description = "Framework for creating and using device drives, and a library of devices."
 authors = [{ name = "Daniel Dunn" }]
 license = "MIT"
