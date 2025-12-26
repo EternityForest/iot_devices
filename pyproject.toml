@@ -9,7 +9,7 @@ requires-python = ">=3.11"
 
 dependencies = [
     "textual",
-    "scullery >=0.4.0",    
+    "scullery >=0.4.0",
     "pydantic",
     "paho-mqtt",
     "yeelight",
@@ -18,7 +18,6 @@ dependencies = [
     "aioesphomeapi==42.7.0",
     "websockets",
     "niquests",
-    "uvicorn",
     "starlette",
     "jsonschema",
     "cryptography",
@@ -27,6 +26,7 @@ dependencies = [
     "aiostream",
     "bleak",
     "gpsdclient",
+    "hypercorn>=0.18.0",
 ]
 
 [dependency-groups]

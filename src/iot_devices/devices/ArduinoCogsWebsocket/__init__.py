@@ -6,6 +6,8 @@ from threading import Thread, RLock, Event
 import niquests
 import logging
 import asyncio
+import hypercorn
+import hypercorn.asyncio
 
 import starlette.responses
 import starlette.requests
@@ -13,7 +15,6 @@ import starlette.types
 import starlette.websockets
 import starlette.applications
 from starlette.routing import Route, WebSocketRoute
-import uvicorn
 
 
 from websockets.sync.client import connect
@@ -482,8 +483,16 @@ class ArduinoCogsServer(iot_devices.device.Device):
 
         if "port" in data and data["port"]:
             try:
-                config = uvicorn.Config(app, port=int(data["port"]), log_level="info")
-                server = uvicorn.Server(config)
+                config = hypercorn.Config()
+                config.bind = [f"0.0.0.0:{data['port']}"]
+
+                self.shutdown_trigger = asyncio.Event()
+
+                server = hypercorn.asyncio.serve(
+                    app,
+                    config,
+                    shutdown_trigger=self.shutdown_trigger.wait,  # type: ignore
+                )
                 self.server = server
 
                 self.clients: list[starlette.websockets.WebSocket] = []
@@ -491,7 +500,7 @@ class ArduinoCogsServer(iot_devices.device.Device):
                 self.loop = asyncio.new_event_loop()
 
                 def f():
-                    self.loop.run_until_complete(server.serve())
+                    self.loop.run_until_complete(server)
 
                 self.thread_handle = Thread(
                     target=f, daemon=True, name="ArduinoCogsServer:" + self.name
@@ -570,7 +579,7 @@ class ArduinoCogsServer(iot_devices.device.Device):
     def on_before_close(self):
         self.should_run = False
         try:
-            self.loop.call_soon_threadsafe(self.server.shutdown)
+            self.loop.call_soon_threadsafe(self.shutdown_trigger.set)
 
             if self.loop.is_running():
                 try:

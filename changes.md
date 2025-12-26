@@ -1,5 +1,10 @@
 # Change Log
 
+
+## 0.30.1
+* Remove uvicorn
+
+
 ## 0.30.0
 * Fix subdevices getter, add test
 
