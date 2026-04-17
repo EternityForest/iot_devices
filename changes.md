@@ -1,5 +1,9 @@
 # Change Log
 
+## 0.31.0
+
+* Devices have get_parent(ParentClass) function.
+* Enforce immutable names
 
 ## 0.30.1
 * Remove uvicorn

@@ -43,6 +43,11 @@ class DataRequest:
     pass
 
 
+_device_parents: weakref.WeakValueDictionary[str, Device] = (
+    weakref.WeakValueDictionary()
+)
+
+
 class Device:
     """represents exactly one "device".
     should not be used to represent an interface to a large collection, use
@@ -70,11 +75,7 @@ class Device:
         to the schema too.
     """
 
-    def __init__(
-        self,
-        config: dict[str, Any],
-        **kw: Any,
-    ):  # pylint: disable=unused-argument
+    def __init__(self, config: dict[str, Any], **kw: Any):  # pylint: disable=unused-argument
         """
 
         The base class __init__ does nothing if
@@ -139,7 +140,7 @@ class Device:
 
         self.host_data: dict[str, Any] = {}
 
-        self.name = config["name"]
+        self._name = config["name"]
 
         self._config = copy.deepcopy(config)
 
@@ -192,11 +193,26 @@ class Device:
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__} {self.title} ({self.name})>"
 
+    @final
+    def get_parent(self, typeof: type[DeviceClassTypeVar]) -> DeviceClassTypeVar:
+        """Get the devices parent, doing integrity check that the type is correct"""
+        p = _device_parents[self.name]
+        if not isinstance(p, typeof):
+            raise RuntimeError(
+                f"Device state is corrupt, expected parent to be {typeof}"
+            )
+        return p
+
     @property
     def subdevices(self) -> Mapping[str, Device]:
         """Immutable snapshot of subdevices.  Any changes will not
         affect the device itself"""
         return dict(self._subdevices)
+
+    @final
+    @property
+    def name(self) -> str:
+        return self._name
 
     @final
     @property
@@ -301,7 +317,10 @@ class Device:
 
     @final
     def create_subdevice(
-        self, cls: type[DeviceClassTypeVar], name: str, config: dict[str, Any]
+        self,
+        cls: type[DeviceClassTypeVar],
+        name: str,
+        config: dict[str, Any],
     ) -> DeviceClassTypeVar:
         """Creates a subdevice
         Args:
@@ -350,7 +369,7 @@ class Device:
             if name in self._subdevices:
                 raise ValueError(f"Subdevice {name} already exists")
             # Placeholder to reserve the name
-            self._subdevices[name] = None
+            self._subdevices[name] = None  # type: ignore
 
         try:
             fn = self.name
@@ -365,6 +384,8 @@ class Device:
             config["is_subdevice"] = True
             config["type"] = cls.device_type
             config["is_subdevice"] = True
+
+            _device_parents[config["name"]] = self
 
             sd = self.host.add_device_from_class(cls, config, parent=self)
             with self.__config_lock:

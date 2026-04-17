@@ -1,6 +1,7 @@
 import time
 import stamina
 from iot_devices.host.simple_host import SimpleHost
+from iot_devices.devices.demo import DemoDevice
 
 h = SimpleHost()
 
@@ -14,4 +15,6 @@ def test_demo_device():
     for attempt in stamina.retry_context(on=AssertionError, attempts=20):
         with attempt:
             assert "subdevice" in my_device.subdevices
+
+    assert my_device.subdevices["subdevice"].get_parent(DemoDevice) is my_device
     my_device.close()
