@@ -10,5 +10,8 @@
         "ws"
     ],
     "python.analysis.typeCheckingMode": "standard",
-    "typescript.suggest.includeAutomaticOptionalChainCompletions": true
+    "typescript.suggest.includeAutomaticOptionalChainCompletions": true,
+    "python.analysis.include": [
+        "${workspaceFolder:<workspaceName>}/.venv/lib/*/site-packages"
+    ]
 }

@@ -26,6 +26,8 @@ dependencies = [
     "aiostream",
     "bleak",
     "gpsdclient",
+    "aiohttp",
+    "python-matter-server",
     "hypercorn>=0.18.0",
 ]
 
