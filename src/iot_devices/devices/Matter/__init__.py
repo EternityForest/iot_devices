@@ -65,6 +65,12 @@ class MatterController(Device):
             description="Commission new device that is already on network",
         )
 
+        self.string_data_point(
+            "admin.remove_device",
+            handler=self.delete_device_handler,
+            description="Delete a device from the matter server by it's device name or by node ID",
+        )
+
         # Device tracking
         self.devices_by_node_id: dict[int, matter_device.MatterDevice] = {}
         self.nodes_by_id: dict[int, Any] = {}  # Raw node objects
@@ -117,8 +123,6 @@ class MatterController(Device):
         async with aiohttp.ClientSession() as session:
             async with MatterClient(self.config["server_url"], session) as client:
                 self.client = client
-                # Subscribe to events BEFORE starting listening
-                client.subscribe_events(self.on_matter_event)
 
                 evt = asyncio.Event()
 
@@ -131,6 +135,9 @@ class MatterController(Device):
 
                 # Discover existing nodes
                 await self.discover_nodes()
+
+                # Subscribe to attribute updates for all discovered nodes
+                await self.subscribe_to_attributes()
 
                 self.print("Connected to Matter server")
 
@@ -158,6 +165,69 @@ class MatterController(Device):
                     await self.create_matter_device(node.node_id, node)
         except Exception:
             self.handle_error(f"Discovery failed:\n{traceback.format_exc()}")
+
+    async def subscribe_to_attributes(self):
+        """Subscribe to OnOff attribute updates for all nodes.
+
+        Creates individual subscriptions with closures for node_id/endpoint_id
+        identification.
+        """
+        if not self.client:
+            return
+
+        try:
+            nodes = self.client.get_nodes()
+
+            for node in nodes:
+                await self._subscribe_node_attributes(node)
+
+        except Exception:
+            self.handle_error(
+                f"Failed to subscribe to attributes:\n" f"{traceback.format_exc()}"
+            )
+
+    async def _subscribe_node_attributes(self, node: Any) -> None:
+        """Subscribe to OnOff updates for a single node.
+
+        Args:
+            node: MatterNode object
+        """
+        if not self.client:
+            return
+
+        try:
+            node_id = node.node_id
+            endpoints = node.endpoints if hasattr(node, "endpoints") else {}
+
+            for endpoint_id, endpoint_data in endpoints.items():
+                clusters = getattr(endpoint_data, "clusters", {})
+                if not clusters and isinstance(endpoint_data, dict):
+                    clusters = endpoint_data.get("clusters", {})
+
+                # Subscribe to OnOff cluster (0x0006) OnOff attribute (0x0000)
+                if 0x0006 in clusters:
+                    # Create closure to capture node_id and endpoint_id
+                    def make_handler(n_id, ep_id):
+                        def handler(_type, value):
+                            self._on_onoff_update(n_id, ep_id, value)
+
+                        return handler
+
+                    topic = f"{endpoint_id}/6/0"
+                    handler = make_handler(node_id, endpoint_id)
+                    self.client.subscribe_events(
+                        handler, EventType.ATTRIBUTE_UPDATED, node_id, topic
+                    )
+
+                    self.print(
+                        f"Subscribed to OnOff node={node_id} " f"endpoint={endpoint_id}"
+                    )
+
+        except Exception:
+            self.handle_error(
+                f"Failed to subscribe node {node.node_id} attributes:\n"
+                f"{traceback.format_exc()}"
+            )
 
     async def create_matter_device(self, node_id: int, node: Any) -> None:
         """Create a MatterDevice subdevice for a node.
@@ -191,6 +261,26 @@ class MatterController(Device):
                 f"Failed to create device for node {node_id}:\n"
                 f"{traceback.format_exc()}"
             )
+
+    def _on_onoff_update(self, node_id: int, endpoint_id: int, value: Any) -> None:
+        """Handle OnOff attribute update from Matter server.
+
+        Args:
+            node_id: Matter node ID
+            endpoint_id: Endpoint ID
+            value: New OnOff value (bool)
+        """
+        try:
+            if node_id not in self.devices_by_node_id:
+                return
+
+            device = self.devices_by_node_id[node_id]
+
+            # Only update if this is the correct endpoint
+            if device.endpoint_id == endpoint_id:
+                device.set_data_point("on", 1 if value else 0, annotation="from_matter")
+        except Exception:
+            self.handle_exception()
 
     def _get_node_name(self, node: Any) -> str:
         """Extract friendly name from node.device_info.
@@ -226,19 +316,21 @@ class MatterController(Device):
         return f"node_{node_id}"
 
     def on_matter_event(self, event_type: EventType, arg: Any) -> None:
-        """Handle Matter server events.
+        """Handle Matter server node lifecycle events.
 
-        Routes events to appropriate subdevices or creates new ones
-        when devices are commissioned
+        Responds to node_added and node_removed events to manage subdevices.
+        Attribute updates are handled via individual subscriptions with closures.
         """
         try:
             if event_type.value == "node_added":
-                # New device commissioned - create subdevice
+                # New device commissioned - create subdevice and subscribe
                 node_id = arg.get("node_id")
                 node = arg.get("node")
 
                 if node_id and node and node_id not in self.devices_by_node_id:
                     asyncio.create_task(self.create_matter_device(node_id, node))
+                    # Subscribe to its attributes after creation
+                    asyncio.create_task(self._subscribe_node_attributes(node))
 
             elif event_type.value == "node_removed":
                 # Device removed
@@ -250,24 +342,41 @@ class MatterController(Device):
                 if node_id in self.nodes_by_id:
                     del self.nodes_by_id[node_id]
 
-            elif event_type.value == "attribute_updated":
-                # Route attribute update to appropriate subdevice
-                node_id = arg.get("node_id")
-                if node_id in self.devices_by_node_id:
-                    self.devices_by_node_id[node_id].on_matter_attribute(arg)
-
         except Exception:
             self.handle_exception()
 
     def commission_handler(self, code: str, timestamp: float, annotation: str) -> None:
         if code and code.strip():
             self.run_coroutine(self.commission_device(code.strip()))
+            self.set_data_point("admin.commission_with_code", "")
 
     def net_commission_handler(
         self, code: str, timestamp: float, annotation: str
     ) -> None:
         if code and code.strip():
             self.run_coroutine(self.commission_device(code.strip(), True))
+            self.set_data_point("admin.on_network_commission_with_code", "")
+
+    def delete_device_handler(
+        self, code: str, timestamp: float, annotation: str
+    ) -> None:
+        if code and code.strip():
+            self.run_coroutine(self.remove_matter_device(code.strip()))
+            self.set_data_point("admin.remove_device", "")
+
+    async def remove_matter_device(self, subdev_name: str):
+        if subdev_name.isnumeric():
+            num = int(subdev_name)
+        else:
+            subdev_name = subdev_name.split("/")[-1]
+            d: matter_device.MatterDevice = self.subdevices[subdev_name]  # type: ignore
+            num = d.node_id
+        cl = self.client
+        if not cl:
+            self.handle_error("No client")
+            return
+        await cl.remove_node(num)
+        self.print(f"Deleted node {num}")
 
     async def commission_device(self, code: str, on_network=False) -> None:
         """Commission a new Matter device.
@@ -281,9 +390,13 @@ class MatterController(Device):
 
         try:
             self.print(f"Starting commissioning with code: {code[:10]}...")
-            result = await self.client.commission_with_code(
-                code, network_only=on_network
-            )
+
+            if code.isnumeric():
+                result = await self.client.commission_with_code(
+                    code, network_only=on_network
+                )
+            else:
+                result = await self.client.commission_on_network(int(code))
             self.print(f"Commissioned ID {result.node_id}!")
         except Exception:
             self.handle_error(f"Commission failed:\n{traceback.format_exc()}")

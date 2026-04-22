@@ -3,6 +3,8 @@ from __future__ import annotations
 import traceback
 from typing import Any
 
+from scullery.ratelimits import RateLimiter
+
 from iot_devices.device import Device
 from chip.clusters import Objects as clusters
 
@@ -26,6 +28,8 @@ class MatterDevice(Device):
 
     def __init__(self, config: dict[str, Any], **kw: Any):
         super().__init__(config, **kw)
+
+        self.eeprom_ratelimiter = RateLimiter(1 / 600, burst=100)
 
         self.node_id = config["node_id"]
         self.parent_controller: Matter.MatterController | None = self.get_parent(
@@ -126,6 +130,10 @@ class MatterDevice(Device):
             self.handle_error("Not connected to Matter server")
             return
 
+        if not self.eeprom_ratelimiter.limit():
+            self.handle_error("Action ratelimit exceeded")
+            return
+
         try:
             # Create command
             if command_name == "On":
@@ -160,30 +168,3 @@ class MatterDevice(Device):
 
         sp.run_coroutine(coro())
         return super().on_delete()
-
-    def on_matter_attribute(self, event: dict) -> None:
-        """Handle attribute update from Matter server.
-
-        Routes cluster attribute updates to the appropriate datapoint.
-
-        Args:
-            event: Attribute update event dict
-        """
-        try:
-            endpoint_id = event.get("endpoint_id")
-            cluster_id = event.get("cluster_id")
-            attribute_id = event.get("attribute_id")
-            value = event.get("value")
-
-            # OnOff cluster (0x0006), OnOff attribute (0x0000)
-            if (
-                cluster_id == 0x0006
-                and attribute_id == 0x0000
-                and endpoint_id == self.endpoint_id
-            ):
-                # Update datapoint with "from_matter" annotation
-                # to prevent feedback loop
-                self.set_data_point("on", 1 if value else 0, annotation="from_matter")
-
-        except Exception:
-            self.handle_exception()
