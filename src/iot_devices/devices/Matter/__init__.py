@@ -11,7 +11,6 @@ from typing import Any
 import aiohttp
 from iot_devices.device import Device
 
-from chip.clusters import Objects as Clusters
 from matter_server.client.client import MatterClient
 from matter_server.common.models import EventType
 from . import matter_device
@@ -68,6 +67,7 @@ class MatterController(Device):
 
         # Device tracking
         self.devices_by_node_id: dict[int, matter_device.MatterDevice] = {}
+        self.nodes_by_id: dict[int, Any] = {}  # Raw node objects
         self.client: MatterClient | None = None
 
         # LazyMesh pattern: separate async event loop in daemon thread
@@ -155,26 +155,30 @@ class MatterController(Device):
 
             for node in nodes:
                 if node.node_id not in self.devices_by_node_id:
-                    await self.create_matter_device(node.node_id, node.device_info)
+                    await self.create_matter_device(node.node_id, node)
         except Exception:
             self.handle_error(f"Discovery failed:\n{traceback.format_exc()}")
 
-    async def create_matter_device(
-        self, node_id: int, node_data: Clusters.BasicInformation
-    ) -> None:
+    async def create_matter_device(self, node_id: int, node: Any) -> None:
         """Create a MatterDevice subdevice for a node.
 
         Args:
             node_id: The Matter node ID
-            node_data: Node information from server
+            node: MatterNode object from server
         """
         try:
-            # Extract device name from node attributes
-            name = await self.get_node_name(node_id, node_data)
+            # Store raw node object for subdevice access
+            self.nodes_by_id[node_id] = node
+
+            # Extract device name from node.device_info
+            name = self._get_node_name(node)
 
             # Create subdevice (host will handle threading)
+            # Subdevice can access raw node via parent
             device = self.create_subdevice(
-                matter_device.MatterDevice, name, {"node_id": node_id}
+                matter_device.MatterDevice,
+                name,
+                {"node_id": node_id},
             )
             device.wait_ready()
 
@@ -188,48 +192,37 @@ class MatterController(Device):
                 f"{traceback.format_exc()}"
             )
 
-    async def get_node_name(
-        self,
-        node_id: int,
-        node_data: Clusters.BasicInformation | Clusters.BridgedDeviceBasicInformation,
-    ) -> str:
-        """Extract friendly name from node attributes.
+    def _get_node_name(self, node: Any) -> str:
+        """Extract friendly name from node.device_info.
 
-        Tries to get NodeLabel or ProductName from Basic Information
-        cluster (0x0028), falls back to node_id.
+        Tries to get node_label, product_name, or product_id.
+        Falls back to node_id.
 
         Args:
-            node_id: The node ID
-            node_data: Node information dict
+            node: MatterNode object
 
         Returns:
             Friendly device name or fallback
         """
         try:
-            # node_data structure: endpoints -> endpoint_id -> clusters
-            # -> cluster_id -> attributes -> attribute_id
-            for endpoint in node_data.get("endpoints", {}).values():
-                clusters = endpoint.get("clusters", {})
+            device_info = getattr(node, "device_info", {})
+            if isinstance(device_info, dict):
+                # Try node_label first
+                if device_info.get("node_label"):
+                    return device_info["node_label"]
 
-                # Basic Information cluster (0x0028)
-                if 0x0028 in clusters:
-                    attrs = clusters[0x0028].get("attributes", {})
+                # Try product_name
+                if device_info.get("product_name"):
+                    return device_info["product_name"]
 
-                    # Try NodeLabel (0x0005)
-                    if 0x0005 in attrs and attrs[0x0005]:
-                        name = attrs[0x0005]
-                        if isinstance(name, str):
-                            return name
-
-                    # Try ProductName (0x0003)
-                    if 0x0003 in attrs and attrs[0x0003]:
-                        name = attrs[0x0003]
-                        if isinstance(name, str):
-                            return name
+                # Try product_id
+                if device_info.get("product_id"):
+                    return f"product_{device_info['product_id']}"
         except Exception:
             self.print(f"Error extracting node name: {traceback.format_exc()}")
 
         # Fallback to node ID
+        node_id = getattr(node, "node_id", "unknown")
         return f"node_{node_id}"
 
     def on_matter_event(self, event_type: EventType, arg: Any) -> None:
@@ -239,23 +232,25 @@ class MatterController(Device):
         when devices are commissioned
         """
         try:
-            if event_type == "node_added":
+            if event_type.value == "node_added":
                 # New device commissioned - create subdevice
                 node_id = arg.get("node_id")
-                node_data = arg.get("node", {})
+                node = arg.get("node")
 
-                if node_id and node_id not in self.devices_by_node_id:
-                    asyncio.create_task(self.create_matter_device(node_id, node_data))
+                if node_id and node and node_id not in self.devices_by_node_id:
+                    asyncio.create_task(self.create_matter_device(node_id, node))
 
-            elif event_type == "node_removed":
+            elif event_type.value == "node_removed":
                 # Device removed
                 node_id = arg.get("node_id")
                 if node_id in self.devices_by_node_id:
                     device = self.devices_by_node_id[node_id]
                     self.close_subdevice(device.name)
                     del self.devices_by_node_id[node_id]
+                if node_id in self.nodes_by_id:
+                    del self.nodes_by_id[node_id]
 
-            elif event_type == "attribute_updated":
+            elif event_type.value == "attribute_updated":
                 # Route attribute update to appropriate subdevice
                 node_id = arg.get("node_id")
                 if node_id in self.devices_by_node_id:

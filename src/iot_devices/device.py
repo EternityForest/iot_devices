@@ -194,7 +194,7 @@ class Device:
         return f"<{self.__class__.__name__} {self.title} ({self.name})>"
 
     @final
-    def get_parent(self, typeof: type[DeviceClassTypeVar]) -> DeviceClassTypeVar:
+    def get_parent(self, typeof: type[DeviceClassTypeVar]) -> DeviceClassTypeVar | Dev:
         """Get the devices parent, doing integrity check that the type is correct"""
         p = _device_parents[self.name]
         if not isinstance(p, typeof):

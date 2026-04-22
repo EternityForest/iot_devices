@@ -6,7 +6,7 @@ from typing import Any
 from iot_devices.device import Device
 from chip.clusters import Objects as clusters
 
-import __init__ as Matter
+from .. import Matter
 
 
 class MatterDevice(Device):
@@ -20,7 +20,7 @@ class MatterDevice(Device):
             "node_id": {
                 "type": "integer",
                 "description": "Matter node ID",
-            }
+            },
         },
     }
 
@@ -28,10 +28,24 @@ class MatterDevice(Device):
         super().__init__(config, **kw)
 
         self.node_id = config["node_id"]
-        self.parent_controller: Matter.MatterController | None = None
+        self.parent_controller: Matter.MatterController | None = self.get_parent(
+            Matter.MatterController
+        )
 
-        # Most devices use endpoint 1
-        self.endpoint_id = 1
+        # Get raw node from parent controller
+        node = None
+        if self.parent_controller:
+            node = self.parent_controller.nodes_by_id.get(self.node_id)
+
+        # Discover endpoint with OnOff cluster (0x0006)
+        endpoints = node.endpoints if node and hasattr(node, "endpoints") else {}
+        endpoint_id = self._find_onoff_endpoint(endpoints)
+
+        if endpoint_id is None:
+            self.handle_error("No endpoint with OnOff cluster found")
+            endpoint_id = 1  # Fallback
+
+        self.endpoint_id: int = endpoint_id
 
         # OnOff cluster support
         self.numeric_data_point(
@@ -42,6 +56,35 @@ class MatterDevice(Device):
             handler=self.on_handler,
             description="OnOff cluster state",
         )
+
+    def _find_onoff_endpoint(self, endpoints: dict) -> int | None:
+        """Find first endpoint with OnOff cluster.
+
+        Args:
+            endpoints: Endpoints dict {endpoint_id: MatterEndpoint, ...}
+
+        Returns:
+            Endpoint ID with OnOff cluster, or None if not found
+        """
+        try:
+            for endpoint_id, endpoint_data in endpoints.items():
+                # endpoint_data is either a MatterEndpoint object or dict
+                clusters = getattr(endpoint_data, "clusters", {})
+                if not clusters and isinstance(endpoint_data, dict):
+                    clusters = endpoint_data.get("clusters", {})
+
+                # OnOff cluster ID is 0x0006
+                if 0x0006 in clusters:
+                    return endpoint_id
+
+            # If no OnOff found, return first endpoint (usually 0)
+            if endpoints:
+                return min(endpoints.keys())
+
+        except Exception:
+            self.print(f"Error discovering endpoint: {traceback.format_exc()}")
+
+        return None
 
     def set_parent_controller(self, parent: Matter.MatterController) -> None:
         """Set reference to parent MatterController.
