@@ -286,7 +286,7 @@ class MatterDevice(Device):
         hue = self.datapoints[f"hue_{endpoint_id}"]
         hue_val = int(max(0, min(254, hue.get()[0])))
 
-        sat = self.datapoints[f"hue_{endpoint_id}"]
+        sat = self.datapoints[f"saturation_{endpoint_id}"]
         sat_val = int(max(0, min(254, sat.get()[0])))
 
         tt_val = 0
