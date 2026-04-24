@@ -33,6 +33,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "circuitmatter>=0.4.1",
     "coverage >=7.2.7",
     "pytest-asyncio >=0.23.7",
     "stamina>=25.1.0",

@@ -50,7 +50,9 @@ class StringDataPoint(DataPoint[str]):
     def set(
         self, value: str, timestamp: float | None = None, annotation: Any | None = None
     ) -> None:
-        self.device.host.set_string(self.device.name, self.datapoint_name, value)
+        self.device.host.set_string(
+            self.device.name, self.datapoint_name, value, timestamp, annotation
+        )
 
 
 class NumericDataPoint(DataPoint[float]):
@@ -63,7 +65,9 @@ class NumericDataPoint(DataPoint[float]):
         timestamp: float | None = None,
         annotation: Any | None = None,
     ) -> None:
-        self.device.host.set_number(self.device.name, self.datapoint_name, float(value))
+        self.device.host.set_number(
+            self.device.name, self.datapoint_name, float(value), timestamp, annotation
+        )
 
 
 class ObjectDataPoint(DataPoint[dict[str, Any]]):
@@ -77,7 +81,11 @@ class ObjectDataPoint(DataPoint[dict[str, Any]]):
         annotation: Any | None = None,
     ) -> None:
         self.device.host.set_object(
-            self.device.name, self.datapoint_name, deepcopy(value)
+            self.device.name,
+            self.datapoint_name,
+            deepcopy(value),
+            timestamp,
+            annotation,
         )
 
 
@@ -91,7 +99,9 @@ class BytesDataPoint(DataPoint[bytes]):
         timestamp: float | None = None,
         annotation: Any | None = None,
     ) -> None:
-        self.device.host.set_bytes(self.device.name, self.datapoint_name, value)
+        self.device.host.set_bytes(
+            self.device.name, self.datapoint_name, value, timestamp, annotation
+        )
 
     def fast_push(
         self,
@@ -99,4 +109,6 @@ class BytesDataPoint(DataPoint[bytes]):
         timestamp: float | None = None,
         annotation: Any | None = None,
     ) -> None:
-        self.device.host.fast_push_bytes(self.device.name, self.datapoint_name, value)
+        self.device.host.fast_push_bytes(
+            self.device.name, self.datapoint_name, value, timestamp, annotation
+        )

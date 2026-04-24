@@ -167,65 +167,79 @@ class MatterController(Device):
             self.handle_error(f"Discovery failed:\n{traceback.format_exc()}")
 
     async def subscribe_to_attributes(self):
-        """Subscribe to OnOff attribute updates for all nodes.
+        """Subscribe to attribute updates for all devices.
 
-        Creates individual subscriptions with closures for node_id/endpoint_id
-        identification.
+        Uses subscription registry from each subdevice to determine what to monitor.
         """
         if not self.client:
             return
 
         try:
-            nodes = self.client.get_nodes()
-
-            for node in nodes:
-                await self._subscribe_node_attributes(node)
+            for device in self.devices_by_node_id.values():
+                await self._subscribe_device_attributes(device)
 
         except Exception:
             self.handle_error(
                 f"Failed to subscribe to attributes:\n" f"{traceback.format_exc()}"
             )
 
-    async def _subscribe_node_attributes(self, node: Any) -> None:
-        """Subscribe to OnOff updates for a single node.
+    async def _subscribe_device_attributes(
+        self, device: matter_device.MatterDevice
+    ) -> None:
+        """Subscribe to attributes for a single device.
+
+        Uses the device's subscription registry to determine what to monitor.
 
         Args:
-            node: MatterNode object
+            device: MatterDevice instance
         """
         if not self.client:
             return
 
         try:
-            node_id = node.node_id
-            endpoints = node.endpoints if hasattr(node, "endpoints") else {}
+            node_id = device.node_id
+            subscriptions = device.get_subscriptions()
 
-            for endpoint_id, endpoint_data in endpoints.items():
-                clusters = getattr(endpoint_data, "clusters", {})
-                if not clusters and isinstance(endpoint_data, dict):
-                    clusters = endpoint_data.get("clusters", {})
+            for (
+                endpoint_id,
+                cluster_id,
+                attribute_id,
+            ), handler in subscriptions.items():
+                # Create closure to capture context and handler
+                def make_event_handler(ep_id, c_id, a_id, sub_handler):
+                    def event_handler(event_type: EventType, data: Any) -> None:
+                        if event_type == EventType.ATTRIBUTE_UPDATED:
+                            # Extract value from event data
+                            if isinstance(data, dict) and "value" in data:
+                                value = data["value"]
+                            else:
+                                value = data
+                            sub_handler(value)
 
-                # Subscribe to OnOff cluster (0x0006) OnOff attribute (0x0000)
-                if 0x0006 in clusters:
-                    # Create closure to capture node_id and endpoint_id
-                    def make_handler(n_id, ep_id):
-                        def handler(_type, value):
-                            self._on_onoff_update(n_id, ep_id, value)
+                    return event_handler
 
-                        return handler
+                # Build attribute path filter: endpoint/cluster/attribute
+                attr_path = f"{endpoint_id}/{cluster_id}/{attribute_id}"
+                event_handler = make_event_handler(
+                    endpoint_id, cluster_id, attribute_id, handler
+                )
 
-                    topic = f"{endpoint_id}/6/0"
-                    handler = make_handler(node_id, endpoint_id)
-                    self.client.subscribe_events(
-                        handler, EventType.ATTRIBUTE_UPDATED, node_id, topic
-                    )
+                self.client.subscribe_events(
+                    event_handler,
+                    event_filter=EventType.ATTRIBUTE_UPDATED,
+                    node_filter=node_id,
+                    attr_path_filter=attr_path,
+                )
 
-                    self.print(
-                        f"Subscribed to OnOff node={node_id} " f"endpoint={endpoint_id}"
-                    )
+                self.print(
+                    f"Subscribed to node={node_id} "
+                    f"endpoint={endpoint_id} cluster=0x{cluster_id:04x} "
+                    f"attribute=0x{attribute_id:04x}"
+                )
 
         except Exception:
             self.handle_error(
-                f"Failed to subscribe node {node.node_id} attributes:\n"
+                f"Failed to subscribe device {device.name} attributes:\n"
                 f"{traceback.format_exc()}"
             )
 
@@ -255,32 +269,15 @@ class MatterController(Device):
             device.set_parent_controller(self)
             self.devices_by_node_id[node_id] = device
 
+            # Subscribe to device's registered attributes
+            await self._subscribe_device_attributes(device)
+
             self.print(f"Created device: {name} (node_id={node_id})")
         except Exception:
             self.handle_error(
                 f"Failed to create device for node {node_id}:\n"
                 f"{traceback.format_exc()}"
             )
-
-    def _on_onoff_update(self, node_id: int, endpoint_id: int, value: Any) -> None:
-        """Handle OnOff attribute update from Matter server.
-
-        Args:
-            node_id: Matter node ID
-            endpoint_id: Endpoint ID
-            value: New OnOff value (bool)
-        """
-        try:
-            if node_id not in self.devices_by_node_id:
-                return
-
-            device = self.devices_by_node_id[node_id]
-
-            # Only update if this is the correct endpoint
-            if device.endpoint_id == endpoint_id:
-                device.set_data_point("on", 1 if value else 0, annotation="from_matter")
-        except Exception:
-            self.handle_exception()
 
     def _get_node_name(self, node: Any) -> str:
         """Extract friendly name from node.device_info.
@@ -323,14 +320,12 @@ class MatterController(Device):
         """
         try:
             if event_type.value == "node_added":
-                # New device commissioned - create subdevice and subscribe
+                # New device commissioned - create subdevice (which handles subscriptions)
                 node_id = arg.get("node_id")
                 node = arg.get("node")
 
                 if node_id and node and node_id not in self.devices_by_node_id:
                     asyncio.create_task(self.create_matter_device(node_id, node))
-                    # Subscribe to its attributes after creation
-                    asyncio.create_task(self._subscribe_node_attributes(node))
 
             elif event_type.value == "node_removed":
                 # Device removed
@@ -391,7 +386,7 @@ class MatterController(Device):
         try:
             self.print(f"Starting commissioning with code: {code[:10]}...")
 
-            if code.isnumeric():
+            if not code.isnumeric():
                 result = await self.client.commission_with_code(
                     code, network_only=on_network
                 )

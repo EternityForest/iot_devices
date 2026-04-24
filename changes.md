@@ -1,5 +1,10 @@
 # Change Log
 
+## 0.32.0
+* Experimental Matter support
+* Fix bug where timestamp and annotation get ignored.
+
+
 ## 0.31.0
 
 * Devices have get_parent(ParentClass) function.
