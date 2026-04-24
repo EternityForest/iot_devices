@@ -241,13 +241,7 @@ class MatterDevice(Device):
     async def _handle_cluster_0x0008(
         self, endpoint_id: int, value: float, timestamp: float
     ) -> None:
-        """Handle Level Control cluster (0x0008) commands.
-
-        Args:
-            endpoint_id: Endpoint ID
-            value: New level (0-254)
-            timestamp: When value was set
-        """
+        """Handle Level Control cluster (0x0008) commands."""
         ratelimiter = self._get_ratelimiter(endpoint_id, 0x0008)
         if not ratelimiter.limit():
             self.handle_error(
@@ -262,6 +256,46 @@ class MatterDevice(Device):
 
         command = clusters.LevelControl.Commands.MoveToLevel(
             level=level, transitionTime=tt_val
+        )
+
+        assert self.parent_controller
+        assert self.parent_controller.client
+
+        await self.parent_controller.client.send_device_command(
+            node_id=self.node_id,
+            endpoint_id=endpoint_id,
+            command=command,
+        )
+
+    async def _handle_cluster_0x0300(
+        self, endpoint_id: int, value: float, timestamp: float
+    ) -> None:
+        """Handle Color Control cluster commands.
+
+        Args:
+            endpoint_id: Endpoint ID
+            value: ignored because we respond to both the hue and sat tags
+        """
+        ratelimiter = self._get_ratelimiter(endpoint_id, 0x0008)
+        if not ratelimiter.limit():
+            self.handle_error(
+                f"Level command ratelimit exceeded on endpoint {endpoint_id}"
+            )
+            return
+
+        hue = self.datapoints[f"hue_{endpoint_id}"]
+        hue_val = int(max(0, min(254, hue.get()[0])))
+
+        sat = self.datapoints[f"hue_{endpoint_id}"]
+        sat_val = int(max(0, min(254, sat.get()[0])))
+
+        tt_val = 0
+        if f"transition_time_{endpoint_id}" in self.datapoints:
+            tt = self.datapoints[f"transition_time_{endpoint_id}"]
+            tt_val = int(max(0, min(254, tt.get()[0] * 10)))
+
+        command = clusters.ColorControl.Commands.MoveToHueAndSaturation(
+            hue=hue_val, saturation=sat_val, transitionTime=tt_val
         )
 
         assert self.parent_controller
@@ -354,6 +388,63 @@ class MatterDevice(Device):
             0x0000,
             lambda value: device.set_data_point(
                 datapoint_name, value, annotation="from_matter"
+            ),
+        )
+
+    @staticmethod
+    def setup_color_control_cluster(
+        device: MatterDevice,
+        endpoint_id: int,
+        cluster_id: int,
+        cluster_dict: clusters.ColorControl,
+    ) -> None:
+        """Setup Color Control cluster handler (brightness/dimming).
+
+        Args:
+            device: MatterDevice instance
+            endpoint: Endpoint ID
+            cluster_id: Cluster ID (0x0008)
+        """
+        datapoint_name_hue = f"hue_{endpoint_id}"
+        datapoint_name_sat = f"saturation_{endpoint_id}"
+
+        dp = device.numeric_data_point(
+            datapoint_name_hue,
+            min=0,
+            max=254,
+            handler=device._make_datapoint_handler(endpoint_id, cluster_id),
+            description=f"Color Control (hue) on endpoint {endpoint_id}",
+        )
+
+        dp = device.numeric_data_point(
+            datapoint_name_sat,
+            min=0,
+            max=254,
+            handler=device._make_datapoint_handler(endpoint_id, cluster_id),
+            description=f"Color Control (sat) on endpoint {endpoint_id}",
+        )
+
+        if not isinstance(cluster_dict.currentHue, clusters.Nullable):
+            dp.set(int(cluster_dict.currentHue or 0), None, "from_matter")
+
+        if not isinstance(cluster_dict.currentSaturation, clusters.Nullable):
+            dp.set(int(cluster_dict.currentSaturation or 0), None, "from_matter")
+
+        # Register subscription for CurrentLevel attribute (0x0000)
+        device.register_subscription(
+            endpoint_id,
+            cluster_id,
+            0x0000,
+            lambda value: device.set_data_point(
+                datapoint_name_hue, value, annotation="from_matter"
+            ),
+        )
+        device.register_subscription(
+            endpoint_id,
+            cluster_id,
+            0x0001,
+            lambda value: device.set_data_point(
+                datapoint_name_sat, value, annotation="from_matter"
             ),
         )
 
@@ -771,6 +862,7 @@ MatterDevice.CLUSTER_HANDLERS = {
     0x0406: MatterDevice.setup_occupancy_cluster,
     0x0045: MatterDevice.setup_boolean_cluster,
     0x005C: MatterDevice.setup_smoke_cluster,
+    0x0300: MatterDevice.setup_color_control_cluster,
 }
 
 for i in GAS_NAMES:
