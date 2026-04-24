@@ -44,7 +44,12 @@ class MatterController(Device):
                     "WebSocket URL of python-matter-server "
                     "(default: ws://localhost:5580/ws)"
                 ),
-            }
+            },
+            "name_map": {
+                "description": "Specifiy the names for devices by their node ID",
+                "type": "object",
+                "additionalProperties": {"type": "string"},
+            },
         },
     }
 
@@ -60,7 +65,7 @@ class MatterController(Device):
         )
 
         self.string_data_point(
-            "admin.on_network_commission_with_code",
+            "admin.on_network_commission_with_pin",
             handler=self.net_commission_handler,
             description="Commission new device that is already on network",
         )
@@ -90,6 +95,14 @@ class MatterController(Device):
 
         # Start main connection task
         asyncio.run_coroutine_threadsafe(self.main_loop(), self.loop)
+
+    def rescan_trigger(self, ev: EventType, d: Any):
+        if (
+            ev == EventType.NODE_ADDED
+            or ev == EventType.NODE_REMOVED
+            or ev == EventType.NODE_UPDATED
+        ):
+            self.run_coroutine(self.discover_nodes())
 
     def run_coroutine(self, coro):
         """Execute coroutine in the device's event loop.
@@ -133,6 +146,8 @@ class MatterController(Device):
 
                 await evt.wait()
 
+                self.client.subscribe_events(self.rescan_trigger)
+
                 # Discover existing nodes
                 await self.discover_nodes()
 
@@ -160,9 +175,21 @@ class MatterController(Device):
         try:
             nodes = self.client.get_nodes()
 
+            discover_by_id = {node.node_id: node for node in nodes}
             for node in nodes:
                 if node.node_id not in self.devices_by_node_id:
                     await self.create_matter_device(node.node_id, node)
+
+            to_rm = []
+            for i in self.devices_by_node_id:
+                if i not in discover_by_id:
+                    to_rm.append(self.devices_by_node_id[i].name)
+
+            for i in to_rm:
+                sd = i.split("/", 1)[-1]
+                if sd in self.subdevices:
+                    self.close_subdevice(sd)
+
         except Exception:
             self.handle_error(f"Discovery failed:\n{traceback.format_exc()}")
 
@@ -180,7 +207,7 @@ class MatterController(Device):
 
         except Exception:
             self.handle_error(
-                f"Failed to subscribe to attributes:\n" f"{traceback.format_exc()}"
+                f"Failed to subscribe to attributes:\n{traceback.format_exc()}"
             )
 
     async def _subscribe_device_attributes(
@@ -275,8 +302,7 @@ class MatterController(Device):
             self.print(f"Created device: {name} (node_id={node_id})")
         except Exception:
             self.handle_error(
-                f"Failed to create device for node {node_id}:\n"
-                f"{traceback.format_exc()}"
+                f"Failed to create device for node {node_id}:\n{traceback.format_exc()}"
             )
 
     def _get_node_name(self, node: Any) -> str:
@@ -294,7 +320,12 @@ class MatterController(Device):
         try:
             device_info = getattr(node, "device_info", {})
             if isinstance(device_info, dict):
-                # Try node_label first
+                if device_info.get("node_id"):
+                    nid = device_info["node_id"]
+                    n = self.config.get("name_map", {}).get(str(nid), "")
+                    if n:
+                        return n
+
                 if device_info.get("node_label"):
                     return device_info["node_label"]
 
@@ -350,7 +381,7 @@ class MatterController(Device):
     ) -> None:
         if code and code.strip():
             self.run_coroutine(self.commission_device(code.strip(), True))
-            self.set_data_point("admin.on_network_commission_with_code", "")
+            self.set_data_point("admin.on_network_commission_with_pin", "")
 
     def delete_device_handler(
         self, code: str, timestamp: float, annotation: str
@@ -371,7 +402,9 @@ class MatterController(Device):
             self.handle_error("No client")
             return
         await cl.remove_node(num)
+        self.devices_by_node_id.pop(num, None)
         self.print(f"Deleted node {num}")
+        await self.discover_nodes()
 
     async def commission_device(self, code: str, on_network=False) -> None:
         """Commission a new Matter device.
@@ -395,6 +428,8 @@ class MatterController(Device):
             self.print(f"Commissioned ID {result.node_id}!")
         except Exception:
             self.handle_error(f"Commission failed:\n{traceback.format_exc()}")
+
+        await self.discover_nodes()
 
     def on_before_close(self):
         """Cleanup when device closes."""
