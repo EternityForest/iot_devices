@@ -29,7 +29,7 @@ class MatterDevice(Device):
     def __init__(self, config: dict[str, Any], **kw: Any):
         super().__init__(config, **kw)
 
-        self.eeprom_ratelimiter = RateLimiter(1 / 600, burst=100)
+        self.eeprom_ratelimiter = RateLimiter(1 / 60, burst=100)
 
         self.node_id = config["node_id"]
         self.parent_controller: Matter.MatterController | None = self.get_parent(
