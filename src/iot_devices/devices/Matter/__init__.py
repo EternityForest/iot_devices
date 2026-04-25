@@ -6,6 +6,7 @@ import asyncio
 import threading
 import time
 import traceback
+import weakref
 from typing import Any
 
 import aiohttp
@@ -56,6 +57,9 @@ class MatterController(Device):
     def __init__(self, config: dict[str, Any], **kw: Any):
         super().__init__(config, **kw)
 
+        self.subdevices_by_id: weakref.WeakValueDictionary[
+            int, matter_device.MatterDevice
+        ] = weakref.WeakValueDictionary()
         # Datapoints
         self.numeric_data_point("connected", subtype="bool", writable=False)
         self.string_data_point(
@@ -97,12 +101,15 @@ class MatterController(Device):
         asyncio.run_coroutine_threadsafe(self.main_loop(), self.loop)
 
     def rescan_trigger(self, ev: EventType, d: Any):
-        if (
-            ev == EventType.NODE_ADDED
-            or ev == EventType.NODE_REMOVED
-            or ev == EventType.NODE_UPDATED
-        ):
+        if ev == EventType.NODE_ADDED or ev == EventType.NODE_REMOVED:
             self.run_coroutine(self.discover_nodes())
+
+        elif ev == EventType.NODE_UPDATED:
+            try:
+                sd = self.subdevices_by_id[d.node_id]
+                sd.set_data_point("available", 1 if d.available else 0)
+            except KeyError:
+                pass
 
     def run_coroutine(self, coro):
         """Execute coroutine in the device's event loop.
@@ -291,10 +298,13 @@ class MatterController(Device):
                 name,
                 {"node_id": node_id},
             )
+            self.subdevices_by_id[node_id] = device
             device.wait_ready()
 
             device.set_parent_controller(self)
             self.devices_by_node_id[node_id] = device
+
+            device.set_data_point("available", 1 if node.available else 0)
 
             # Subscribe to device's registered attributes
             await self._subscribe_device_attributes(device)
@@ -305,7 +315,19 @@ class MatterController(Device):
                 f"Failed to create device for node {node_id}:\n{traceback.format_exc()}"
             )
 
-    def _get_node_name(self, node: Any) -> str:
+    def _get_node_name(self, node: Any):
+        cfg = self.config.get("name_map", {})
+
+        if node.node_id in cfg:
+            return cfg[node.node_id]
+        else:
+            df = self._node_to_default_name(node)
+            cfg[node.node_id] = df
+
+            self.set_config_option("name_map", cfg)
+            return df
+
+    def _node_to_default_name(self, node: Any) -> str:
         """Extract friendly name from node.device_info.
 
         Tries to get node_label, product_name, or product_id.
@@ -320,12 +342,6 @@ class MatterController(Device):
         try:
             device_info = getattr(node, "device_info", {})
             if isinstance(device_info, dict):
-                if device_info.get("node_id"):
-                    nid = device_info["node_id"]
-                    n = self.config.get("name_map", {}).get(str(nid), "")
-                    if n:
-                        return n
-
                 if device_info.get("node_label"):
                     return device_info["node_label"]
 

@@ -33,6 +33,7 @@ GAS_UNITS = {
     5: "ng/m3",
     6: "p/m3",
     7: "bq/m3",
+    1000000: "",
 }
 
 
@@ -56,6 +57,15 @@ class MatterDevice(Device):
 
     def __init__(self, config: dict[str, Any], **kw: Any):
         super().__init__(config, **kw)
+
+        self.numeric_data_point(
+            "available",
+            min=0,
+            max=1,
+            subtype="bool",
+        )
+
+        self.set_alarm("Device unavailable", "available", "value<1", priority="error")
 
         self.eeprom_ratelimiter = RateLimiter(1 / 60, burst=100)
         self.command_ratelimiters: dict[str, RateLimiter] = {}
@@ -599,7 +609,7 @@ class MatterDevice(Device):
         code = device.numeric_data_point(
             f"alert_code_{endpoint_id}",
             min=0,
-            max=2,
+            max=100,
             writable=False,
             handler=None,
         )
@@ -619,20 +629,20 @@ class MatterDevice(Device):
             writable=False,
             handler=None,
         )
-        device.set_alarm("SMOKE_WARN", smoke_datapoint_name, "warning", "value == 1")
+        device.set_alarm("SMOKE_WARN", smoke_datapoint_name, "value == 1", "warning")
 
         device.set_alarm(
-            "SMOKE_CRITICAL", smoke_datapoint_name, "critical", "value > 1"
+            "SMOKE_CRITICAL", smoke_datapoint_name, "value > 1", "critical"
         )
 
-        device.set_alarm("CARBON_MONOXIDE", co_datapoint_name, "critical", "value > 0")
-        device.set_alarm("BATTERY", code.datapoint_name, "warning", "value ==3")
+        device.set_alarm("CARBON_MONOXIDE", co_datapoint_name, "value > 0", "critical")
+        device.set_alarm("BATTERY", code.datapoint_name, "value ==3", "warning")
 
-        device.set_alarm("TESTING", code.datapoint_name, "warning", "value ==4")
+        device.set_alarm("TESTING", code.datapoint_name, "value ==4", "warning")
 
-        device.set_alarm("HARDWARE_FAULT", code.datapoint_name, "error", "value ==5")
+        device.set_alarm("HARDWARE_FAULT", code.datapoint_name, "value ==5", "error")
 
-        device.set_alarm("END_OF_SERVICE", code.datapoint_name, "error", "value ==6")
+        device.set_alarm("END_OF_SERVICE", code.datapoint_name, "value ==6", "error")
 
         smoke = cluster_dict.smokeState
         co = cluster_dict.COState
@@ -696,13 +706,17 @@ class MatterDevice(Device):
         if not isinstance(cluster_dict.maxMeasuredValue, clusters.Nullable):
             mx = float(cluster_dict.maxMeasuredValue or mx)
 
+        mu = cluster_dict.measurementUnit
+        if mu is None:
+            mu = 1000000
+
         dp = device.numeric_data_point(
             datapoint_name,
             min=0,
             max=mx,
             writable=False,
             handler=None,
-            unit=GAS_UNITS[cluster_dict.measurementUnit or 1000000],
+            unit=GAS_UNITS[int(mu)],
             description=f"Gas concentration on endpoint {endpoint_id}",
         )
 
@@ -722,7 +736,7 @@ class MatterDevice(Device):
             priority="error",
         )
         device.set_alarm(
-            "GAS_CRITICAL_{GAS_NAMES[cluster_id]}",
+            f"GAS_CRITICAL_{GAS_NAMES[cluster_id]}",
             datapoint_name2,
             "value >= 4",
             priority="critical",

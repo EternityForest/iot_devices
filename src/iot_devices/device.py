@@ -7,6 +7,7 @@ import pydantic
 import copy
 import weakref
 import threading
+from typing import Literal
 from jsonschema import validate
 import warnings
 from . import host
@@ -20,6 +21,7 @@ from .datapoints import (
 
 # type alias
 
+Priority = Literal["debug", "info", "warning", "error", "critical"]
 
 DeviceClassTypeVar = TypeVar("DeviceClassTypeVar", bound="Device")
 
@@ -194,7 +196,7 @@ class Device:
         return f"<{self.__class__.__name__} {self.title} ({self.name})>"
 
     @final
-    def get_parent(self, typeof: type[DeviceClassTypeVar]) -> DeviceClassTypeVar | Dev:
+    def get_parent(self, typeof: type[DeviceClassTypeVar]) -> DeviceClassTypeVar:
         """Get the devices parent, doing integrity check that the type is correct"""
         p = _device_parents[self.name]
         if not isinstance(p, typeof):
@@ -313,7 +315,7 @@ class Device:
         """
         self._subdevices[name].close()
         with self.__config_lock:
-            del self.subdevices[name]
+            del self._subdevices[name]
 
     @final
     def create_subdevice(
@@ -838,19 +840,21 @@ class Device:
         """Callable by the device or by the host, thread safe."""
         self.datapoints[name].set(value, timestamp, annotation)
 
+    @final
     def request_data_point(self, name: str):
         """Callable by the device or by the host, thread safe.
         Request that the data be updated at some future time.
         """
         self.datapoints[name].request()
 
+    @final
     @pydantic.validate_call
     def set_alarm(
         self,
         name: str,
         datapoint: str,
         expression: str,
-        priority: str = "info",
+        priority: Priority = "info",
         trip_delay: float = 0,
         auto_ack: bool = False,
         release_condition: str | None = None,
@@ -894,7 +898,7 @@ class Device:
         self.host.set_alarm(
             self,
             name,
-            f"{self.name}.{datapoint}",
+            datapoint,
             expression,
             priority,
             trip_delay,
