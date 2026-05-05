@@ -1,11 +1,14 @@
-import subprocess
 import os
+import subprocess
 import time
+
 import stamina
+
 from iot_devices.host.simple_host import SimpleHost
 
-
-esphome_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "esphome_test"))
+esphome_dir = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "esphome_test")
+)
 
 h = SimpleHost()
 

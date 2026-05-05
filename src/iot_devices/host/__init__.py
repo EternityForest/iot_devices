@@ -1,4 +1,4 @@
-from .host import Host, get_host, DeviceHostContainer
+from .host import DeviceHostContainer, Host, get_host
 from .util import discover, get_class, get_description
 
 __all__ = [

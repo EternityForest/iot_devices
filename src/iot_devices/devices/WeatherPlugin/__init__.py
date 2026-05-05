@@ -1,15 +1,13 @@
-from iot_devices import device
-from iot_devices import host
-
-import os
 import getpass
-import niquests
-import time
-import threading
 import json
-
+import os
+import threading
+import time
 from urllib.parse import quote
 
+import niquests
+
+from iot_devices import device, host
 
 cache = "/dev/shm/wttr.in.cache/" + getpass.getuser()
 if not os.path.exists(cache):
@@ -39,7 +37,9 @@ def fetch(url, cachetime=1 * 3600):
 
 
 def getWeather(place, cachetime=1 * 3600):
-    return json.loads(fetch("https://wttr.in/" + place + "?format=j1", cachetime))
+    return json.loads(
+        fetch("https://wttr.in/" + place + "?format=j1", cachetime)
+    )
 
 
 class WeatherClient(device.Device):
@@ -94,8 +94,12 @@ class WeatherClient(device.Device):
         self.numeric_data_point(
             "temperature", unit="degC", min=-100, max=85, writable=False
         )
-        self.numeric_data_point("humidity", unit="%", min=0, max=100, writable=False)
-        self.numeric_data_point("wind", unit="KPH", min=0, max=100, writable=False)
+        self.numeric_data_point(
+            "humidity", unit="%", min=0, max=100, writable=False
+        )
+        self.numeric_data_point(
+            "wind", unit="KPH", min=0, max=100, writable=False
+        )
         self.numeric_data_point(
             "pressure", unit="millibar", min=100, max=1100, writable=False
         )

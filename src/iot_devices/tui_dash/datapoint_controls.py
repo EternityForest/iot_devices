@@ -1,5 +1,6 @@
+from textual.widgets import Button, Input, Pretty, Switch
+
 from iot_devices.host import Host
-from textual.widgets import Pretty, Button, Switch, Input
 
 
 def makeDataPointControl(

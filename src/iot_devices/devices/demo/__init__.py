@@ -1,7 +1,7 @@
-from typing import Any
+import os
 import random
 import time
-import os
+from typing import Any
 
 from iot_devices import device
 
@@ -20,7 +20,9 @@ class DemoDevice(device.Device):
         device.Device.__init__(self, data, **kw)
 
         try:
-            if not os.path.exists(os.path.join(self.get_config_folder(), "test.conf")):
+            if not os.path.exists(
+                os.path.join(self.get_config_folder(), "test.conf")
+            ):
                 with open(
                     os.path.join(self.get_config_folder(), "test.conf"), "w"
                 ) as f:
@@ -36,7 +38,8 @@ class DemoDevice(device.Device):
         self.numeric_data_point("random")
         self.set_data_point(
             "random",
-            random.random() * float(self.config["device.fixed_number_multiplier"]),
+            random.random()
+            * float(self.config["device.fixed_number_multiplier"]),
         )
 
         self.numeric_data_point("useless_toggle", subtype="bool")
@@ -46,7 +49,9 @@ class DemoDevice(device.Device):
         self.numeric_data_point("echo_number", writable=False)
         self.set_config_default("device.echo_number", "5")
 
-        self.set_data_point("echo_number", float(self.config["device.echo_number"]))
+        self.set_data_point(
+            "echo_number", float(self.config["device.echo_number"])
+        )
 
         self.set_data_point("read_only", random.random())
 
@@ -82,11 +87,15 @@ class DemoDevice(device.Device):
             except Exception:
                 self.handle_exception()
 
-        self.numeric_data_point("test_errors", subtype="trigger", handler=fake_an_error)
+        self.numeric_data_point(
+            "test_errors", subtype="trigger", handler=fake_an_error
+        )
 
     def update_config(self, config: dict[str, Any]):
         if "echo_number" in self.datapoints:
-            self.set_data_point("echo_number", config.get("device.echo_number", 5))
+            self.set_data_point(
+                "echo_number", config.get("device.echo_number", 5)
+            )
         return super().update_config(config)
 
     @staticmethod

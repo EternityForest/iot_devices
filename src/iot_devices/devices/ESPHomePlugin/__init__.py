@@ -1,15 +1,13 @@
-from typing import Dict
-import aioesphomeapi
-import aioesphomeapi.client as client
-import aioesphomeapi.model as model
 import asyncio
 import threading
-import zeroconf
 import time
 from typing import Any
 
+import aioesphomeapi
+import aioesphomeapi.model as model
+import zeroconf
+
 import iot_devices.device
-import iot_devices.host
 
 
 class ESPHomeDevice(iot_devices.device.Device):
@@ -40,7 +38,9 @@ class ESPHomeDevice(iot_devices.device.Device):
                 raise RuntimeError("Could not connect")
             time.sleep(timeout / 100)
 
-    def async_on_service_call(self, service: model.HomeassistantServiceCall) -> None:
+    def async_on_service_call(
+        self, service: model.HomeassistantServiceCall
+    ) -> None:
         """Call service when user automation in ESPHome config is triggered."""
         domain, service_name = service.service.split(".", 1)
         service_data = service.data
@@ -53,7 +53,9 @@ class ESPHomeDevice(iot_devices.device.Device):
             # ESPHome uses servicecall packet for both events and service calls
             # Ensure the user can only send events of form 'esphome.xyz'
             if domain != "esphome":
-                self.handle_error("Can't do non esphome domains, yours was: " + domain)
+                self.handle_error(
+                    "Can't do non esphome domains, yours was: " + domain
+                )
 
                 return
 
@@ -64,10 +66,14 @@ class ESPHomeDevice(iot_devices.device.Device):
                 # Don't clutter up the system with unneeded data points.
                 if "scanned_tag" not in self.datapoints:
                     self.object_data_point(
-                        "scanned_tag", description="RFID reading", writable=False
+                        "scanned_tag",
+                        description="RFID reading",
+                        writable=False,
                     )
 
-                self.set_data_point("scanned_tag", [str(tag_id), time.time(), ""])
+                self.set_data_point(
+                    "scanned_tag", [str(tag_id), time.time(), ""]
+                )
                 return
 
     def update_wireless(self):
@@ -94,7 +100,9 @@ class ESPHomeDevice(iot_devices.device.Device):
                 if v >= 1:
                     self.api.button_command(buttonid)
 
-        self.numeric_data_point(name, min=0, max=1, subtype="trigger", handler=handler)
+        self.numeric_data_point(
+            name, min=0, max=1, subtype="trigger", handler=handler
+        )
 
     def obj_to_tag(self, i):
         try:
@@ -138,18 +146,24 @@ class ESPHomeDevice(iot_devices.device.Device):
             elif isinstance(i, model.SensorInfo):
                 self.numeric_data_point(
                     i.object_id,
-                    unit=i.unit_of_measurement.replace("°", "deg").replace("³", "3"),
+                    unit=i.unit_of_measurement.replace("°", "deg").replace(
+                        "³", "3"
+                    ),
                     writable=False,
                 )
 
-                # Onboard WiFi and die temperature get special treatment, always want
+                # Onboard WiFi and die temperature get special treatment,
+                # always want
                 if (
                     i.device_class == "signal_strength"
                     and i.unit_of_measurement == "dBm"
                     and i.entity_category == "diagnostic"
                 ):
                     self.set_alarm(
-                        "WiFi Signal low", i.object_id, "value < -89", auto_ack=True
+                        "WiFi Signal low",
+                        i.object_id,
+                        "value < -89",
+                        auto_ack=True,
                     )
 
                 if (
@@ -199,7 +213,7 @@ class ESPHomeDevice(iot_devices.device.Device):
 
     def incoming_state(self, s):
         try:
-            if isinstance(s, (model.BinarySensorState, model.SwitchState)):
+            if isinstance(s, (model.BinarySensorState, model.SwitchState)):  # noqa: UP038
                 self.set_data_point(
                     self.key_to_name[s.key],
                     1 if s.state else 0,
@@ -208,22 +222,28 @@ class ESPHomeDevice(iot_devices.device.Device):
 
             elif isinstance(s, model.NumberState):
                 self.set_data_point(
-                    self.key_to_name[s.key], s.state, annotation="FromRemoteDevice"
+                    self.key_to_name[s.key],
+                    s.state,
+                    annotation="FromRemoteDevice",
                 )
 
             elif isinstance(s, model.AlarmControlPanelState):
-                self.set_data_point(self.key_to_name["alarm_control_panel"], s.name)
+                self.set_data_point(
+                    self.key_to_name["alarm_control_panel"], s.name
+                )
 
             elif isinstance(s, model.SensorState) or isinstance(
                 s, model.TextSensorState
             ):
                 self.set_data_point(
-                    self.key_to_name[s.key], s.state, annotation="FromRemoteDevice"
+                    self.key_to_name[s.key],
+                    s.state,
+                    annotation="FromRemoteDevice",
                 )
         except Exception:
             self.handle_exception()
 
-    def __init__(self, config: Dict[str, Any], **kw):
+    def __init__(self, config: dict[str, Any], **kw):
         super().__init__(config, **kw)
 
         self.zc = zeroconf.Zeroconf()
@@ -259,7 +279,9 @@ class ESPHomeDevice(iot_devices.device.Device):
     def on_before_close(self):
         if hasattr(self, "api") and self.api:
             try:
-                t = asyncio.run_coroutine_threadsafe(self.api.disconnect(), self.loop)
+                t = asyncio.run_coroutine_threadsafe(
+                    self.api.disconnect(), self.loop
+                )
 
                 d = False
 
@@ -308,7 +330,7 @@ class ESPHomeDevice(iot_devices.device.Device):
         """Connect to an ESPHome device and get details."""
         try:
             # Establish connection
-            api = aioesphomeapi.APIClient(
+            api = aioesphomeapi.client.APIClient(
                 self.config["hostname"],
                 6053,
                 None,
@@ -317,7 +339,7 @@ class ESPHomeDevice(iot_devices.device.Device):
             )
             self.api = api
 
-            reconnect_logic = aioesphomeapi.ReconnectLogic(
+            reconnect_logic = aioesphomeapi.reconnect_logic.ReconnectLogic(
                 client=self.api,
                 on_connect=self.on_connect,
                 on_disconnect=self.on_disconnect,
@@ -357,7 +379,7 @@ class ESPHomeDevice(iot_devices.device.Device):
 
             api.subscribe_states(cb)
             api.subscribe_logs(
-                self.handle_log, log_level=client.LogLevel.LOG_LEVEL_INFO
+                self.handle_log, log_level=aioesphomeapi.LogLevel.LOG_LEVEL_INFO
             )
             api.subscribe_service_calls(self.async_on_service_call)
             time.sleep(0.5)

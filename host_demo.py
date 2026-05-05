@@ -1,12 +1,15 @@
-from typing import Any, Mapping
+from collections.abc import Mapping
+from typing import Any
+
 from iot_devices.host.simple_host import SimpleHost
-from iot_devices.device import Device
 
 data = {"type": "DemoDevice", "name": "demo_device"}
 
 
 class Host(SimpleHost):
-    def get_config_for_device(self, parent_device: Any | None, full_device_name: str):
+    def get_config_for_device(
+        self, parent_device: Any | None, full_device_name: str
+    ):
         """When a device wants to add a subdevice,
         The host can give it extra config
         """

@@ -1,12 +1,13 @@
 from __future__ import annotations
-from textual.app import App, ComposeResult
-from textual.containers import Horizontal, Vertical, Container
-from textual.widget import Widget
-from textual.widgets import Tree, Static, Input, Select, Switch, Button
-from textual.message import Message
-from textual import events
+
 import copy
 
+from textual import events
+from textual.app import App, ComposeResult
+from textual.containers import Container, Vertical
+from textual.message import Message
+from textual.widget import Widget
+from textual.widgets import Input, Static, Switch, Tree
 
 # -----------------------------
 # Events
@@ -153,7 +154,9 @@ class TreePane(Widget):
                 child_path = f"{path}.i"
                 child_node = node.add(f"[{i}]")
                 child_node.data = child_path
-                self._populate_tree(child_path, child_node, schema["items"], item)
+                self._populate_tree(
+                    child_path, child_node, schema["items"], item
+                )
 
     async def on_tree_node_selected(self, event: MyTree.NodeSelected) -> None:
         path = event.node.data

@@ -1,22 +1,24 @@
 from __future__ import annotations
-import traceback
-from typing import Any, TypeVar, final
-from collections.abc import Callable, Mapping
-import json
-import pydantic
+
 import copy
-import weakref
+import json
 import threading
-from typing import Literal
-from jsonschema import validate
+import traceback
 import warnings
+import weakref
+from collections.abc import Callable, Mapping
+from typing import Any, Literal, TypeVar, final
+
+import pydantic
+from jsonschema import validate
+
 from . import host
 from .datapoints import (
+    BytesDataPoint,
     DataPoint,
     NumericDataPoint,
-    StringDataPoint,
     ObjectDataPoint,
-    BytesDataPoint,
+    StringDataPoint,
 )
 
 # type alias
@@ -65,7 +67,8 @@ class Device:
     device_type: str = "Device"
     """Every device must have a unique device_type name"""
 
-    # This represents either a long text readme or an absolute path beginning with / to such
+    # This represents either a long text readme or an absolute
+    #  path beginning with / to such
     readme: str = ""
 
     config_schema: dict[str, Any] = {}
@@ -87,7 +90,8 @@ class Device:
         Attributes:
 
             title:
-                Taken from config['title'] if possible, otherwise it is the name.
+                Taken from config['title'] if possible,
+                otherwise it is the name.
 
             config_schema:
                 The JSON schema for the device, or else an empty dict.
@@ -127,8 +131,8 @@ class Device:
 
                     extensions:
                         Frameworks may add stuff here that the device itself
-                        is supposed to just ignore. Devices themselves should leave
-                        this alone.
+                        is supposed to just ignore. Devices
+                        themselves should leave this alone.
 
         """
         self.title = ""
@@ -196,11 +200,14 @@ class Device:
         return f"<{self.__class__.__name__} {self.title} ({self.name})>"
 
     @final
-    def get_parent(self, typeof: type[DeviceClassTypeVar]) -> DeviceClassTypeVar:
-        """Get the devices parent, doing integrity check that the type is correct"""
+    def get_parent(
+        self, typeof: type[DeviceClassTypeVar]
+    ) -> DeviceClassTypeVar:
+        """Get the devices parent, doing integrity
+        check that the type is correct"""
         p = _device_parents[self.name]
         if not isinstance(p, typeof):
-            raise RuntimeError(
+            raise TypeError(
                 f"Device state is corrupt, expected parent to be {typeof}"
             )
         return p
@@ -226,7 +233,8 @@ class Device:
 
     @property
     def is_subdevice(self) -> bool:
-        """True if this is a subdevice, as determine by the is_subdevice key in the config"""
+        """True if this is a subdevice, as determined by the
+        is_subdevice key in the config"""
 
         x = self._config.get("is_subdevice", False)
         if not isinstance(x, bool):
@@ -263,7 +271,7 @@ class Device:
                     title = _key_to_title(i)
                     if isinstance(v, bool):
                         d["properties"][i] = {"type": "boolean", "title": title}
-                    elif isinstance(v, (int, float)):
+                    elif isinstance(v, int | float):
                         d["properties"][i] = {"type": "integer", "title": title}
                     elif isinstance(v, str):
                         d["properties"][i] = {"type": "string", "title": title}
@@ -327,10 +335,12 @@ class Device:
         """Creates a subdevice
         Args:
             cls: The class used to make the device
-            name: The base name of the device.  The full name will be parent.basename
+            name: The base name of the device.
+                The full name will be parent.basename
                 but you only supply the base name here.
 
-            config: The config as would be passed to any other device, which the host may override.
+            config: The config as would be passed to any other device,
+            which the host may override.
 
         Returns:
             The device object
@@ -339,8 +349,10 @@ class Device:
         Allows a device to create it's own subdevices.
 
         The host implementation must take the class, make whatever subclass
-        is needed based on it, Then instantiate it as if the other parameters were given straight to
-        the device, overriding them with any user config that is known by the host.
+        is needed based on it, Then instantiate it as if
+        the other parameters were given straight to
+        the device, overriding them with any user
+        config that is known by the host.
 
         The host will put the device object into the parent device's subdevice
         dict. Alll subdevices must be closed before the parent.
@@ -352,7 +364,8 @@ class Device:
         It will override whatever config that you give this function
         with the user config.
 
-        Once the subdevice exists, the host cannot close it, that is the responsibility
+        Once the subdevice exists, the host cannot close it,
+        that is the responsibility
         of the main device.  The host can only close the parent device.
 
         it must update the config in place if the user wants to make changes,
@@ -380,7 +393,9 @@ class Device:
             # Mostly just there for quick scripts
             if "subdevice_config" in self._config:
                 if name in self._config["subdevice_config"]:
-                    config.update(copy.deepcopy(self._config["subdevice_config"][name]))
+                    config.update(
+                        copy.deepcopy(self._config["subdevice_config"][name])
+                    )
 
             config["name"] = fn + "/" + name
             config["is_subdevice"] = True
@@ -393,7 +408,7 @@ class Device:
             with self.__config_lock:
                 self._subdevices[name] = sd.device
 
-            return sd.device
+            return sd.device  # noqa: TRY300
         except Exception:
             with self.__config_lock:
                 # Delete placeholder so we can try again
@@ -404,8 +419,9 @@ class Device:
     @final
     def get_config_folder(self, create: bool = True):
         """
-        Devices may, in some frameworks, have their own folder in which they can place additional
-        configuration, allowing for advanced features that depend on user content.
+        Devices may, in some frameworks, have their own folder in which they can
+        place additional configuration, allowing for advanced features
+        that depend on user content.
 
         Returns:
             An absolute path
@@ -421,7 +437,8 @@ class Device:
         **kwargs: Any,  # pylint: disable=unused-argument
     ) -> dict[str, dict[str, Any]]:
         """
-        Discover a set of suggested configs that could be used to build a new device.
+        Discover a set of suggested configs that could
+        be used to build a new device.
 
         Not required to be implemented and may just return {}
 
@@ -488,12 +505,14 @@ class Device:
 
     @final
     def set_config_default(self, key: str, value: str):
-        """sets an top-level option in self.config if it does not exist or is blank."""
+        """sets an top-level option in self.config if it
+        does not exist or is blank."""
         with self.__config_lock:
             if (
                 key not in self._config
                 or (
-                    isinstance(self._config[key], str) and not self._config[key].strip()
+                    isinstance(self._config[key], str)
+                    and not self._config[key].strip()
                 )
                 or self._config[key] is None
             ):
@@ -515,20 +534,27 @@ class Device:
         self.update_config(x)
 
     def wait_ready(self, timeout: float = 15):  # pylint: disable=unused-argument
-        """Call this to block for up to timeout seconds for the device to be fully initialized.
-        Use this in quick scripts with a devices that readies itself asynchronously.
+        """Call this to block for up to timeout seconds for the
+        device to be fully initialized.
+        Use this in quick scripts with a devices
+        that readies itself asynchronously.
 
         May be implemented by the device, but is not required.
         """
-        warnings.warn("This device does not implement wait_ready", DeprecationWarning)
+        warnings.warn(
+            "This device does not implement wait_ready", DeprecationWarning
+        )
 
     def print(self, s: str, title: str = ""):
-        """used by the device to print to the hosts live device message feed, if such a thing should happen to exist"""
+        """used by the device to print to the hosts live device message feed,
+        if such a thing should happen to exist"""
         self.host.on_device_print(self.get_host_container(), s, title)
 
     @final
     def handle_error(self, s: str, title: str = ""):
-        """like print but specifically marked as error. may get special notification.  should not be used for brief network loss"""
+        """like print but specifically marked as error.
+         may get special notification.
+        should not be used for brief network loss"""
         self.host.on_device_error(self.get_host_container(), s)
 
     @final
@@ -568,7 +594,8 @@ class Device:
         Handler will be called when it changes.
         self.datapoints[name] will start out with tha value of None
 
-        The intent is that you can subclass this and have your own implementation of data points,
+        The intent is that you can subclass this and have
+        your own implementation of data points,
         such as exposing an MQTT api or whatever else.
 
         Most fields are just extra annotations to the host.
@@ -667,7 +694,8 @@ class Device:
         Handler will be called when it changes.
         self.datapoints[name] will start out with tha value of None
 
-        Interval annotates the default data rate the point will produce, for use in setting default poll
+        Interval annotates the default data rate the point will produce,
+        for use in setting default poll
         rates by the host, if the host wants to poll.
 
         Most fields are just extra annotations to the host.
@@ -676,19 +704,26 @@ class Device:
         Args:
             description: Free text
 
-            default: If unset default value is None, or may be framework defined. Default does not trigger handler.
+            default: If unset default value is None,
+            or may be framework defined.
+            Default does not trigger handler.
 
-            handler: A function taking the value,timestamp, and annotation on changes. Must be threadsafe.
+            handler: A function taking the value,timestamp,
+            and annotation on changes. Must be threadsafe.
 
-            interval: annotates the default data rate the point will produce, for use in setting default poll
+            interval: annotates the default data rate the point will produce,
+                for use in setting default poll
                 rates by the host if the host wants to poll.
 
                 It does not mean the host SHOULD poll this,
-                it only suggest a rate to poll at if the host has an interest in this data.
+                it only suggest a rate to poll at if the host
+                has an interest in this data.
 
-            writable:  is purely for a host that might subclass this, to determine if it should allow writing to the point.
+            writable:  is purely for a host that might subclass this,
+            to determine if it should allow writing to the point.
 
-            subtype: A string further describing the data type of this value, as a hint to UI generation.
+            subtype: A string further describing the data type of this value,
+            as a hint to UI generation.
 
             dashboard: Whether to show this data point in overview displays.
 
@@ -732,13 +767,14 @@ class Device:
         on_request: Callable[[DataRequest], Any] | None = None,
         **kwargs: Any,  # pylint: disable=unused-argument
     ) -> ObjectDataPoint:
-        """Register a new object data point with the given properties.   Here "object"
-        means a JSON-like object.
+        """Register a new object data point with the given properties.
+        Here "object" means a JSON-like object.
 
         Handler will be called when it changes.
         self.datapoints[name] will start out with tha value of None
 
-        Interval annotates the default data rate the point will produce, for use in setting default poll
+        Interval annotates the default data rate the point will produce,
+        for use in setting default poll
         rates by the host, if the host wants to poll.
 
         Most fields are just extra annotations to the host.
@@ -746,15 +782,21 @@ class Device:
         Args:
             description: Free text
 
-            handler: A function taking the value,timestamp, and annotation on changes. Must be thread safe.
+            handler: A function taking the value,timestamp,
+            and annotation on changes. Must be thread safe.
 
-            interval :annotates the default data rate the point will produce, for use in setting default poll
-                rates by the host, if the host wants to poll.  It does not mean the host SHOULD poll this,
-                it only suggest a rate to poll at if the host has an interest in this data.
+            interval :annotates the default data rate the point will produce,
+                for use in setting default poll
+                rates by the host, if the host wants to poll.
+                It does not mean the host SHOULD poll this,
+                it only suggest a rate to poll at if the host has an interest in
+                this data.
 
-            writable:  is purely for a host that might subclass this, to determine if it should allow writing to the point.
+            writable:  is purely for a host that might subclass this,
+                to determine if it should allow writing to the point.
 
-            subtype: A string further describing the data type of this value, as a hint to UI generation.
+            subtype: A string further describing the data type of this value,
+                as a hint to UI generation.
 
             on_request: If set, will be called when the host
                 requests the value of this datapoint.  Must be threadsafe.
@@ -800,7 +842,8 @@ class Device:
         Bytestream data points do not store data,
         they only push it through.
 
-        Despite the name, buffers of bytes may not be broken up or combined, this is buffer oriented,
+        Despite the name, buffers of bytes may not be broken up or combined,
+        this is buffer oriented,
 
         on_request: If set, will be called when the host
             requests the value of this datapoint.  Must be threadsafe.
@@ -958,7 +1001,7 @@ class Device:
 
         if not config["type"] == self.device_type:
             raise ValueError(
-                f"Device type changed from {self.device_type} to {config['type']}"
+                f"Type changed from {self.device_type} to {config['type']}"
             )
 
         if self.config_schema:
@@ -994,7 +1037,10 @@ class Device:
 
 
 class UnusedSubdevice(Device):
-    description = "Someone created configuration for a subdevice that is no longer in use or has not yet loaded"
+    description = (
+        "Someone created configuration for a subdevice that is"
+        " no longer in use or has not yet loaded"
+    )
     device_type = "UnusedSubdevice"
 
     def warn(self):

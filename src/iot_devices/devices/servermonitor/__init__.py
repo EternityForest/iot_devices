@@ -1,16 +1,16 @@
-from iot_devices import device
-
-import subprocess
 import platform
-import time
+import subprocess
 import threading
+import time
+
+from iot_devices import device
 
 try:
     import niquests as requests
 except ImportError:
     import requests
-import socket
 import re
+import socket
 
 imported_time = time.time()
 
@@ -67,7 +67,9 @@ class ServerMonitor(device.Device):
 
         # Push type data point set by the device
         self.numeric_data_point("status", subtype="bool", writable=False)
-        self.set_alarm("External Server Down", "status", "value<1", priority="error")
+        self.set_alarm(
+            "External Server Down", "status", "value<1", priority="error"
+        )
 
         self.stop_flag = id(self)
 
@@ -124,7 +126,9 @@ class ServerMonitor(device.Device):
                             r.raise_for_status()
 
                             if self.config["expect_pattern"]:
-                                r = re.search(self.config["expect_pattern"], r.text)
+                                r = re.search(
+                                    self.config["expect_pattern"], r.text
+                                )
 
                             if not r:
                                 raise ValueError(

@@ -33,7 +33,6 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    "circuitmatter>=0.4.1",
     "coverage >=7.2.7",
     "pytest-asyncio >=0.23.7",
     "stamina>=25.1.0",
@@ -42,6 +41,27 @@ dev = [
     "sphinx-autoapi>=3.6.1",
     "sphinx-markdown-builder>=0.6.8",
 ]
+
+[tool.ruff]
+line-length = 80
+target-version = "py311"
+select = [
+        "PLE",
+        "F",
+        "E",        
+        "TRY",
+        "PIE",
+        "UP",
+        "NPY",
+        "E714",
+        "E711",
+        "E713",
+        "FURB",
+        "Q",
+        "E722",
+        "W605",
+        "I"]
+ignore = ["TRY003"]
 
 
 [tool.pytest.ini_options]

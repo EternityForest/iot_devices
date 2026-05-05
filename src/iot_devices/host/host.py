@@ -1,19 +1,19 @@
 from __future__ import annotations
-import copy
-import asyncio
-import warnings
-import threading
-import traceback
-import time
-import logging
-import weakref
+
 import abc
+import asyncio
+import copy
+import logging
+import threading
+import time
+import traceback
+import warnings
+import weakref
 from collections.abc import Callable, Mapping
+from typing import TYPE_CHECKING, Any, Generic, Self, TypeVar, final
 
-from typing import Type, Any, final, Generic, TypeVar, Self, TYPE_CHECKING
-
-from .util import get_class
 from ..util import str_to_bool
+from .util import get_class
 
 if TYPE_CHECKING:
     from iot_devices import device
@@ -33,7 +33,9 @@ def apply_defaults(data, schema):
         for prop, prop_schema in schema["properties"].items():
             if prop not in data and "default" in prop_schema:
                 data[prop] = prop_schema["default"]
-            elif isinstance(data.get(prop), dict) and "properties" in prop_schema:
+            elif (
+                isinstance(data.get(prop), dict) and "properties" in prop_schema
+            ):
                 apply_defaults(data[prop], prop_schema)
     return data
 
@@ -45,11 +47,17 @@ def normalize_legacy_config(cls, config: dict[str, Any]):
 
     for i in cls.upgrade_legacy_config_keys:
         if i in config:
-            warnings.warn(f"Auto upgrading legacy config key {i}", DeprecationWarning)
+            warnings.warn(
+                f"Auto upgrading legacy config key {i}", DeprecationWarning
+            )
             v = config[i]
             del config[i]
 
-            t = cls.config_schema.get("properties", {}).get(i, {}).get("type", None)
+            t = (
+                cls.config_schema.get("properties", {})
+                .get(i, {})
+                .get("type", None)
+            )
             if t in ("bool", "boolean"):
                 v = str_to_bool(v)
             elif t in ("int", "integer"):
@@ -127,7 +135,9 @@ class DeviceHostContainer:
         return f"<{self.__class__.__name__} for {repr(self.device)}>"
 
 
-_HostContainerTypeVar = TypeVar("_HostContainerTypeVar", bound=DeviceHostContainer)
+_HostContainerTypeVar = TypeVar(
+    "_HostContainerTypeVar", bound=DeviceHostContainer
+)
 
 
 class Host(Generic[_HostContainerTypeVar]):
@@ -163,7 +173,9 @@ class Host(Generic[_HostContainerTypeVar]):
             return copy.copy(self.devices)
 
     @final
-    def get_event_loop(self, device: device.Device) -> asyncio.AbstractEventLoop:
+    def get_event_loop(
+        self, device: device.Device
+    ) -> asyncio.AbstractEventLoop:
         """Devices can request an event loop to avoid having to manage it.
         Currently does nothing except managing loop lifetime.
         """
@@ -275,7 +287,9 @@ class Host(Generic[_HostContainerTypeVar]):
         dev.on_delete()
         self.close_device(name)
 
-    def resolve_datapoint_name(self, device_name: str, datapoint_name: str) -> str:
+    def resolve_datapoint_name(
+        self, device_name: str, datapoint_name: str
+    ) -> str:
         """Given a device name and datapoint name, returns the full datapoint name in
         the host-wide namespace."""
         return f"{device_name}.{datapoint_name}"
@@ -374,7 +388,9 @@ class Host(Generic[_HostContainerTypeVar]):
         d = self.devices[device]
         dev = d.device
         if not dev:
-            raise Exception(f"Device with name {device} exists but is not ready")
+            raise Exception(
+                f"Device with name {device} exists but is not ready"
+            )
 
         x = dev.datapoint_getter_functions.get(name, None)
         if x is not None:
@@ -429,7 +445,9 @@ class Host(Generic[_HostContainerTypeVar]):
         force_push_on_repeat: bool = False,
     ) -> None:
         """Subclass to handle data points.  Must happen locklessly."""
-        self.set_bytes(device, name, value, timestamp, annotation, force_push_on_repeat)
+        self.set_bytes(
+            device, name, value, timestamp, annotation, force_push_on_repeat
+        )
 
     @abc.abstractmethod
     def set_object(
@@ -498,7 +516,9 @@ class Host(Generic[_HostContainerTypeVar]):
                         )
 
                     if dev.device_type not in ("UnusedSubdevice"):
-                        raise Exception(f"Device with name {name} already exists")
+                        raise Exception(
+                            f"Device with name {name} already exists"
+                        )
 
                 parentContainer = None
                 if parent is not None:
@@ -569,7 +589,9 @@ class Host(Generic[_HostContainerTypeVar]):
         return {}
 
     @abc.abstractmethod
-    def get_number(self, device: str, datapoint: str) -> tuple[float | int, float, Any]:
+    def get_number(
+        self, device: str, datapoint: str
+    ) -> tuple[float | int, float, Any]:
         raise NotImplementedError
 
     @abc.abstractmethod
@@ -583,11 +605,15 @@ class Host(Generic[_HostContainerTypeVar]):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def get_bytes(self, device: str, datapoint: str) -> tuple[bytes, float, Any]:
+    def get_bytes(
+        self, device: str, datapoint: str
+    ) -> tuple[bytes, float, Any]:
         raise NotImplementedError
 
     @final
-    def get_container_for_device(self, device: device.Device) -> _HostContainerTypeVar:
+    def get_container_for_device(
+        self, device: device.Device
+    ) -> _HostContainerTypeVar:
         x = self.devices[device.name]
 
         # Might not be set because it's still being initialized,
@@ -606,7 +632,9 @@ class Host(Generic[_HostContainerTypeVar]):
                 "Your framework probably doesn't support this device"
             )
 
-    def on_device_exception(self, device_container: _HostContainerTypeVar) -> None:
+    def on_device_exception(
+        self, device_container: _HostContainerTypeVar
+    ) -> None:
         self.on_device_error(device_container, traceback.format_exc())
 
     def on_device_error(
@@ -615,7 +643,10 @@ class Host(Generic[_HostContainerTypeVar]):
         pass
 
     def on_device_print(
-        self, device_container: _HostContainerTypeVar, message: str, title: str = ""
+        self,
+        device_container: _HostContainerTypeVar,
+        message: str,
+        title: str = "",
     ) -> None:
         pass
 
@@ -630,7 +661,9 @@ class Host(Generic[_HostContainerTypeVar]):
         set up yet, because this could be called from the init.
         """
 
-    def on_after_device_removed(self, device_container: _HostContainerTypeVar) -> None:
+    def on_after_device_removed(
+        self, device_container: _HostContainerTypeVar
+    ) -> None:
         pass
 
     def on_device_added(self, device_container: _HostContainerTypeVar) -> None:

@@ -1,25 +1,24 @@
 from __future__ import annotations
-from typing import Any
-import json
-import time
-from threading import Thread, RLock, Event
-import niquests
-import logging
+
 import asyncio
+import json
+import logging
+import time
+from threading import Event, RLock, Thread
+from typing import Any
+
 import hypercorn
 import hypercorn.asyncio
-
-import starlette.responses
+import niquests
+import starlette.applications
 import starlette.requests
+import starlette.responses
 import starlette.types
 import starlette.websockets
-import starlette.applications
-from starlette.routing import Route, WebSocketRoute
-
-
-from websockets.sync.client import connect
-from websockets.exceptions import ConcurrencyError
 from scullery import scheduling
+from starlette.routing import Route, WebSocketRoute
+from websockets.exceptions import ConcurrencyError
+from websockets.sync.client import connect
 
 import iot_devices.device
 
@@ -62,7 +61,9 @@ class ArduinoCogsClient(iot_devices.device.Device):
             self.last_start_time = time.time()
 
             t = Thread(
-                target=self.thread, name="ArduinoCogsClient:" + self.name, daemon=True
+                target=self.thread,
+                name="ArduinoCogsClient:" + self.name,
+                daemon=True,
             )
             t.start()
 
@@ -148,8 +149,7 @@ class ArduinoCogsClient(iot_devices.device.Device):
     def thread(self):
         url = self.url
         url = url.split("//")[-1]
-        if url.endswith("/"):
-            url = url[:-1]
+        url = url.removesuffix("/")
 
         wsurl = "ws://" + url + "/api/ws"
         device_info_url = "http://" + url + "/api/cogs.info"
@@ -268,7 +268,10 @@ class ArduinoCogsClient(iot_devices.device.Device):
                                         # Uh oh race condition between data and timestamp
                                         # But I think it's irrelevant for now
 
-                                        self.update_remote_on_reconnect[i] = (v, t)
+                                        self.update_remote_on_reconnect[i] = (
+                                            v,
+                                            t,
+                                        )
                             except Exception:
                                 logger.exception(
                                     "Failed to handle data that was set before the device connected"
@@ -286,7 +289,9 @@ class ArduinoCogsClient(iot_devices.device.Device):
                 if send_on_connect:
                     for i in self.update_remote_on_reconnect:
                         if i not in self.exclude_update_on_reconnect:
-                            self.sendVar(i, self.update_remote_on_reconnect[i][0])
+                            self.sendVar(
+                                i, self.update_remote_on_reconnect[i][0]
+                            )
 
                 self.set_data_point("api_connected", 1)
                 self.running = True
@@ -353,7 +358,12 @@ class ArduinoCogsClient(iot_devices.device.Device):
             self.thread_handle = None
             self.suppress_connect_error = False
             self.numeric_data_point(
-                "api_connected", min=0, max=1, default=0, subtype="bool", writable=False
+                "api_connected",
+                min=0,
+                max=1,
+                default=0,
+                subtype="bool",
+                writable=False,
             )
 
             if not self.config.get("intermittent_availability", False):
@@ -476,7 +486,9 @@ class ArduinoCogsServer(iot_devices.device.Device):
                 WebSocketRoute("/api/ws", self.makews()),
                 Route("/api/cogs.tags", self.handle_tags_list_request),
                 Route("/api/cogs.tag", self.handle_tag_info_request),
-                Route("/api/cogs.trouble-codes", self.handle_trouble_codes_request),
+                Route(
+                    "/api/cogs.trouble-codes", self.handle_trouble_codes_request
+                ),
                 Route("/api/cogs.info", self.handle_device_info_request),
             ]
         )
@@ -527,7 +539,9 @@ class ArduinoCogsServer(iot_devices.device.Device):
                     x = json.loads(x)
                     for i in x:
                         if not i.startswith("_"):
-                            self.set_data_point(i, x[i], annotation="FromRemoteDevice")
+                            self.set_data_point(
+                                i, x[i], annotation="FromRemoteDevice"
+                            )
 
                 except Exception:
                     self.handle_exception()

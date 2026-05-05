@@ -1,17 +1,18 @@
-from typing import Any, Mapping, Callable
-import weakref
+import os
+import sys
 import tomllib
-import sys, os
+import weakref
+from collections.abc import Callable, Mapping
+from typing import Any
+
+from textual.app import App, ComposeResult
+from textual.containers import VerticalScroll
+from textual.screen import Screen
+from textual.widget import Widget
+from textual.widgets import Label, Placeholder, RichLog
 
 from iot_devices.host.host import DeviceHostContainer
 from iot_devices.host.simple_host import SimpleHost, SimpleHostDeviceContainer
-
-from textual.app import App, ComposeResult
-from textual.widget import Widget
-from textual.screen import Screen
-from textual.widgets import Label, Button, Placeholder, Pretty, RichLog
-from textual.containers import VerticalScroll
-
 from iot_devices.tui_dash.datapoint_controls import makeDataPointControl
 
 dev_to_widgets = weakref.WeakValueDictionary()
@@ -19,7 +20,9 @@ point_to_widgets = weakref.WeakValueDictionary()
 
 
 class Host(SimpleHost):
-    def get_config_for_device(self, parent_device: Any | None, full_device_name: str):
+    def get_config_for_device(
+        self, parent_device: Any | None, full_device_name: str
+    ):
         """When a device wants to add a subdevice,
         The host can give it extra config
         """
@@ -37,7 +40,9 @@ class Host(SimpleHost):
         print(
             f"set_data_point({self}, {name}, {value}, {timestamp}, {annotation}, {force_push_on_repeat})"
         )
-        super().set_data_point(name, value, timestamp, annotation, force_push_on_repeat)
+        super().set_data_point(
+            name, value, timestamp, annotation, force_push_on_repeat
+        )
         if name in point_to_widgets:
             point_to_widgets[name].val_display.update(value)
 
@@ -83,7 +88,11 @@ class Host(SimpleHost):
             )
 
     def on_before_device_added(
-        self, name: str, device: SimpleHostDeviceContainer, *args: Any, **kwargs: Any
+        self,
+        name: str,
+        device: SimpleHostDeviceContainer,
+        *args: Any,
+        **kwargs: Any,
     ):
         devices_screen.devs.mount(OneDeviceDashboardWidget(device))
         return super().on_before_device_added(name, device, *args, **kwargs)

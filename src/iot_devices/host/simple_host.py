@@ -1,20 +1,27 @@
 from __future__ import annotations
+
 import copy
-import time
 import logging
+import time
 from collections.abc import Callable, Mapping
-from typing import Any, TYPE_CHECKING
-from .host import Host, DeviceHostContainer
+from typing import TYPE_CHECKING, Any
+
+from .host import DeviceHostContainer, Host
 
 if TYPE_CHECKING:
-    from .. import device
+    pass
 
 _logger = logging.getLogger(__name__)
 
 
 class SimpleAlert:
     def __init__(
-        self, host: SimpleHost, name: str, datapoint: str, message: str, condition: str
+        self,
+        host: SimpleHost,
+        name: str,
+        datapoint: str,
+        message: str,
+        condition: str,
     ):
         self.name = name
         self.datapoint = datapoint
@@ -31,7 +38,10 @@ class SimpleAlert:
 
 class SimpleHostDeviceContainer(DeviceHostContainer):
     def __init__(
-        self, host: Host, parent: DeviceHostContainer | None, config: Mapping[str, Any]
+        self,
+        host: Host,
+        parent: DeviceHostContainer | None,
+        config: Mapping[str, Any],
     ):
         super().__init__(host, parent, config)
         self.alerts: list[SimpleAlert] = []
@@ -54,7 +64,9 @@ class SimpleHost(Host[SimpleHostDeviceContainer]):
         with the format devicename.datapointname"""
 
         # Functions devices use that are called when a data point changes
-        self.datapoint_handlers: dict[str, Callable[[Any, float, Any], Any] | None] = {}
+        self.datapoint_handlers: dict[
+            str, Callable[[Any, float, Any], Any] | None
+        ] = {}
 
     def string_data_point(
         self,
@@ -186,7 +198,9 @@ class SimpleHost(Host[SimpleHostDeviceContainer]):
         """Subclass to handle data points.  Must happen locklessly."""
 
         name = self.resolve_datapoint_name(device, name)
-        self.set_data_point(name, value, timestamp, annotation, force_push_on_repeat)
+        self.set_data_point(
+            name, value, timestamp, annotation, force_push_on_repeat
+        )
 
     def set_number(
         self,
@@ -199,7 +213,9 @@ class SimpleHost(Host[SimpleHostDeviceContainer]):
     ):
         """Subclass to handle data points.  Must happen locklessly."""
         name = self.resolve_datapoint_name(device, name)
-        self.set_data_point(name, value, timestamp, annotation, force_push_on_repeat)
+        self.set_data_point(
+            name, value, timestamp, annotation, force_push_on_repeat
+        )
 
     def set_bytes(
         self,
@@ -212,7 +228,9 @@ class SimpleHost(Host[SimpleHostDeviceContainer]):
     ):
         """Subclass to handle data points.  Must happen locklessly."""
         name = self.resolve_datapoint_name(device, name)
-        self.set_data_point(name, value, timestamp, annotation, force_push_on_repeat)
+        self.set_data_point(
+            name, value, timestamp, annotation, force_push_on_repeat
+        )
 
     def fast_push_bytes(
         self,
@@ -225,7 +243,9 @@ class SimpleHost(Host[SimpleHostDeviceContainer]):
     ):
         """Subclass to handle data points.  Must happen locklessly."""
         name = self.resolve_datapoint_name(device, name)
-        self.set_data_point(name, value, timestamp, annotation, force_push_on_repeat)
+        self.set_data_point(
+            name, value, timestamp, annotation, force_push_on_repeat
+        )
 
     def set_object(
         self,
@@ -238,7 +258,9 @@ class SimpleHost(Host[SimpleHostDeviceContainer]):
     ):
         """Subclass to handle data points.  Must happen locklessly."""
         name = self.resolve_datapoint_name(device, name)
-        self.set_data_point(name, value, timestamp, annotation, force_push_on_repeat)
+        self.set_data_point(
+            name, value, timestamp, annotation, force_push_on_repeat
+        )
 
     def set_data_point(
         self,
@@ -277,10 +299,16 @@ class SimpleHost(Host[SimpleHostDeviceContainer]):
         """Subclassable hook to load config on device creation"""
         return {}
 
-    def _get_data_point(self, device: str, datapoint: str) -> tuple[Any, float, Any]:
-        return self.datapoint_vta[self.resolve_datapoint_name(device, datapoint)]
+    def _get_data_point(
+        self, device: str, datapoint: str
+    ) -> tuple[Any, float, Any]:
+        return self.datapoint_vta[
+            self.resolve_datapoint_name(device, datapoint)
+        ]
 
-    def get_number(self, device: str, datapoint: str) -> tuple[float | int, float, Any]:
+    def get_number(
+        self, device: str, datapoint: str
+    ) -> tuple[float | int, float, Any]:
         return self._get_data_point(device, datapoint)
 
     def get_string(self, device: str, datapoint: str) -> tuple[str, float, Any]:
@@ -291,7 +319,9 @@ class SimpleHost(Host[SimpleHostDeviceContainer]):
     ) -> tuple[dict[str, Any], float, Any]:
         return self._get_data_point(device, datapoint)
 
-    def get_bytes(self, device: str, datapoint: str) -> tuple[bytes, float, Any]:
+    def get_bytes(
+        self, device: str, datapoint: str
+    ) -> tuple[bytes, float, Any]:
         return self._get_data_point(device, datapoint)
 
     def get_config_folder(
@@ -311,7 +341,9 @@ class SimpleHost(Host[SimpleHostDeviceContainer]):
     ):
         pass
 
-    def on_config_changed(self, device: DeviceHostContainer, config: Mapping[str, Any]):
+    def on_config_changed(
+        self, device: DeviceHostContainer, config: Mapping[str, Any]
+    ):
         """Called when the device configuration has changed.
         The host likely doesn't need to care about this
         except to save the data.

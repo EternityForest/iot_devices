@@ -1,7 +1,9 @@
 import time
+
 import stamina
-from iot_devices.host.simple_host import SimpleHost
+
 from iot_devices.devices.demo import DemoDevice
+from iot_devices.host.simple_host import SimpleHost
 
 h = SimpleHost()
 

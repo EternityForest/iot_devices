@@ -1,7 +1,7 @@
-from iot_devices import device
 import gpiozero
 from gpiozero.pins.mock import MockFactory
 
+from iot_devices import device
 
 gpio_config_schema = {
     "type": "object",
@@ -168,7 +168,12 @@ class GPIOInput(device.Device):
                 self.pin = None
 
             self.numeric_data_point(
-                "value", writable=False, min=0, max=1, subtype="boolean", default=v
+                "value",
+                writable=False,
+                min=0,
+                max=1,
+                subtype="boolean",
+                default=v,
             )
             self.set_data_point("value", v)
         except Exception:

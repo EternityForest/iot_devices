@@ -10,10 +10,11 @@ import weakref
 from typing import Any
 
 import aiohttp
-from iot_devices.device import Device
-
 from matter_server.client.client import MatterClient
 from matter_server.common.models import EventType
+
+from iot_devices.device import Device
+
 from . import matter_device
 
 
@@ -128,7 +129,9 @@ class MatterController(Device):
             try:
                 await self.connect_and_listen()
             except Exception:
-                self.handle_error(f"Connection failed:\n{traceback.format_exc()}")
+                self.handle_error(
+                    f"Connection failed:\n{traceback.format_exc()}"
+                )
                 self.set_data_point("connected", 0)
 
                 # Exponential backoff
@@ -141,7 +144,9 @@ class MatterController(Device):
     async def connect_and_listen(self):
         """Establish connection to Matter server and listen for events."""
         async with aiohttp.ClientSession() as session:
-            async with MatterClient(self.config["server_url"], session) as client:
+            async with MatterClient(
+                self.config["server_url"], session
+            ) as client:
                 self.client = client
 
                 evt = asyncio.Event()
@@ -171,7 +176,9 @@ class MatterController(Device):
                 try:
                     await listen_task
                 except Exception:
-                    self.handle_error(f"Listening failed:\n{traceback.format_exc()}")
+                    self.handle_error(
+                        f"Listening failed:\n{traceback.format_exc()}"
+                    )
                     raise
 
     async def discover_nodes(self):
@@ -372,7 +379,9 @@ class MatterController(Device):
                 node = arg.get("node")
 
                 if node_id and node and node_id not in self.devices_by_node_id:
-                    asyncio.create_task(self.create_matter_device(node_id, node))
+                    asyncio.create_task(
+                        self.create_matter_device(node_id, node)
+                    )
 
             elif event_type.value == "node_removed":
                 # Device removed
@@ -387,7 +396,9 @@ class MatterController(Device):
         except Exception:
             self.handle_exception()
 
-    def commission_handler(self, code: str, timestamp: float, annotation: str) -> None:
+    def commission_handler(
+        self, code: str, timestamp: float, annotation: str
+    ) -> None:
         if code and code.strip():
             self.run_coroutine(self.commission_device(code.strip()))
             self.set_data_point("admin.commission_with_code", "")

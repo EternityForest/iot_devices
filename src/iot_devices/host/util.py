@@ -1,12 +1,13 @@
 from __future__ import annotations
-import sys
-import os
+
+import copy
 import importlib
 import json
-import copy
 import logging
+import os
+import sys
 import weakref
-from typing import Dict, Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from .. import device
@@ -27,7 +28,7 @@ This dict lets you programmatically add new devices
 """
 
 
-def discover() -> Dict[str, Dict[str, Any]]:
+def discover() -> dict[str, dict[str, Any]]:
     """Search system paths for modules that have a devices manifest.
 
     Returns:
@@ -53,9 +54,13 @@ def discover() -> Dict[str, Dict[str, Any]]:
         for d in os.listdir(i):
             folder = os.path.join(i, d)
             if os.path.isdir(folder):
-                if os.path.isfile(os.path.join(folder, "devices_manifest.json")):
+                if os.path.isfile(
+                    os.path.join(folder, "devices_manifest.json")
+                ):
                     try:
-                        with open(os.path.join(folder, "devices_manifest.json")) as f:
+                        with open(
+                            os.path.join(folder, "devices_manifest.json")
+                        ) as f:
                             d = f.read()
                             d = json.loads(d)
 
@@ -79,7 +84,9 @@ def discover() -> Dict[str, Dict[str, Any]]:
                             if "classname" not in _known_device_types[dev]:
                                 _known_device_types[dev]["classname"] = dev
                     except Exception:
-                        logging.exception("Error with devices manifest in: " + folder)
+                        logging.exception(
+                            "Error with devices manifest in: " + folder
+                        )
     return _known_device_types
 
 

@@ -1,15 +1,15 @@
-from iot_devices import device
-import niquests
+import copy
 import json
-import time
 import os
 import threading
-import copy
+import time
 import traceback
-from typing import Dict
-
-import paho.mqtt.client as mqtt
 from logging import getLogger
+
+import niquests
+import paho.mqtt.client as mqtt
+
+from iot_devices import device
 
 log = getLogger(__name__)
 
@@ -70,7 +70,9 @@ class RateLimiter:
 
 
 class YoLinkMQTTClient:
-    def __init__(self, uid, key, homeid, parent, mqtt_port=8003, client_id=os.getpid()):
+    def __init__(
+        self, uid, key, homeid, parent, mqtt_port=8003, client_id=os.getpid()
+    ):
         self.topic = "yl-home/" + homeid + "/+/report"
         self.topic2 = "yl-home/" + homeid + "/+/response"
 
@@ -212,7 +214,9 @@ class YoLinkDevice(device.Device):
             if "loraInfo" in data["data"]:
                 s = data["data"]["loraInfo"]["signal"]
                 self.set_data_point("rssi", s)
-                self.metadata["Gateway ID"] = data["data"]["loraInfo"]["gatewayId"]
+                self.metadata["Gateway ID"] = data["data"]["loraInfo"][
+                    "gatewayId"
+                ]
 
         if self.has_battery:
             battery = get_from_state_or_data(data, "battery")
@@ -242,7 +246,9 @@ class YoLinkDoorSensor(YoLinkDevice):
 
     def __init__(self, data, **kw):
         super().__init__(data, **kw)
-        self.numeric_data_point("open", min=0, max=1, subtype="bool", writable=False)
+        self.numeric_data_point(
+            "open", min=0, max=1, subtype="bool", writable=False
+        )
 
     def onData(self, data):
         YoLinkDevice.onData(self, data)
@@ -267,7 +273,9 @@ class YoLinkOutlet(YoLinkDevice):
             "switch", min=0, max=1, subtype="bool", handler=self.setState
         )
 
-        self.numeric_data_point("power", min=0, max=2500, unit="W", writable=False)
+        self.numeric_data_point(
+            "power", min=0, max=2500, unit="W", writable=False
+        )
 
         self.set_alarm(
             "High Power Device",
@@ -278,7 +286,11 @@ class YoLinkOutlet(YoLinkDevice):
             trip_delay=10,
         )
         self.set_alarm(
-            "Overload", "power", "value > 1500", priority="critical", trip_delay=5
+            "Overload",
+            "power",
+            "value > 1500",
+            priority="critical",
+            trip_delay=5,
         )
 
     def onData(self, data):
@@ -307,7 +319,9 @@ class YoLinkLeakSensor(YoLinkDevice):
 
     def __init__(self, data, **kw):
         super().__init__(data, **kw)
-        self.numeric_data_point("leak", min=0, max=1, subtype="bool", writable=False)
+        self.numeric_data_point(
+            "leak", min=0, max=1, subtype="bool", writable=False
+        )
 
         self.set_alarm(
             "Water Detected",
@@ -336,7 +350,9 @@ class YoLinkMotionSensor(YoLinkDevice):
 
     def __init__(self, data, **kw):
         super().__init__(data, **kw)
-        self.numeric_data_point("motion", min=0, max=1, subtype="bool", writable=False)
+        self.numeric_data_point(
+            "motion", min=0, max=1, subtype="bool", writable=False
+        )
 
     def onData(self, data):
         YoLinkDevice.onData(self, data)
@@ -356,7 +372,9 @@ class YoLinkVibrationSensor(YoLinkDevice):
 
     def __init__(self, data, **kw):
         super().__init__(data, **kw)
-        self.numeric_data_point("motion", min=0, max=1, subtype="bool", writable=False)
+        self.numeric_data_point(
+            "motion", min=0, max=1, subtype="bool", writable=False
+        )
 
     def onData(self, data):
         YoLinkDevice.onData(self, data)
@@ -376,7 +394,9 @@ class YoLinkSiren(YoLinkDevice):
 
     def __init__(self, data, **kw):
         super().__init__(data, **kw)
-        self.numeric_data_point("on", min=0, max=1, subtype="bool", writable=False)
+        self.numeric_data_point(
+            "on", min=0, max=1, subtype="bool", writable=False
+        )
 
         self.numeric_data_point(
             "powered", min=0, max=1, lo=0, subtype="bool", writable=False
@@ -399,7 +419,11 @@ class YoLinkSiren(YoLinkDevice):
         self.set_alarm("PowerFail", "powered", "value < 1", priority="error")
 
         self.set_alarm(
-            'Siren "+name+" is on', "on", "value > 0", priority="warning", auto_ack=True
+            'Siren "+name+" is on',
+            "on",
+            "value > 0",
+            priority="warning",
+            auto_ack=True,
         )
 
     def refresh(self):
@@ -441,10 +465,15 @@ class YoLinkTemperatureSensor(YoLinkDevice):
             "temperature", min=-40, max=100, unit="degC", writable=False
         )
 
-        self.numeric_data_point("humidity", min=0, max=100, unit="%", writable=False)
+        self.numeric_data_point(
+            "humidity", min=0, max=100, unit="%", writable=False
+        )
 
         self.set_alarm(
-            "Extreme high temperature", "temperature", "value > 85", priority="critical"
+            "Extreme high temperature",
+            "temperature",
+            "value > 85",
+            priority="critical",
         )
         self.set_alarm(
             "Very high humidity",
@@ -563,7 +592,9 @@ class YoLinkService(device.Device):
 
         self.homeId = listify(gInfo)[0]["id"]
 
-        c = YoLinkMQTTClient(self.config["user_id"], self.token, self.homeId, self)
+        c = YoLinkMQTTClient(
+            self.config["user_id"], self.token, self.homeId, self
+        )
         self.client = c
 
         self.connected = False
@@ -581,7 +612,9 @@ class YoLinkService(device.Device):
 
             if t in deviceTypes:
                 if i["name"] not in self.subdevices:
-                    d = self.create_subdevice(deviceTypes[t], i["name"], d).wait_ready()
+                    d = self.create_subdevice(
+                        deviceTypes[t], i["name"], d
+                    ).wait_ready()
 
                 d.deviceId = i["deviceId"]
                 d.token = i["token"]
@@ -638,7 +671,8 @@ class YoLinkService(device.Device):
                         except Exception:
                             self.handle_error(traceback.format_exc())
                             t = threading.Thread(
-                                target=self.retryLoop, name="YoLinkConnectionRetry"
+                                target=self.retryLoop,
+                                name="YoLinkConnectionRetry",
                             )
                             t.start()
 
@@ -646,5 +680,7 @@ class YoLinkService(device.Device):
             self.handle_error(traceback.format_exc())
 
     @classmethod
-    def discover_devices(cls, config={}, current_device=None, intent=None, **kw):
+    def discover_devices(
+        cls, config={}, current_device=None, intent=None, **kw
+    ):
         return {}

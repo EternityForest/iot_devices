@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import traceback
-from typing import Any, Callable
-from chip.clusters import Objects as clusters
+from collections.abc import Callable
+from typing import Any
 
+from chip.clusters import Objects as clusters
 from scullery.ratelimits import RateLimiter
 
 from iot_devices.device import Device
@@ -65,7 +66,9 @@ class MatterDevice(Device):
             subtype="bool",
         )
 
-        self.set_alarm("Device unavailable", "available", "value<1", priority="error")
+        self.set_alarm(
+            "Device unavailable", "available", "value<1", priority="error"
+        )
 
         self.eeprom_ratelimiter = RateLimiter(1 / 60, burst=100)
         self.command_ratelimiters: dict[str, RateLimiter] = {}
@@ -74,8 +77,8 @@ class MatterDevice(Device):
 
         self.metadata["Node ID"] = config["node_id"]
 
-        self.parent_controller: Matter.MatterController | None = self.get_parent(
-            Matter.MatterController
+        self.parent_controller: Matter.MatterController | None = (
+            self.get_parent(Matter.MatterController)
         )
 
         # Subscription registry: {(endpoint_id, cluster_id, attribute_id): handler_func}
@@ -87,7 +90,9 @@ class MatterDevice(Device):
             node = self.parent_controller.nodes_by_id.get(self.node_id)
 
         # Discover all clusters across all endpoints
-        endpoints = node.endpoints if node and hasattr(node, "endpoints") else {}
+        endpoints = (
+            node.endpoints if node and hasattr(node, "endpoints") else {}
+        )
         self._discover_and_setup_clusters(endpoints)
 
     def _discover_and_setup_clusters(self, endpoints: dict) -> None:
@@ -107,13 +112,18 @@ class MatterDevice(Device):
                     handler = self.CLUSTER_HANDLERS.get(cluster_id)
                     if handler:
                         handler(
-                            self, endpoint_id, cluster_id, clusters_dict[cluster_id]
+                            self,
+                            endpoint_id,
+                            cluster_id,
+                            clusters_dict[cluster_id],
                         )
                     else:
                         pass
 
         except Exception:
-            self.handle_error(f"Error discovering clusters: {traceback.format_exc()}")
+            self.handle_error(
+                f"Error discovering clusters: {traceback.format_exc()}"
+            )
 
     def set_parent_controller(self, parent: Matter.MatterController) -> None:
         """Set reference to parent MatterController.
@@ -124,7 +134,11 @@ class MatterDevice(Device):
         self.parent_controller = parent
 
     def register_subscription(
-        self, endpoint_id: int, cluster_id: int, attribute_id: int, handler: Callable
+        self,
+        endpoint_id: int,
+        cluster_id: int,
+        attribute_id: int,
+        handler: Callable,
     ) -> None:
         """Register a subscription for a cluster attribute.
 
@@ -145,7 +159,9 @@ class MatterDevice(Device):
         """
         return self.subscriptions
 
-    def _get_ratelimiter(self, endpoint_id: int, cluster_id: int) -> RateLimiter:
+    def _get_ratelimiter(
+        self, endpoint_id: int, cluster_id: int
+    ) -> RateLimiter:
         """Get or create ratelimiter for endpoint/cluster pair.
 
         Args:
@@ -183,7 +199,9 @@ class MatterDevice(Device):
                 return
 
             # Route to cluster-specific handler
-            handler_func = getattr(self, f"_handle_cluster_0x{cluster_id:04x}", None)
+            handler_func = getattr(
+                self, f"_handle_cluster_0x{cluster_id:04x}", None
+            )
             try:
                 if handler_func:
 
@@ -438,7 +456,9 @@ class MatterDevice(Device):
             dp.set(int(cluster_dict.currentHue or 0), None, "from_matter")
 
         if not isinstance(cluster_dict.currentSaturation, clusters.Nullable):
-            dp.set(int(cluster_dict.currentSaturation or 0), None, "from_matter")
+            dp.set(
+                int(cluster_dict.currentSaturation or 0), None, "from_matter"
+            )
 
         # Register subscription for CurrentLevel attribute (0x0000)
         device.register_subscription(
@@ -629,20 +649,28 @@ class MatterDevice(Device):
             writable=False,
             handler=None,
         )
-        device.set_alarm("SMOKE_WARN", smoke_datapoint_name, "value == 1", "warning")
+        device.set_alarm(
+            "SMOKE_WARN", smoke_datapoint_name, "value == 1", "warning"
+        )
 
         device.set_alarm(
             "SMOKE_CRITICAL", smoke_datapoint_name, "value > 1", "critical"
         )
 
-        device.set_alarm("CARBON_MONOXIDE", co_datapoint_name, "value > 0", "critical")
+        device.set_alarm(
+            "CARBON_MONOXIDE", co_datapoint_name, "value > 0", "critical"
+        )
         device.set_alarm("BATTERY", code.datapoint_name, "value ==3", "warning")
 
         device.set_alarm("TESTING", code.datapoint_name, "value ==4", "warning")
 
-        device.set_alarm("HARDWARE_FAULT", code.datapoint_name, "value ==5", "error")
+        device.set_alarm(
+            "HARDWARE_FAULT", code.datapoint_name, "value ==5", "error"
+        )
 
-        device.set_alarm("END_OF_SERVICE", code.datapoint_name, "value ==6", "error")
+        device.set_alarm(
+            "END_OF_SERVICE", code.datapoint_name, "value ==6", "error"
+        )
 
         smoke = cluster_dict.smokeState
         co = cluster_dict.COState

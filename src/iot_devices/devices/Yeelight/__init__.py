@@ -1,16 +1,16 @@
 # Plugin that manages YeeLight devices.
 
-import yeelight
-import time
-import threading
 import logging
 import random
-import weakref
+import threading
+import time
 import traceback
-
-import iot_devices.device
+import weakref
 
 import colorzero
+import yeelight
+
+import iot_devices.device
 
 logger = logging.Logger("plugins.yeelight")
 
@@ -83,7 +83,7 @@ def makeFlusher(wr):
                 if d.closed:
                     return
                 d.flush()
-            except Exception as e:
+            except Exception:
                 print(traceback.format_exc())
 
     t = threading.Thread(daemon=True, name="YeelightFlusher", target=f)
@@ -146,7 +146,8 @@ class YeelightRGB(YeelightDevice):
 
         # Rate limits will prevent getting rejected
         self.allowedOperations = min(
-            self.allowedOperations + (time.time() - self.lastRecalcedAllowed), 40
+            self.allowedOperations + (time.time() - self.lastRecalcedAllowed),
+            40,
         )
         self.lastRecalcedAllowed = time.time()
 
@@ -216,9 +217,16 @@ class YeelightRGB(YeelightDevice):
                 pass
 
         self.numeric_data_point(
-            "switch", min=0, max=1, subtype="bool", interval=300, handler=swhandle
+            "switch",
+            min=0,
+            max=1,
+            subtype="bool",
+            interval=300,
+            handler=swhandle,
         )
-        self.numeric_data_point("fade", min=0, max=10, subtype="light_fade_duration")
+        self.numeric_data_point(
+            "fade", min=0, max=10, subtype="light_fade_duration"
+        )
 
         self.huesat = -1
         self.lastVal = -1
@@ -256,9 +264,9 @@ class YeelightRGB(YeelightDevice):
                 raise ValueError("This is a 1 channel device")
             try:
                 if state:
-                    getDevice(self.data.get("device.locator"), 3, self.kdClass).turn_on(
-                        effect="smooth", duration=int(duration * 1000)
-                    )
+                    getDevice(
+                        self.data.get("device.locator"), 3, self.kdClass
+                    ).turn_on(effect="smooth", duration=int(duration * 1000))
                     self.wasOff = False
                 else:
                     getDevice(
@@ -279,10 +287,14 @@ class YeelightRGB(YeelightDevice):
         if channel > 0:
             raise ValueError("Bulb has 1 color only")
         self.set_data_point("fade", duration)
-        self.set_data_point("color", colorzero.Color.from_hsv(hue / 360, sat, val).html)
+        self.set_data_point(
+            "color", colorzero.Color.from_hsv(hue / 360, sat, val).html
+        )
 
     @classmethod
-    def discover_devices(cls, config={}, current_device=None, intent=None, **kw):
+    def discover_devices(
+        cls, config={}, current_device=None, intent=None, **kw
+    ):
         global lookup
         maybeRefresh()
         l = {}
@@ -297,6 +309,8 @@ class YeelightRGB(YeelightDevice):
                 }
             )
 
-            l[lookup[i]["capabilities"].get("name", "") or lookup[i]["ip"]] = config2
+            l[lookup[i]["capabilities"].get("name", "") or lookup[i]["ip"]] = (
+                config2
+            )
 
         return l

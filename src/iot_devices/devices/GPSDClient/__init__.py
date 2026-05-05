@@ -1,9 +1,9 @@
-from gpsdclient.client import GPSDClient as _gps
-
-from typing import Any
-import time
-import threading
 import json
+import threading
+import time
+from typing import Any
+
+from gpsdclient.client import GPSDClient as _gps
 
 import iot_devices.device as device
 
@@ -40,7 +40,8 @@ class GPSDClient(device.Device):
                             result = result_raw
                         if not dev or result["device"] == dev:
                             self.set_data_point(
-                                "has_fix", 1 if (result.get("mode", 0) > 1) else 0
+                                "has_fix",
+                                1 if (result.get("mode", 0) > 1) else 0,
                             )
                             alt = 0
                             fix_time = 0
@@ -56,10 +57,14 @@ class GPSDClient(device.Device):
                                 self.set_data_point("speed", result["speed"])
 
                             if "altMSE" in result:
-                                self.set_data_point("altitude", result["altMSE"])
+                                self.set_data_point(
+                                    "altitude", result["altMSE"]
+                                )
                                 alt = result["altMSE"]
                             elif "altHAE" in result:
-                                self.set_data_point("altitude", result["altHAE"])
+                                self.set_data_point(
+                                    "altitude", result["altHAE"]
+                                )
                                 alt = result["altHAE"]
                             elif "alt" in result:
                                 self.set_data_point("altitude", result["alt"])
@@ -81,7 +86,8 @@ class GPSDClient(device.Device):
 
                             if "jamming" in result:
                                 self.set_data_point(
-                                    "jamming_detected", result["jamming"] / 255.0
+                                    "jamming_detected",
+                                    result["jamming"] / 255.0,
                                 )
 
             except Exception:
@@ -91,15 +97,25 @@ class GPSDClient(device.Device):
     def __init__(self, config: dict[str, Any], **kw: Any):
         device.Device.__init__(self, config, **kw)
         self.should_run = True
-        self.thread_handle = threading.Thread(target=self.thread, name="GPS Client")
+        self.thread_handle = threading.Thread(
+            target=self.thread, name="GPS Client"
+        )
         self.thread_handle.start()
 
         # Push type data point set by the device
-        self.numeric_data_point("has_fix", default=0, subtype="bool", writable=False)
-        self.numeric_data_point("jamming_detected", default=0, min=0, max=1, hi=0.05)
+        self.numeric_data_point(
+            "has_fix", default=0, subtype="bool", writable=False
+        )
+        self.numeric_data_point(
+            "jamming_detected", default=0, min=0, max=1, hi=0.05
+        )
 
         self.set_alarm(
-            "No GPS Fix", "has_fix", "value<1", priority="error", trip_delay=3 * 60
+            "No GPS Fix",
+            "has_fix",
+            "value<1",
+            priority="error",
+            trip_delay=3 * 60,
         )
         self.set_alarm(
             "GPS Jamming Detected",
@@ -118,7 +134,10 @@ class GPSDClient(device.Device):
 
         self.object_data_point("speed", writable=False, unit="m/s")
         self.object_data_point(
-            "altitude", writable=False, unit="m", description="Altitude above sea level"
+            "altitude",
+            writable=False,
+            unit="m",
+            description="Altitude above sea level",
         )
         self.object_data_point("heading", writable=False, unit="deg")
 
