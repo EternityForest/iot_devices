@@ -1,5 +1,7 @@
 from __future__ import annotations
-from typing import Protocol, AsyncGenerator
+
+from collections.abc import AsyncGenerator
+from typing import Protocol
 
 
 class RawPacketMetadata:

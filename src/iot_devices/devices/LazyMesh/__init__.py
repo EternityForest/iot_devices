@@ -1,10 +1,13 @@
 from __future__ import annotations
-from typing import Any
-import traceback
+
 import asyncio
 import time
+import traceback
+from typing import Any
+
 from iot_devices.device import Device
-from .mesh import MeshNode, ITransport, Payload
+
+from .mesh import ITransport, MeshNode, Payload
 
 
 class RemoteLazyMeshNode(Device):
@@ -13,7 +16,7 @@ class RemoteLazyMeshNode(Device):
         "properties": {
             "custom_properties": {
                 "type": "array",
-                "description": "Config for reading and writing non-standard datapoints",
+                "description": "non-standard datapoints",
                 "items": {
                     "type": "object",
                     "properties": {
@@ -30,7 +33,7 @@ class RemoteLazyMeshNode(Device):
                         "reliable": {
                             "type": "boolean",
                             "default": True,
-                            "description": "Auto retry all attempts to set remote values",
+                            "description": "retry all attempts to set values",
                         },
                     },
                 },
@@ -165,7 +168,9 @@ class RemoteLazyMeshNode(Device):
 
         return f
 
-    def send_data_val_set_packet(self, data_id: int, v: Any, request_ack: bool = False):
+    def send_data_val_set_packet(
+        self, data_id: int, v: Any, request_ack: bool = False
+    ):
         if not self.device_id:
             return
         p = Payload()
@@ -183,7 +188,9 @@ class RemoteLazyMeshNode(Device):
                 return
             if not self.parent.channel:
                 return
-            self.parent.node.loop.create_task(self.parent.channel.send_packet(p))
+            self.parent.node.loop.create_task(
+                self.parent.channel.send_packet(p)
+            )
 
         if not self.parent:
             return
@@ -217,7 +224,10 @@ class LazyMeshNode(Device):
             "mqtt_urls": {
                 "type": "array",
                 "items": {"type": "string"},
-                "default": ["mqtt://localhost:1883", "mqtt://test.mosquitto.org:1883"],
+                "default": [
+                    "mqtt://localhost:1883",
+                    "mqtt://test.mosquitto.org:1883",
+                ],
             },
             "enable_udp": {
                 "type": "boolean",
@@ -239,8 +249,16 @@ class LazyMeshNode(Device):
                 "items": {
                     "type": "object",
                     "properties": {
-                        "id": {"type": "number", "required": True, "default": 0},
-                        "name": {"type": "string", "required": True, "default": ""},
+                        "id": {
+                            "type": "number",
+                            "required": True,
+                            "default": 0,
+                        },
+                        "name": {
+                            "type": "string",
+                            "required": True,
+                            "default": "",
+                        },
                         "type": {
                             "type": "string",
                             "enum": ["string", "number"],
@@ -266,7 +284,11 @@ class LazyMeshNode(Device):
                         "required": False,
                         "description": "Maximum value",
                     },
-                    "unit": {"type": "string", "default": "", "description": "Unit"},
+                    "unit": {
+                        "type": "string",
+                        "default": "",
+                        "description": "Unit",
+                    },
                     "subtype": {
                         "type": "string",
                         "default": "",
@@ -299,18 +321,24 @@ class LazyMeshNode(Device):
         try:
             self.transports: list[ITransport] = []
             if self.config["enable_mqtt"]:
-                from iot_devices.devices.LazyMesh.transports.mqtt import MQTTTransport
+                from iot_devices.devices.LazyMesh.transports.mqtt import (
+                    MQTTTransport,
+                )
 
                 for i in self.config["mqtt_urls"]:
                     self.transports.append(MQTTTransport(i))
 
             if self.config["enable_udp"]:
-                from iot_devices.devices.LazyMesh.transports.udp import UDPTransport
+                from iot_devices.devices.LazyMesh.transports.udp import (
+                    UDPTransport,
+                )
 
                 self.transports.append(UDPTransport())
 
             if self.config["enable_ble"]:
-                from iot_devices.devices.LazyMesh.transports.ble import BLETransport
+                from iot_devices.devices.LazyMesh.transports.ble import (
+                    BLETransport,
+                )
 
                 self.transports.append(BLETransport())
 
@@ -355,7 +383,9 @@ class LazyMeshNode(Device):
 
             self.node = MeshNode(self.transports)
 
-            self.channel = self.node.add_channel(self.config["channel_password"])
+            self.channel = self.node.add_channel(
+                self.config["channel_password"]
+            )
             # TODO type ignore bad
             self.channel.async_callback = self.on_lm_message  # type: ignore
 
@@ -376,7 +406,9 @@ class LazyMeshNode(Device):
 
         self.node.loop.call_soon_threadsafe(f)
 
-    async def request_data_point_from_remote(self, device: int, data_point: int) -> Any:
+    async def request_data_point_from_remote(
+        self, device: int, data_point: int
+    ) -> Any:
         p = Payload()
         p.add_data(5, device)
         p.add_data(1, [data_point])
@@ -410,7 +442,9 @@ class LazyMeshNode(Device):
                         await self.request_data_point_from_remote(source, 3)
                     else:
                         self.subdevices_by_id[source] = self.create_subdevice(
-                            RemoteLazyMeshNode, self.friendly_names_by_id[source], {}
+                            RemoteLazyMeshNode,
+                            self.friendly_names_by_id[source],
+                            {},
                         )
                         self.subdevices_by_id[source].device_id = source
                         self.subdevices_by_id[source].set_parent(self)
@@ -429,7 +463,9 @@ class LazyMeshNode(Device):
                             assert isinstance(j, int)
                             if j in self.ids_to_numeric_points:
                                 point_name = self.ids_to_numeric_points[j]
-                                resolution = self.ids_to_numeric_points_resolution[j]
+                                resolution = (
+                                    self.ids_to_numeric_points_resolution[j]
+                                )
                                 d = self.datapoints[point_name].get()[0]
                                 if isinstance(d, (int, float)):
                                     p.add_data(j, d * resolution)
@@ -445,7 +481,9 @@ class LazyMeshNode(Device):
                                 p.add_data(j, self.config["local_device_name"])
 
                         def f():
-                            self.node.loop.create_task(self.channel.send_packet(p))
+                            self.node.loop.create_task(
+                                self.channel.send_packet(p)
+                            )
 
                         self.node.loop.call_soon_threadsafe(f)
 
@@ -455,18 +493,25 @@ class LazyMeshNode(Device):
                     if write_enabled:
                         if i.id in self.ids_to_numeric_points:
                             point_name = self.ids_to_numeric_points[i.id]
-                            resolution = self.ids_to_numeric_points_resolution[i.id]
+                            resolution = self.ids_to_numeric_points_resolution[
+                                i.id
+                            ]
                             d = i.data
                             if isinstance(d, (int, float)):
                                 self.set_data_point(
-                                    point_name, d * resolution, None, "from_remote"
+                                    point_name,
+                                    d * resolution,
+                                    None,
+                                    "from_remote",
                                 )
 
                         elif i.id in self.ids_to_string_points:
                             point_name = self.ids_to_string_points[i.id]
                             d = i.data
                             if isinstance(d, str):
-                                self.set_data_point(point_name, d, None, "from_remote")
+                                self.set_data_point(
+                                    point_name, d, None, "from_remote"
+                                )
 
         except Exception:
             print(traceback.format_exc())

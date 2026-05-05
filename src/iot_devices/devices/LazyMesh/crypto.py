@@ -1,8 +1,8 @@
+import struct
+
+from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-from cryptography.hazmat.backends import default_backend
-
-import struct
 
 
 def derive_routing_key(psk: bytes, hours_since_epoch: int) -> bytes:
@@ -19,7 +19,9 @@ def derive_crypto_key(psk: bytes, hours_since_epoch: int) -> bytes:
     return digest.finalize()[:16]
 
 
-def aes_gcm_encrypt(key: bytes, payload: bytes, iv: bytes, tagLength: int) -> bytes:
+def aes_gcm_encrypt(
+    key: bytes, payload: bytes, iv: bytes, tagLength: int
+) -> bytes:
     encryptor = Cipher(
         algorithms.AES(key), modes.GCM(iv), backend=default_backend()
     ).encryptor()
@@ -32,7 +34,9 @@ def aes_gcm_encrypt(key: bytes, payload: bytes, iv: bytes, tagLength: int) -> by
     return ciphertext + short_tag
 
 
-def aes_gcm_decrypt(key: bytes, ciphertext: bytes, iv: bytes, tagLength: int) -> bytes:
+def aes_gcm_decrypt(
+    key: bytes, ciphertext: bytes, iv: bytes, tagLength: int
+) -> bytes:
     short_tag = ciphertext[-tagLength:]
     ciphertext = ciphertext[:-tagLength]
 

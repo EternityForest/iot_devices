@@ -1,7 +1,8 @@
 import asyncio
 import socket
 import struct
-from typing import AsyncGenerator
+from collections.abc import AsyncGenerator
+
 from . import ITransport, RawPacketMetadata
 
 MCAST_GROUP = "224.0.0.251"
@@ -15,7 +16,9 @@ class UDPTransport(ITransport):
 
     async def setup(self):
         # Create UDP socket
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+        self.sock = socket.socket(
+            socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP
+        )
         self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
         try:
@@ -28,7 +31,9 @@ class UDPTransport(ITransport):
             mreq = struct.pack("4s4s", group, socket.inet_aton("0.0.0.0"))
 
             # Set the socket option to join the multicast group
-            self.sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
+            self.sock.setsockopt(
+                socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq
+            )
 
         # Set non-blocking
         self.sock.setblocking(False)

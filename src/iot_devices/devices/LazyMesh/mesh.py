@@ -1,18 +1,19 @@
-import time
-import threading
-from collections import OrderedDict
-from typing import Callable, Coroutine
 import asyncio
-import traceback
-from .mesh_packet import MeshPacket, Payload, header1
-from . import mesh_packet
-from .crypto import derive_crypto_key, derive_routing_key
-from hashlib import sha256
-from .transports import ITransport, RawPacketMetadata
 import logging
+import os
+import threading
+import time
+import traceback
+from collections import OrderedDict
+from collections.abc import Callable, Coroutine
+from hashlib import sha256
+
 from aiostream import stream
 
-import os
+from . import mesh_packet
+from .crypto import derive_crypto_key, derive_routing_key
+from .mesh_packet import MeshPacket, Payload, header1
+from .transports import ITransport, RawPacketMetadata
 
 
 class MeshChannel:
@@ -20,9 +21,9 @@ class MeshChannel:
         self.psk = psk
         self.temp_keys = self.get_temp_keys()
         self.callback: Callable[[Payload], None] | None = None
-        self.async_callback: Callable[[Payload], Coroutine[None, None, None]] | None = (
-            None
-        )
+        self.async_callback: (
+            Callable[[Payload], Coroutine[None, None, None]] | None
+        ) = None
 
         self.mesh_node: MeshNode | None = None
         self.can_global_route = True
@@ -47,7 +48,9 @@ class MeshChannel:
             keys["closest_routing_key"] = keys["next_routing_key"]
             keys["closest_crypto_key"] = keys["next_crypto_key"]
         elif prev_hour != hours_since_epoch:
-            keys["closest_routing_key"] = derive_routing_key(self.psk, prev_hour)
+            keys["closest_routing_key"] = derive_routing_key(
+                self.psk, prev_hour
+            )
             keys["closest_crypto_key"] = derive_crypto_key(self.psk, prev_hour)
         return keys
 
@@ -231,7 +234,9 @@ class MeshNode:
         self.outgoingQueue: list[QueuedOutgoingPacket] = []
 
         self.repeater_interest_by_route_id: dict[int, float] = {}
-        self.subscriber_interest_by_channel: OrderedDict[bytes, float] = OrderedDict()
+        self.subscriber_interest_by_channel: OrderedDict[bytes, float] = (
+            OrderedDict()
+        )
 
     async def send_packet(
         self,
@@ -248,7 +253,9 @@ class MeshNode:
         header_1 = b[0]
         header_2 = b[1]
 
-        first_attempt = header_2 & (1 << mesh_packet.HEADER_2_FIRST_SEND_ATTEMPT_BIT)
+        first_attempt = header_2 & (
+            1 << mesh_packet.HEADER_2_FIRST_SEND_ATTEMPT_BIT
+        )
 
         packet_type = header_1 & 0b11
 
@@ -287,14 +294,19 @@ class MeshNode:
     ):
         header1 = 0
 
-        slow_transport_bit = packet[0] & (1 << mesh_packet.SLOW_TRANSPORT_OFFSET)
-        header1 |= 1 << mesh_packet.SLOW_TRANSPORT_OFFSET if slow_transport_bit else 0
+        slow_transport_bit = packet[0] & (
+            1 << mesh_packet.SLOW_TRANSPORT_OFFSET
+        )
+        header1 |= (
+            1 << mesh_packet.SLOW_TRANSPORT_OFFSET if slow_transport_bit else 0
+        )
         header1 |= 1 << mesh_packet.TTL_OFFSET
         header2 = 0
 
         p = bytes([header1, header2, ack_type])
         packet_id = packet[
-            mesh_packet.PACKET_ID_64_OFFSET : mesh_packet.PACKET_ID_64_OFFSET + 8
+            mesh_packet.PACKET_ID_64_OFFSET : mesh_packet.PACKET_ID_64_OFFSET
+            + 8
         ]
         ack_packet = p + packet_id
         await self.send_packet(ack_packet, interface=destination)
@@ -306,17 +318,24 @@ class MeshNode:
             return False
 
         packetID: bytes = packet[
-            mesh_packet.PACKET_ID_64_OFFSET : mesh_packet.PACKET_ID_64_OFFSET + 8
+            mesh_packet.PACKET_ID_64_OFFSET : mesh_packet.PACKET_ID_64_OFFSET
+            + 8
         ]
 
-        firstAttempt = packet[1] & (1 << mesh_packet.HEADER_2_FIRST_SEND_ATTEMPT_BIT)
+        firstAttempt = packet[1] & (
+            1 << mesh_packet.HEADER_2_FIRST_SEND_ATTEMPT_BIT
+        )
 
         isRepeater = packet[1] & (1 << mesh_packet.HEADER_2_REPEATER_BIT)
-        isSourceInterested = packet[1] & (1 << mesh_packet.HEADER_2_INTERESTED_BIT)
+        isSourceInterested = packet[1] & (
+            1 << mesh_packet.HEADER_2_INTERESTED_BIT
+        )
 
         # 4 bytes
         packetTime = int.from_bytes(
-            packet[mesh_packet.TIME_BYTE_OFFSET : mesh_packet.TIME_BYTE_OFFSET + 4],
+            packet[
+                mesh_packet.TIME_BYTE_OFFSET : mesh_packet.TIME_BYTE_OFFSET + 4
+            ],
             "little",
         )
 
@@ -432,9 +451,13 @@ class MeshNode:
 
                     # Set the local interested bit
                     if local_interested:
-                        header2 = header2 | (1 << mesh_packet.HEADER_2_INTERESTED_BIT)
+                        header2 = header2 | (
+                            1 << mesh_packet.HEADER_2_INTERESTED_BIT
+                        )
 
-                    decremented = decremented[:1] + bytes([header2]) + decremented[2:]
+                    decremented = (
+                        decremented[:1] + bytes([header2]) + decremented[2:]
+                    )
 
                     # Local packet
                     self.enqueue_packet(
@@ -445,9 +468,14 @@ class MeshNode:
 
             if local_interested and not did_repeat:
                 # Local packets can just use the implicit ack bit
-                if meta.source is not None and meta.source.use_reliable_retransmission:
+                if (
+                    meta.source is not None
+                    and meta.source.use_reliable_retransmission
+                ):
                     # Must send channel ACKs on all interfaces
-                    await self.send_ack(meta.raw, None, mesh_packet.CONTROL_TYPE_ACK)
+                    await self.send_ack(
+                        meta.raw, None, mesh_packet.CONTROL_TYPE_ACK
+                    )
 
         # control
         if packet_type == 0:
@@ -457,13 +485,17 @@ class MeshNode:
 
                 if meta.source.use_reliable_retransmission:
                     if control_type == mesh_packet.CONTROL_TYPE_ACK:
-                        x = self.ensure_seen_packet_report_exists(control_payload)
+                        x = self.ensure_seen_packet_report_exists(
+                            control_payload
+                        )
                         if x:
                             x.subscribers_seen += 1
 
     def enqueue_packet(self, packet: bytes, exclude: list[ITransport] = []):
         if len(packet) < mesh_packet.PACKET_OVERHEAD:
-            raise ValueError("Can't queue this, it doesn't look like a data packet")
+            raise ValueError(
+                "Can't queue this, it doesn't look like a data packet"
+            )
 
         packet_type = packet[0] & 0b11
 
@@ -478,11 +510,18 @@ class MeshNode:
             ]
 
             expect_repeaters = min(
-                4, int(self.repeater_interest_by_route_id.get(route_number, 0) + 0.7)
+                4,
+                int(
+                    self.repeater_interest_by_route_id.get(route_number, 0)
+                    + 0.7
+                ),
             )
 
             expect_subscribers = min(
-                6, int(self.subscriber_interest_by_channel.get(routing_id, 0) + 0.7)
+                6,
+                int(
+                    self.subscriber_interest_by_channel.get(routing_id, 0) + 0.7
+                ),
             )
         else:
             expect_repeaters = 0
@@ -493,7 +532,9 @@ class MeshNode:
         # )
 
         self.outgoingQueue.append(
-            QueuedOutgoingPacket(packet, expect_repeaters, expect_subscribers, exclude)
+            QueuedOutgoingPacket(
+                packet, expect_repeaters, expect_subscribers, exclude
+            )
         )
 
         self.do_queued_packets.set()
@@ -504,7 +545,7 @@ class MeshNode:
                 self.do_queued_packets.clear()
                 try:
                     await asyncio.wait_for(self.do_queued_packets.wait(), 0.2)
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     pass
 
                 for i in self.outgoingQueue:
@@ -516,11 +557,17 @@ class MeshNode:
                             header2 &= ~(
                                 1 << mesh_packet.HEADER_2_FIRST_SEND_ATTEMPT_BIT
                             )
-                            i.packet = i.packet[:1] + bytes([header2]) + i.packet[2:]
+                            i.packet = (
+                                i.packet[:1] + bytes([header2]) + i.packet[2:]
+                            )
                         else:
                             header2 = i.packet[1]
-                            header2 |= 1 << mesh_packet.HEADER_2_FIRST_SEND_ATTEMPT_BIT
-                            i.packet = i.packet[:1] + bytes([header2]) + i.packet[2:]
+                            header2 |= (
+                                1 << mesh_packet.HEADER_2_FIRST_SEND_ATTEMPT_BIT
+                            )
+                            i.packet = (
+                                i.packet[:1] + bytes([header2]) + i.packet[2:]
+                            )
 
                         if not i.stopSending:
                             i.last_send_time = time.time()
@@ -585,9 +632,13 @@ class MeshNode:
                             repeaters_seen = seenReport.repeaters_seen
                             subscribers_seen = seenReport.subscribers_seen
 
-                        route_id = i.packet[mesh_packet.MESH_ROUTE_NUMBER_BYTE_OFFSET]
+                        route_id = i.packet[
+                            mesh_packet.MESH_ROUTE_NUMBER_BYTE_OFFSET
+                        ]
 
-                        old = self.repeater_interest_by_route_id.get(route_id, 0)
+                        old = self.repeater_interest_by_route_id.get(
+                            route_id, 0
+                        )
                         new = repeaters_seen
 
                         if new > old:
@@ -601,25 +652,31 @@ class MeshNode:
                             + 16
                         ]
 
-                        old = self.subscriber_interest_by_channel.get(channel_hash, 0)
+                        old = self.subscriber_interest_by_channel.get(
+                            channel_hash, 0
+                        )
                         new = subscribers_seen
 
                         if new > old:
-                            self.subscriber_interest_by_channel[channel_hash] = new
+                            self.subscriber_interest_by_channel[
+                                channel_hash
+                            ] = new
                         else:
                             new = old * 0.90 + new * 0.10
-                            self.subscriber_interest_by_channel[channel_hash] = new
+                            self.subscriber_interest_by_channel[
+                                channel_hash
+                            ] = new
 
                         if len(self.subscriber_interest_by_channel) > 3096:
                             self.subscriber_interest_by_channel = OrderedDict(
-                                list(self.subscriber_interest_by_channel.items())[
-                                    -2048:
-                                ]
+                                list(
+                                    self.subscriber_interest_by_channel.items()
+                                )[-2048:]
                             )
 
             except Exception:
                 print(traceback.format_exc())
-                logging.error("Error in send queued packets")
+                logging.exception("Error in send queued packets")
 
     async def maintainance_loop(self):
         try:
@@ -634,7 +691,7 @@ class MeshNode:
 
         except Exception:
             print(traceback.format_exc())
-            logging.error("Error in maintainance loop")
+            logging.exception("Error in maintainance loop")
 
     def add_channel(self, password: str):
         psk = password.encode("utf-8")

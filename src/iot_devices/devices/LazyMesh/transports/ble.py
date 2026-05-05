@@ -1,10 +1,12 @@
 import asyncio
-from typing import AsyncGenerator
+from collections.abc import AsyncGenerator
+
 from bleak import BleakScanner
 from bleak.backends.device import BLEDevice
 from bleak.backends.scanner import AdvertisementData
-from . import ITransport, RawPacketMetadata
+
 from .. import mesh_packet
+from . import ITransport, RawPacketMetadata
 
 LAZYMESH_UUID = "d1a77e11-420f-9f11-1a00-10a6beef0001"
 

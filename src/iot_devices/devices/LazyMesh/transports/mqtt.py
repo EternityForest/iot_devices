@@ -1,16 +1,17 @@
-import paho.mqtt.client as mqtt
-from threading import RLock
 import asyncio
-import time
-from typing import Any
-from scullery.ratelimits import RateLimiter
-import os
-from . import ITransport, RawPacketMetadata
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.backends import default_backend
-from ..crypto import aes_gcm_decrypt, aes_gcm_encrypt
-
 import logging
+import os
+import time
+from threading import RLock
+from typing import Any
+
+import paho.mqtt.client as mqtt
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import hashes
+from scullery.ratelimits import RateLimiter
+
+from ..crypto import aes_gcm_decrypt, aes_gcm_encrypt
+from . import ITransport, RawPacketMetadata
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +61,9 @@ class MQTTTransport(ITransport):
                 client.subscribe(topic)
         logger.info("MQTT Connected")
 
-    def on_message(self, client: mqtt.Client, userdata: Any, msg: mqtt.MQTTMessage):
+    def on_message(
+        self, client: mqtt.Client, userdata: Any, msg: mqtt.MQTTMessage
+    ):
         # Decrypt using topic_crypto_keys[topic]
         routing_key = self.topic_crypto_keys.get(msg.topic)
         if routing_key:
@@ -73,7 +76,9 @@ class MQTTTransport(ITransport):
 
                     header_1 = payload[0]
                     # Ensure was global routed bit is set
-                    payload = payload[:1] + bytes([header_1 | (1 << 7)]) + payload[2:]
+                    payload = (
+                        payload[:1] + bytes([header_1 | (1 << 7)]) + payload[2:]
+                    )
 
                     if self.loop:
                         asyncio.run_coroutine_threadsafe(
@@ -99,9 +104,9 @@ class MQTTTransport(ITransport):
             await asyncio.sleep(5)
             now = time.time()
             with self.lock:
-                while self.should_subscribe and self.should_subscribe[0][0] < now - (
-                    65 * 60
-                ):
+                while self.should_subscribe and self.should_subscribe[0][
+                    0
+                ] < now - (65 * 60):
                     topic = self.should_subscribe[0][1]
                     self.client.unsubscribe(topic)
                     self.should_subscribe.pop(0)

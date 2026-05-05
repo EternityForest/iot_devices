@@ -1,11 +1,15 @@
-import msgpack
-from typing import Union, NamedTuple
-from dataclasses import dataclass
 import struct
-from .transports import RawPacketMetadata
-from .crypto import aes_gcm_encrypt, aes_gcm_decrypt
+from dataclasses import dataclass
+from typing import NamedTuple, Union
 
-DataItemValue = Union[str, int, float, list[int], list[str], list[float] | bytes]
+import msgpack
+
+from .crypto import aes_gcm_decrypt, aes_gcm_encrypt
+from .transports import RawPacketMetadata
+
+DataItemValue = Union[
+    str, int, float, list[int], list[str], list[float] | bytes
+]
 
 
 class DataItem(NamedTuple):
@@ -154,7 +158,8 @@ class MeshPacket:
                 self.header,
                 self.header2,
                 self.mesh_route_num,
-                (min(self.path_loss, 31) << 3) | (min(self.last_hop_loss, 7) & 0b111),
+                (min(self.path_loss, 31) << 3)
+                | (min(self.last_hop_loss, 7) & 0b111),
             ]
         )
         buf.extend(self.routing_id)
@@ -188,12 +193,16 @@ class MeshPacket:
         if self.plaintext is None:
             raise ValueError("No plaintext to encrypt")
         iv = self.entropy + struct.pack("<I", self.timestamp)
-        self.ciphertext = aes_gcm_encrypt(key, self.plaintext, iv, self.AUTH_TAG_LENGTH)
+        self.ciphertext = aes_gcm_encrypt(
+            key, self.plaintext, iv, self.AUTH_TAG_LENGTH
+        )
         self.plaintext = None
 
     def decrypt(self, key: bytes):
         if self.ciphertext is None:
             raise ValueError("No ciphertext/tag")
         iv = self.entropy + struct.pack("<I", self.timestamp)
-        self.plaintext = aes_gcm_decrypt(key, self.ciphertext, iv, self.AUTH_TAG_LENGTH)
+        self.plaintext = aes_gcm_decrypt(
+            key, self.ciphertext, iv, self.AUTH_TAG_LENGTH
+        )
         self.ciphertext = None

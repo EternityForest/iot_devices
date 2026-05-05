@@ -1,5 +1,5 @@
-import time
 import logging
+import time
 
 # log to console
 logging.basicConfig(
@@ -43,6 +43,7 @@ logging.basicConfig(
 #     time.sleep(1000)
 
 from typing import Any
+
 from . import LazyMeshNode
 
 config: dict[str, Any] = {
