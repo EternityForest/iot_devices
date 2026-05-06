@@ -1,21 +1,20 @@
-# iot_devices.device
+# iot_devices.devices.Matter
 
-## Attributes
+Matter Controller and Device implementation for python-matter-server.
 
-| [`DeviceClassTypeVar`](#iot_devices.device.DeviceClassTypeVar)   |    |
-|------------------------------------------------------------------|----|
+## Submodules
+
+* [iot_devices.devices.Matter.matter_device](matter_device/index.md)
 
 ## Classes
 
-| [`Device`](#iot_devices.device.Device)                   | represents exactly one "device".   |
-|----------------------------------------------------------|------------------------------------|
-| [`UnusedSubdevice`](#iot_devices.device.UnusedSubdevice) | represents exactly one "device".   |
+| [`Device`](#iot_devices.devices.Matter.Device)                                 | represents exactly one "device".                          |
+|--------------------------------------------------------------------------------|-----------------------------------------------------------|
+| [`MatterControllerClient`](#iot_devices.devices.Matter.MatterControllerClient) | Main device managing connections to python-matter-server. |
 
-## Module Contents
+## Package Contents
 
-### iot_devices.device.DeviceClassTypeVar
-
-### *class* iot_devices.device.Device(config: dict[str, Any], \*\*kw: Any)
+### *class* iot_devices.devices.Matter.Device(config: dict[str, Any], \*\*kw: Any)
 
 represents exactly one "device".
 should not be used to represent an interface to a large collection, use
@@ -48,7 +47,7 @@ to the schema too.
 
 #### \_\_closing *= False*
 
-#### host *: [iot_devices.host.Host](../host/index.md#iot_devices.host.Host)*
+#### host *: [iot_devices.host.Host](../../host/index.md#iot_devices.host.Host)*
 
 #### host_data *: dict[str, Any]*
 
@@ -63,7 +62,7 @@ and nobody wants to see them clutter up anything
 or slow down the system when they change.
 Putting data here should have no side effects.
 
-#### datapoints *: dict[str, [iot_devices.datapoints.DataPoint](../datapoints/index.md#iot_devices.datapoints.DataPoint)]*
+#### datapoints *: dict[str, [iot_devices.datapoints.DataPoint](../../datapoints/index.md#iot_devices.datapoints.DataPoint)]*
 
 Device instanes all have unique names not shared with anything
 else in that host.
@@ -75,7 +74,7 @@ else in that host.
 Get the devices parent, doing integrity
 check that the type is correct
 
-#### *property* subdevices *: collections.abc.Mapping[str, [Device](#iot_devices.device.Device)]*
+#### *property* subdevices *: collections.abc.Mapping[str, [Device](#iot_devices.devices.Matter.Device)]*
 
 Immutable snapshot of subdevices.  Any changes will not
 affect the device itself
@@ -260,7 +259,7 @@ Helper function that just calls handle_error with a traceback.
 
 Handle arbitrary messages from the host
 
-#### numeric_data_point(name: str, , min: float | None = None, max: float | None = None, hi: float | None = None, lo: float | None = None, default: float | None = None, description: str = '', unit: str = '', handler: collections.abc.Callable[[float, float, Any], Any] | None = None, interval: float = 0, subtype: str = '', writable: bool = True, dashboard: bool = True, on_request: collections.abc.Callable[[DataRequest], Any] | None = None, \*\*kwargs: Any) → [iot_devices.datapoints.NumericDataPoint](../datapoints/index.md#iot_devices.datapoints.NumericDataPoint)
+#### numeric_data_point(name: str, , min: float | None = None, max: float | None = None, hi: float | None = None, lo: float | None = None, default: float | None = None, description: str = '', unit: str = '', handler: collections.abc.Callable[[float, float, Any], Any] | None = None, interval: float = 0, subtype: str = '', writable: bool = True, dashboard: bool = True, on_request: collections.abc.Callable[[DataRequest], Any] | None = None, \*\*kwargs: Any) → [iot_devices.datapoints.NumericDataPoint](../../datapoints/index.md#iot_devices.datapoints.NumericDataPoint)
 
 Register a new numeric data point with the given properties.
 
@@ -311,7 +310,7 @@ Args:
   on_request: If set, will be called when the host
   : requests the value of this datapoint.  Must be threadsafe.
 
-#### string_data_point(name: str, , description: str = '', unit: str = '', handler: collections.abc.Callable[[str, float, Any], Any] | None = None, default: str | None = None, interval: float = 0, writable: bool = True, subtype: str = '', dashboard: bool = True, on_request: collections.abc.Callable[[DataRequest], Any] | None = None, \*\*kwargs: Any) → [iot_devices.datapoints.StringDataPoint](../datapoints/index.md#iot_devices.datapoints.StringDataPoint)
+#### string_data_point(name: str, , description: str = '', unit: str = '', handler: collections.abc.Callable[[str, float, Any], Any] | None = None, default: str | None = None, interval: float = 0, writable: bool = True, subtype: str = '', dashboard: bool = True, on_request: collections.abc.Callable[[DataRequest], Any] | None = None, \*\*kwargs: Any) → [iot_devices.datapoints.StringDataPoint](../../datapoints/index.md#iot_devices.datapoints.StringDataPoint)
 
 Register a new string data point with the given properties.
 
@@ -353,7 +352,7 @@ Args:
   on_request: If set, will be called when the host
   : requests the value of this datapoint.  Must be threadsafe.
 
-#### object_data_point(name: str, , description: str = '', unit: str = '', handler: collections.abc.Callable[[collections.abc.Mapping[str, Any], float, Any], Any] | None = None, interval: float = 0, writable: bool = True, subtype: str = '', dashboard: bool = True, default: collections.abc.Mapping[str, Any] | None = None, on_request: collections.abc.Callable[[DataRequest], Any] | None = None, \*\*kwargs: Any) → [iot_devices.datapoints.ObjectDataPoint](../datapoints/index.md#iot_devices.datapoints.ObjectDataPoint)
+#### object_data_point(name: str, , description: str = '', unit: str = '', handler: collections.abc.Callable[[collections.abc.Mapping[str, Any], float, Any], Any] | None = None, interval: float = 0, writable: bool = True, subtype: str = '', dashboard: bool = True, default: collections.abc.Mapping[str, Any] | None = None, on_request: collections.abc.Callable[[DataRequest], Any] | None = None, \*\*kwargs: Any) → [iot_devices.datapoints.ObjectDataPoint](../../datapoints/index.md#iot_devices.datapoints.ObjectDataPoint)
 
 Register a new object data point with the given properties.
 Here "object" means a JSON-like object.
@@ -481,23 +480,112 @@ the container objects.
 The only time the device should need to call this is when
 passing the value as a black box to the host.
 
-### *class* iot_devices.device.UnusedSubdevice(data)
+### *class* iot_devices.devices.Matter.MatterControllerClient(config: dict[str, Any], \*\*kw: Any)
 
-Bases: [`Device`](#iot_devices.device.Device)
+Bases: [`iot_devices.device.Device`](../../device/index.md#iot_devices.device.Device)
 
-represents exactly one "device".
-should not be used to represent an interface to a large collection, use
-one instance per device.
+Main device managing connections to python-matter-server.
 
-Note that this is meant to be subclassed twice.
-Once by the actual driver, and again by the
-host application, to detemine how to handle calls
-made by the driver.
-
-#### description *= 'Someone created configuration for a subdevice that is no longer in use or has not yet loaded'*
-
-#### device_type *= 'UnusedSubdevice'*
+#### device_type *= 'MatterControllerClient'*
 
 Every device must have a unique device_type name
 
-#### warn()
+#### readme *= Multiline-String*
+
+<details><summary>Show Value</summary>
+```python
+"""
+    Matter protocol device controller using python-matter-server.
+    Requires an external Matter server to be running and accessible
+    at the configured server_url.
+
+    Features:
+    - Auto-discover all commissioned Matter devices
+    - Commission new devices via admin.commission_with_code datapoint
+    - OnOff cluster support for light/switch control
+    - Auto-reconnection with exponential backoff
+
+    Note: Users must configure the Matter server separately.
+    """
+```
+
+</details>
+
+#### config_schema
+
+Schema defining the config
+
+#### subdevices_by_id *: weakref.WeakValueDictionary[int, [matter_device.MatterDevice](matter_device/index.md#iot_devices.devices.Matter.matter_device.MatterDevice)]*
+
+#### devices_by_node_id *: dict[int, [matter_device.MatterDevice](matter_device/index.md#iot_devices.devices.Matter.matter_device.MatterDevice)]*
+
+#### nodes_by_id *: dict[int, Any]*
+
+#### client *: matter_server.client.client.MatterClient | None* *= None*
+
+#### loop
+
+#### should_run *= True*
+
+#### thread
+
+#### rescan_trigger(ev: matter_server.common.models.EventType, d: Any)
+
+#### run_coroutine(coro)
+
+Execute coroutine in the device's event loop.
+
+This allows subdevices and handlers running in the main thread
+to schedule work in the asyncio event loop.
+
+#### *async* main_loop()
+
+Main connection loop with auto-reconnect and exponential backoff.
+
+#### *async* connect_and_listen()
+
+Establish connection to Matter server and listen for events.
+
+#### *async* discover_nodes()
+
+Discover all commissioned Matter nodes and create subdevices.
+
+#### *async* subscribe_to_attributes()
+
+Subscribe to attribute updates for all devices.
+
+Uses subscription registry from each subdevice to determine what to monitor.
+
+#### *async* create_matter_device(node_id: int, node: Any) → None
+
+Create a MatterDevice subdevice for a node.
+
+Args:
+: node_id: The Matter node ID
+  node: MatterNode object from server
+
+#### on_matter_event(event_type: matter_server.common.models.EventType, arg: Any) → None
+
+Handle Matter server node lifecycle events.
+
+Responds to node_added and node_removed events to manage subdevices.
+Attribute updates are handled via individual subscriptions with closures.
+
+#### commission_handler(code: str, timestamp: float, annotation: str) → None
+
+#### net_commission_handler(code: str, timestamp: float, annotation: str) → None
+
+#### delete_device_handler(code: str, timestamp: float, annotation: str) → None
+
+#### *async* remove_matter_device(subdev_name: str)
+
+#### *async* commission_device(code: str, on_network=False) → None
+
+Commission a new Matter device.
+
+Args:
+: code: QR code or setup code
+
+#### on_before_close()
+
+Cleanup when device closes.

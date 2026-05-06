@@ -52,7 +52,7 @@
             "submodule": "devices.LazyMesh",
             "description": "EXPERIMENTAL. Pre-alpha."
         },
-        "MatterController":{
+        "MatterControllerClient":{
             "submodule": "devices.Matter",
             "description": "EXPERIMENTAL. Pre-alpha."
         }

@@ -50,9 +50,9 @@ with the format devicename.datapointname
 
 #### datapoint_handlers *: dict[str, collections.abc.Callable[[Any, float, Any], Any] | None]*
 
-#### string_data_point(device: str, name: str, , description: str = '', unit: str = '', handler: collections.abc.Callable[[str, float, Any], Any] | None = None, default: str | None = None, interval: float = 0, writable: bool = True, subtype: str = '', dashboard: bool = True, \*\*kwargs: Any)
+#### string_data_point(device: str, name: str, , description: str = '', unit: str = '', handler: collections.abc.Callable[[str, float, Any], Any] | None = None, default: str | None = None, interval: float = 0, writable: bool = True, subtype: str = '', dashboard: bool = True, on_request: collections.abc.Callable[[], Any] | None = None, \*\*kwargs: Any) → None
 
-#### object_data_point(device: str, name: str, , description: str = '', unit: str = '', handler: collections.abc.Callable[[collections.abc.Mapping[str, Any], float, Any], Any] | None = None, interval: float = 0, writable: bool = True, subtype: str = '', dashboard: bool = True, default: collections.abc.Mapping[str, Any] | None = None, \*\*kwargs: Any)
+#### object_data_point(device: str, name: str, , description: str = '', unit: str = '', handler: collections.abc.Callable[[collections.abc.Mapping[str, Any], float, Any], Any] | None = None, interval: float = 0, writable: bool = True, subtype: str = '', dashboard: bool = True, default: collections.abc.Mapping[str, Any] | None = None, on_request: collections.abc.Callable[[], Any] | None = None, \*\*kwargs: Any)
 
 Register a new object data point with the given properties.   Here "object"
 means a JSON-like object.
@@ -80,7 +80,7 @@ Args:
   <br/>
   dashboard: Whether to show this data point in overview displays.
 
-#### numeric_data_point(device: str, name: str, , min: float | None = None, max: float | None = None, hi: float | None = None, lo: float | None = None, default: float | None = None, description: str = '', unit: str = '', handler: collections.abc.Callable[[float, float, Any], Any] | None = None, interval: float = 0, subtype: str = '', writable: bool = True, dashboard: bool = True, \*\*kwargs: Any)
+#### numeric_data_point(device: str, name: str, , min: float | None = None, max: float | None = None, hi: float | None = None, lo: float | None = None, default: float | None = None, description: str = '', unit: str = '', handler: collections.abc.Callable[[float, float, Any], Any] | None = None, interval: float = 0, subtype: str = '', writable: bool = True, dashboard: bool = True, on_request: collections.abc.Callable[[], Any] | None = None, \*\*kwargs: Any)
 
 Called by the device to get a new data point.
 
@@ -143,6 +143,6 @@ Called when the device configuration has changed.
 The host likely doesn't need to care about this
 except to save the data.
 
-#### on_device_removed(device: [iot_devices.host.host.DeviceHostContainer](../host/index.md#iot_devices.host.host.DeviceHostContainer))
+#### on_after_device_removed(device: [iot_devices.host.host.DeviceHostContainer](../host/index.md#iot_devices.host.host.DeviceHostContainer))
 
 #### on_device_added(device: [iot_devices.host.host.DeviceHostContainer](../host/index.md#iot_devices.host.host.DeviceHostContainer))

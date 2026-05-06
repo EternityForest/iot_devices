@@ -7,7 +7,7 @@
 
 ## Functions
 
-| [`discover`](#iot_devices.host.util.discover)(→ Dict[str, Dict[str, Any]])         | Search system paths for modules that have a devices manifest.                                                      |
+| [`discover`](#iot_devices.host.util.discover)(→ dict[str, dict[str, Any]])         | Search system paths for modules that have a devices manifest.                                                      |
 |------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------|
 | [`get_class`](#iot_devices.host.util.get_class)(→ type[iot_devices.device.Device]) | Return the class that one would use to construct a device given it's data.  Automatically search all system paths. |
 | [`get_description`](#iot_devices.host.util.get_description)(→ str)                 | Return the description for a device given it's type.  Automatically search all system paths.                       |
@@ -18,7 +18,7 @@
 
 This dict lets you programmatically add new devices
 
-### iot_devices.host.util.discover() → Dict[str, Dict[str, Any]]
+### iot_devices.host.util.discover() → dict[str, dict[str, Any]]
 
 Search system paths for modules that have a devices manifest.
 

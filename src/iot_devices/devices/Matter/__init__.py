@@ -18,10 +18,10 @@ from iot_devices.device import Device
 from . import matter_device
 
 
-class MatterController(Device):
+class MatterControllerClient(Device):
     """Main device managing connections to python-matter-server."""
 
-    device_type = "MatterController"
+    device_type = "MatterControllerClient"
     readme = """
     Matter protocol device controller using python-matter-server.
     Requires an external Matter server to be running and accessible
@@ -94,7 +94,7 @@ class MatterController(Device):
         self.thread = threading.Thread(
             target=self.loop.run_forever,
             daemon=True,
-            name="MatterController:" + self.name,
+            name="MatterControllerClient:" + self.name,
         )
         self.thread.start()
 

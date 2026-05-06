@@ -7,7 +7,7 @@
 
 ## Package Contents
 
-### *class* iot_devices.devices.ESPHomePlugin.ESPHomeDevice(config: Dict[str, Any], \*\*kw)
+### *class* iot_devices.devices.ESPHomePlugin.ESPHomeDevice(config: dict[str, Any], \*\*kw)
 
 Bases: [`iot_devices.device.Device`](../../device/index.md#iot_devices.device.Device)
 
@@ -36,8 +36,10 @@ to the schema too.
 
 #### wait_ready(timeout=15)
 
-Call this to block for up to timeout seconds for the device to be fully initialized.
-Use this in quick scripts with a devices that readies itself asynchronously.
+Call this to block for up to timeout seconds for the
+device to be fully initialized.
+Use this in quick scripts with a devices
+that readies itself asynchronously.
 
 May be implemented by the device, but is not required.
 

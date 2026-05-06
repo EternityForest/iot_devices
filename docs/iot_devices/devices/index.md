@@ -7,6 +7,7 @@
 * [iot_devices.devices.GPIODevice](GPIODevice/index.md)
 * [iot_devices.devices.GPSDClient](GPSDClient/index.md)
 * [iot_devices.devices.LazyMesh](LazyMesh/index.md)
+* [iot_devices.devices.Matter](Matter/index.md)
 * [iot_devices.devices.WeatherPlugin](WeatherPlugin/index.md)
 * [iot_devices.devices.Yeelight](Yeelight/index.md)
 * [iot_devices.devices.YoLink](YoLink/index.md)

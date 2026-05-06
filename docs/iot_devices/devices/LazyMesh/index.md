@@ -12,8 +12,8 @@
 
 | [`Device`](#iot_devices.devices.LazyMesh.Device)                         | represents exactly one "device".   |
 |--------------------------------------------------------------------------|------------------------------------|
-| [`MeshNode`](#iot_devices.devices.LazyMesh.MeshNode)                     |                                    |
 | [`ITransport`](#iot_devices.devices.LazyMesh.ITransport)                 | Base class for protocol classes.   |
+| [`MeshNode`](#iot_devices.devices.LazyMesh.MeshNode)                     |                                    |
 | [`Payload`](#iot_devices.devices.LazyMesh.Payload)                       |                                    |
 | [`RemoteLazyMeshNode`](#iot_devices.devices.LazyMesh.RemoteLazyMeshNode) | represents exactly one "device".   |
 | [`LazyMeshNode`](#iot_devices.devices.LazyMesh.LazyMeshNode)             | represents exactly one "device".   |
@@ -21,7 +21,7 @@
 
 ## Package Contents
 
-### *class* iot_devices.devices.LazyMesh.Device(config: dict[str, str], \*\*kw: Any)
+### *class* iot_devices.devices.LazyMesh.Device(config: dict[str, Any], \*\*kw: Any)
 
 represents exactly one "device".
 should not be used to represent an interface to a large collection, use
@@ -48,6 +48,8 @@ Schema defining the config
 if your device renames things.  They are type coerced according
 to the schema too.
 
+#### title *= ''*
+
 #### \_\_config_lock
 
 #### \_\_closing *= False*
@@ -56,11 +58,7 @@ to the schema too.
 
 #### host_data *: dict[str, Any]*
 
-#### name
-
 #### datapoint_getter_functions *: dict[str, collections.abc.Callable]*
-
-#### subdevices *: dict[str, [Device](#iot_devices.devices.LazyMesh.Device)]*
 
 #### metadata *: dict[str, Any]*
 
@@ -71,16 +69,24 @@ and nobody wants to see them clutter up anything
 or slow down the system when they change.
 Putting data here should have no side effects.
 
-#### title *: str*
-
-Title for UI display
-
 #### datapoints *: dict[str, [iot_devices.datapoints.DataPoint](../../datapoints/index.md#iot_devices.datapoints.DataPoint)]*
 
 Device instanes all have unique names not shared with anything
 else in that host.
 
 #### \_\_repr_\_() → str
+
+#### get_parent(typeof: type[DeviceClassTypeVar]) → DeviceClassTypeVar
+
+Get the devices parent, doing integrity
+check that the type is correct
+
+#### *property* subdevices *: collections.abc.Mapping[str, [Device](#iot_devices.devices.LazyMesh.Device)]*
+
+Immutable snapshot of subdevices.  Any changes will not
+affect the device itself
+
+#### *property* name *: str*
 
 #### *property* config *: collections.abc.Mapping[str, Any]*
 
@@ -89,7 +95,8 @@ affect the device itself, you must use update_config for that.
 
 #### *property* is_subdevice *: bool*
 
-True if this is a subdevice, as determine by the is_subdevice key in the config
+True if this is a subdevice, as determined by the
+is_subdevice key in the config
 
 #### get_full_schema() → dict[str, Any]
 
@@ -108,11 +115,13 @@ Creates a subdevice
 Args:
 
 > cls: The class used to make the device
-> name: The base name of the device.  The full name will be parent.basename
+> name: The base name of the device.
 
+> > The full name will be parent.basename
 > > but you only supply the base name here.
 
-> config: The config as would be passed to any other device, which the host may override.
+> config: The config as would be passed to any other device,
+> which the host may override.
 
 Returns:
 : The device object
@@ -120,8 +129,10 @@ Returns:
 Allows a device to create it's own subdevices.
 
 The host implementation must take the class, make whatever subclass
-is needed based on it, Then instantiate it as if the other parameters were given straight to
-the device, overriding them with any user config that is known by the host.
+is needed based on it, Then instantiate it as if
+the other parameters were given straight to
+the device, overriding them with any user
+config that is known by the host.
 
 The host will put the device object into the parent device's subdevice
 dict. Alll subdevices must be closed before the parent.
@@ -133,7 +144,8 @@ The host will allow configuration of the device like any other device.
 It will override whatever config that you give this function
 with the user config.
 
-Once the subdevice exists, the host cannot close it, that is the responsibility
+Once the subdevice exists, the host cannot close it,
+that is the responsibility
 of the main device.  The host can only close the parent device.
 
 it must update the config in place if the user wants to make changes,
@@ -149,15 +161,17 @@ The host will add is_subdevice=True to the config dict.
 
 #### get_config_folder(create: bool = True)
 
-Devices may, in some frameworks, have their own folder in which they can place additional
-configuration, allowing for advanced features that depend on user content.
+Devices may, in some frameworks, have their own folder in which they can
+place additional configuration, allowing for advanced features
+that depend on user content.
 
 Returns:
 : An absolute path
 
 #### *static* discover_devices(config: dict[str, Any], current_device: object | None = None, intent: str = '', \*\*kwargs: Any) → dict[str, dict[str, Any]]
 
-Discover a set of suggested configs that could be used to build a new device.
+Discover a set of suggested configs that could
+be used to build a new device.
 
 Not required to be implemented and may just return {}
 
@@ -216,26 +230,33 @@ Returns:
 
 #### set_config_default(key: str, value: str)
 
-sets an top-level option in self.config if it does not exist or is blank.
+sets an top-level option in self.config if it
+does not exist or is blank.
 
-#### set_config_option(key: str, value: str)
+#### set_config_option(key: str, value: Any)
 
 sets an top-level option in self.config.
 
 #### wait_ready(timeout: float = 15)
 
-Call this to block for up to timeout seconds for the device to be fully initialized.
-Use this in quick scripts with a devices that readies itself asynchronously.
+Call this to block for up to timeout seconds for the
+device to be fully initialized.
+Use this in quick scripts with a devices
+that readies itself asynchronously.
 
 May be implemented by the device, but is not required.
 
 #### print(s: str, title: str = '')
 
-used by the device to print to the hosts live device message feed, if such a thing should happen to exist
+used by the device to print to the hosts live device message feed,
+if such a thing should happen to exist
 
 #### handle_error(s: str, title: str = '')
 
-like print but specifically marked as error. may get special notification.  should not be used for brief network loss
+like print but specifically marked as error.
+: may get special notification.
+
+should not be used for brief network loss
 
 #### handle_exception()
 
@@ -252,7 +273,8 @@ Register a new numeric data point with the given properties.
 Handler will be called when it changes.
 self.datapoints[name] will start out with tha value of None
 
-The intent is that you can subclass this and have your own implementation of data points,
+The intent is that you can subclass this and have
+your own implementation of data points,
 such as exposing an MQTT api or whatever else.
 
 Most fields are just extra annotations to the host.
@@ -302,7 +324,8 @@ Register a new string data point with the given properties.
 Handler will be called when it changes.
 self.datapoints[name] will start out with tha value of None
 
-Interval annotates the default data rate the point will produce, for use in setting default poll
+Interval annotates the default data rate the point will produce,
+for use in setting default poll
 rates by the host, if the host wants to poll.
 
 Most fields are just extra annotations to the host.
@@ -310,19 +333,26 @@ Most fields are just extra annotations to the host.
 Args:
 : description: Free text
   <br/>
-  default: If unset default value is None, or may be framework defined. Default does not trigger handler.
+  default: If unset default value is None,
+  or may be framework defined.
+  Default does not trigger handler.
   <br/>
-  handler: A function taking the value,timestamp, and annotation on changes. Must be threadsafe.
+  handler: A function taking the value,timestamp,
+  and annotation on changes. Must be threadsafe.
   <br/>
-  interval: annotates the default data rate the point will produce, for use in setting default poll
-  : rates by the host if the host wants to poll.
+  interval: annotates the default data rate the point will produce,
+  : for use in setting default poll
+    rates by the host if the host wants to poll.
     <br/>
     It does not mean the host SHOULD poll this,
-    it only suggest a rate to poll at if the host has an interest in this data.
+    it only suggest a rate to poll at if the host
+    has an interest in this data.
   <br/>
-  writable:  is purely for a host that might subclass this, to determine if it should allow writing to the point.
+  writable:  is purely for a host that might subclass this,
+  to determine if it should allow writing to the point.
   <br/>
-  subtype: A string further describing the data type of this value, as a hint to UI generation.
+  subtype: A string further describing the data type of this value,
+  as a hint to UI generation.
   <br/>
   dashboard: Whether to show this data point in overview displays.
   <br/>
@@ -331,13 +361,14 @@ Args:
 
 #### object_data_point(name: str, , description: str = '', unit: str = '', handler: collections.abc.Callable[[collections.abc.Mapping[str, Any], float, Any], Any] | None = None, interval: float = 0, writable: bool = True, subtype: str = '', dashboard: bool = True, default: collections.abc.Mapping[str, Any] | None = None, on_request: collections.abc.Callable[[DataRequest], Any] | None = None, \*\*kwargs: Any) → [iot_devices.datapoints.ObjectDataPoint](../../datapoints/index.md#iot_devices.datapoints.ObjectDataPoint)
 
-Register a new object data point with the given properties.   Here "object"
-means a JSON-like object.
+Register a new object data point with the given properties.
+Here "object" means a JSON-like object.
 
 Handler will be called when it changes.
 self.datapoints[name] will start out with tha value of None
 
-Interval annotates the default data rate the point will produce, for use in setting default poll
+Interval annotates the default data rate the point will produce,
+for use in setting default poll
 rates by the host, if the host wants to poll.
 
 Most fields are just extra annotations to the host.
@@ -345,15 +376,21 @@ Most fields are just extra annotations to the host.
 Args:
 : description: Free text
   <br/>
-  handler: A function taking the value,timestamp, and annotation on changes. Must be thread safe.
+  handler: A function taking the value,timestamp,
+  and annotation on changes. Must be thread safe.
   <br/>
-  interval :annotates the default data rate the point will produce, for use in setting default poll
-  : rates by the host, if the host wants to poll.  It does not mean the host SHOULD poll this,
-    it only suggest a rate to poll at if the host has an interest in this data.
+  interval :annotates the default data rate the point will produce,
+  : for use in setting default poll
+    rates by the host, if the host wants to poll.
+    It does not mean the host SHOULD poll this,
+    it only suggest a rate to poll at if the host has an interest in
+    this data.
   <br/>
-  writable:  is purely for a host that might subclass this, to determine if it should allow writing to the point.
+  writable:  is purely for a host that might subclass this,
+  : to determine if it should allow writing to the point.
   <br/>
-  subtype: A string further describing the data type of this value, as a hint to UI generation.
+  subtype: A string further describing the data type of this value,
+  : as a hint to UI generation.
   <br/>
   on_request: If set, will be called when the host
   : requests the value of this datapoint.  Must be threadsafe.
@@ -367,7 +404,8 @@ only meant to be called from within \_\_init_\_.
 Bytestream data points do not store data,
 they only push it through.
 
-Despite the name, buffers of bytes may not be broken up or combined, this is buffer oriented,
+Despite the name, buffers of bytes may not be broken up or combined,
+this is buffer oriented,
 
 on_request: If set, will be called when the host
 : requests the value of this datapoint.  Must be threadsafe.
@@ -380,7 +418,12 @@ Same as set_data_point but for bytestream data
 
 Callable by the device or by the host, thread safe.
 
-#### set_alarm(name: str, datapoint: str, expression: str, priority: str = 'info', trip_delay: float = 0, auto_ack: bool = False, release_condition: str | None = None, \*\*kw: Any)
+#### request_data_point(name: str)
+
+Callable by the device or by the host, thread safe.
+Request that the data be updated at some future time.
+
+#### set_alarm(name: str, datapoint: str, expression: str, priority: Priority = 'info', trip_delay: float = 0, auto_ack: bool = False, release_condition: str | None = None, \*\*kw: Any)
 
 declare an alarm on a certain data point.
 means we should consider the data point to be in an
@@ -417,7 +460,7 @@ limit it to easily semantically parsible strings.
 
 #### close()
 
-Prefer calling the host's close device call
+Close all subdevices and tell the host to remove this device
 
 #### on_before_close()
 
@@ -443,6 +486,63 @@ the container objects.
 
 The only time the device should need to call this is when
 passing the value as a black box to the host.
+
+### *class* iot_devices.devices.LazyMesh.ITransport
+
+Bases: `Protocol`
+
+Base class for protocol classes.
+
+Protocol classes are defined as:
+
+```default
+class Proto(Protocol):
+    def meth(self) -> int:
+        ...
+```
+
+Such classes are primarily used with static type checkers that recognize
+structural subtyping (static duck-typing).
+
+For example:
+
+```default
+class C:
+    def meth(self) -> int:
+        return 0
+
+def func(x: Proto) -> int:
+    return x.meth()
+
+func(C())  # Passes static type check
+```
+
+See PEP 544 for details. Protocol classes decorated with
+@typing.runtime_checkable act as simple-minded runtime protocols that check
+only the presence of given attributes, ignoring their type signatures.
+Protocol classes can be generic, they are defined as:
+
+```default
+class GenProto[T](Protocol):
+    def meth(self) -> T:
+        ...
+```
+
+#### use_reliable_retransmission *: bool*
+
+#### *async* listen() → collections.abc.AsyncGenerator[[RawPacketMetadata](transports/index.md#iot_devices.devices.LazyMesh.transports.RawPacketMetadata) | None, None]
+
+Async generator that yields incoming raw packet bytes
+
+#### *async* send(data: bytes) → None
+
+Send raw packet bytes
+
+#### *async* global_route(data: bytes) → bool
+
+#### *async* close()
+
+#### *async* maintain()
 
 ### *class* iot_devices.devices.LazyMesh.MeshNode(transports: list[[iot_devices.devices.LazyMesh.transports.ITransport](transports/index.md#iot_devices.devices.LazyMesh.transports.ITransport)])
 
@@ -503,63 +603,6 @@ Enable repeating packets marke with the given route id
 #### add_channel(password: str)
 
 #### remove_channel(password: str)
-
-### *class* iot_devices.devices.LazyMesh.ITransport
-
-Bases: `Protocol`
-
-Base class for protocol classes.
-
-Protocol classes are defined as:
-
-```default
-class Proto(Protocol):
-    def meth(self) -> int:
-        ...
-```
-
-Such classes are primarily used with static type checkers that recognize
-structural subtyping (static duck-typing).
-
-For example:
-
-```default
-class C:
-    def meth(self) -> int:
-        return 0
-
-def func(x: Proto) -> int:
-    return x.meth()
-
-func(C())  # Passes static type check
-```
-
-See PEP 544 for details. Protocol classes decorated with
-@typing.runtime_checkable act as simple-minded runtime protocols that check
-only the presence of given attributes, ignoring their type signatures.
-Protocol classes can be generic, they are defined as:
-
-```default
-class GenProto[T](Protocol):
-    def meth(self) -> T:
-        ...
-```
-
-#### use_reliable_retransmission *: bool*
-
-#### *async* listen() → AsyncGenerator[[RawPacketMetadata](transports/index.md#iot_devices.devices.LazyMesh.transports.RawPacketMetadata) | None, None]
-
-Async generator that yields incoming raw packet bytes
-
-#### *async* send(data: bytes) → None
-
-Send raw packet bytes
-
-#### *async* global_route(data: bytes) → bool
-
-#### *async* close()
-
-#### *async* maintain()
 
 ### *class* iot_devices.devices.LazyMesh.Payload
 

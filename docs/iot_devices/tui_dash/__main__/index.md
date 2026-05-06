@@ -42,11 +42,11 @@ Bases: [`iot_devices.host.simple_host.SimpleHost`](../../host/simple_host/index.
 When a device wants to add a subdevice,
 The host can give it extra config
 
-#### set_data_point(name: str, value: int | float | str | bytes | Mapping[str, Any] | list[Any], timestamp: float | None = None, annotation: Any | None = None, force_push_on_repeat: bool = False)
+#### set_data_point(name: str, value: int | float | str | bytes | collections.abc.Mapping[str, Any] | list[Any], timestamp: float | None = None, annotation: Any | None = None, force_push_on_repeat: bool = False)
 
 This is how devices send data to hosts
 
-#### numeric_data_point(device: str, name: str, , min: float | None = None, max: float | None = None, hi: float | None = None, lo: float | None = None, default: float | None = None, description: str = '', unit: str = '', handler: Callable[[float, float, Any], Any] | None = None, interval: float = 0, subtype: str = '', writable: bool = True, dashboard: bool = True, \*\*kwargs: Any)
+#### numeric_data_point(device: str, name: str, , min: float | None = None, max: float | None = None, hi: float | None = None, lo: float | None = None, default: float | None = None, description: str = '', unit: str = '', handler: collections.abc.Callable[[float, float, Any], Any] | None = None, interval: float = 0, subtype: str = '', writable: bool = True, dashboard: bool = True, \*\*kwargs: Any)
 
 #### on_before_device_added(name: str, device: [iot_devices.host.simple_host.SimpleHostDeviceContainer](../../host/simple_host/index.md#iot_devices.host.simple_host.SimpleHostDeviceContainer), \*args: Any, \*\*kwargs: Any)
 

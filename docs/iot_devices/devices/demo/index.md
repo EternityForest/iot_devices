@@ -24,7 +24,9 @@ made by the driver.
 
 Every device must have a unique device_type name
 
-#### text_config_files *= ['test.conf']*
+#### config_schema
+
+Schema defining the config
 
 #### update_config(config: dict[str, Any])
 
@@ -33,7 +35,8 @@ May be subclassed by the device to respond to config changes.
 
 #### *static* discover_devices(config={}, current_device=None, intent=None, \*\*kw)
 
-Discover a set of suggested configs that could be used to build a new device.
+Discover a set of suggested configs that could
+be used to build a new device.
 
 Not required to be implemented and may just return {}
 

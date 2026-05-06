@@ -16,9 +16,9 @@
 
 #### temp_keys
 
-#### callback *: Callable[[[iot_devices.devices.LazyMesh.mesh_packet.Payload](../mesh_packet/index.md#iot_devices.devices.LazyMesh.mesh_packet.Payload)], None] | None* *= None*
+#### callback *: collections.abc.Callable[[[iot_devices.devices.LazyMesh.mesh_packet.Payload](../mesh_packet/index.md#iot_devices.devices.LazyMesh.mesh_packet.Payload)], None] | None* *= None*
 
-#### async_callback *: Callable[[[iot_devices.devices.LazyMesh.mesh_packet.Payload](../mesh_packet/index.md#iot_devices.devices.LazyMesh.mesh_packet.Payload)], Coroutine[None, None, None]] | None* *= None*
+#### async_callback *: collections.abc.Callable[[[iot_devices.devices.LazyMesh.mesh_packet.Payload](../mesh_packet/index.md#iot_devices.devices.LazyMesh.mesh_packet.Payload)], collections.abc.Coroutine[None, None, None]] | None* *= None*
 
 #### mesh_node *: [MeshNode](#iot_devices.devices.LazyMesh.mesh.MeshNode) | None* *= None*
 

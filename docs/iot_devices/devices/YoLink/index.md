@@ -364,7 +364,8 @@ Subclass defined cleanup handler.
 
 #### *classmethod* discover_devices(config={}, current_device=None, intent=None, \*\*kw)
 
-Discover a set of suggested configs that could be used to build a new device.
+Discover a set of suggested configs that could
+be used to build a new device.
 
 Not required to be implemented and may just return {}
 

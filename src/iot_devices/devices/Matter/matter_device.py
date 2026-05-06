@@ -77,11 +77,12 @@ class MatterDevice(Device):
 
         self.metadata["Node ID"] = config["node_id"]
 
-        self.parent_controller: Matter.MatterController | None = (
-            self.get_parent(Matter.MatterController)
+        self.parent_controller: Matter.MatterControllerClient | None = (
+            self.get_parent(Matter.MatterControllerClient)
         )
 
-        # Subscription registry: {(endpoint_id, cluster_id, attribute_id): handler_func}
+        # Subscription registry:
+        # {(endpoint_id, cluster_id, attribute_id): handler_func}
         self.subscriptions: dict[tuple[int, int, int], Callable] = {}
 
         # Get raw node from parent controller
@@ -125,11 +126,13 @@ class MatterDevice(Device):
                 f"Error discovering clusters: {traceback.format_exc()}"
             )
 
-    def set_parent_controller(self, parent: Matter.MatterController) -> None:
-        """Set reference to parent MatterController.
+    def set_parent_controller(
+        self, parent: Matter.MatterControllerClient
+    ) -> None:
+        """Set reference to parent MatterControllerClient.
 
         Args:
-            parent: The parent MatterController device
+            parent: The parent MatterControllerClient device
         """
         self.parent_controller = parent
 
@@ -155,7 +158,8 @@ class MatterDevice(Device):
         """Get all registered subscriptions for this device.
 
         Returns:
-            Dict mapping (endpoint_id, cluster_id, attribute_id) to handler functions
+            Dict mapping (endpoint_id, cluster_id, attribute_id)
+            to handler functions
         """
         return self.subscriptions
 
@@ -874,7 +878,7 @@ class MatterDevice(Device):
             subtype=subtype,
             writable=False,
             handler=None,
-            description=f"Switch on endpoint {endpoint_id} ({num_positions} positions)",
+            description=f"Switch on endpoint {endpoint_id}",
         )
 
         current_pos = cluster_dict.currentPosition

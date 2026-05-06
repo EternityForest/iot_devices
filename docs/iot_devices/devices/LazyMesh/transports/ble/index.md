@@ -24,7 +24,7 @@ Bases: [`iot_devices.devices.LazyMesh.transports.ITransport`](../index.md#iot_de
 
 #### use_reliable_retransmission *= False*
 
-#### *async* listen() → AsyncGenerator[[iot_devices.devices.LazyMesh.transports.RawPacketMetadata](../index.md#iot_devices.devices.LazyMesh.transports.RawPacketMetadata) | None, None]
+#### *async* listen() → collections.abc.AsyncGenerator[[iot_devices.devices.LazyMesh.transports.RawPacketMetadata](../index.md#iot_devices.devices.LazyMesh.transports.RawPacketMetadata) | None, None]
 
 #### *async* send(data: bytes)
 

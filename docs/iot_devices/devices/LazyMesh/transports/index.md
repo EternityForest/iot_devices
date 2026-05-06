@@ -64,7 +64,7 @@ class GenProto[T](Protocol):
 
 #### use_reliable_retransmission *: bool*
 
-#### *async* listen() → AsyncGenerator[[RawPacketMetadata](#iot_devices.devices.LazyMesh.transports.RawPacketMetadata) | None, None]
+#### *async* listen() → collections.abc.AsyncGenerator[[RawPacketMetadata](#iot_devices.devices.LazyMesh.transports.RawPacketMetadata) | None, None]
 
 Async generator that yields incoming raw packet bytes
 
