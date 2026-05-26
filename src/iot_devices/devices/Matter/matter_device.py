@@ -67,7 +67,12 @@ class MatterDevice(Device):
         )
 
         self.set_alarm(
-            "Device unavailable", "available", "value<1", priority="error"
+            "Device unavailable",
+            "available",
+            "value<1",
+            priority="error",
+            auto_ack=True,
+            trip_delay=3,
         )
 
         self.eeprom_ratelimiter = RateLimiter(1 / 60, burst=100)

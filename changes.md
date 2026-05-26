@@ -1,5 +1,10 @@
 # Change Log
 
+## 0.33.0
+
+* Fix name mapping in Matter devices
+* Mattter device unavailable alerts auto-acknowledge
+
 ## 0.32.0
 * Experimental Matter support
 * Fix bug where timestamp and annotation get ignored.

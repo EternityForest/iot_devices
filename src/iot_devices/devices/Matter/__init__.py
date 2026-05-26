@@ -81,6 +81,15 @@ class MatterControllerClient(Device):
             description="Delete a device from the matter server by it's device name or by node ID",
         )
 
+        try:
+            if self.config.get("name_map"):
+                name_map = self.config["name_map"]
+                for i in list(name_map.keys()):
+                    if isinstance(i, (int, float)):
+                        name_map.pop(i, None)
+        except Exception:
+            self.handle_exception()
+
         # Device tracking
         self.devices_by_node_id: dict[int, matter_device.MatterDevice] = {}
         self.nodes_by_id: dict[int, Any] = {}  # Raw node objects
@@ -325,11 +334,11 @@ class MatterControllerClient(Device):
     def _get_node_name(self, node: Any):
         cfg = self.config.get("name_map", {})
 
-        if node.node_id in cfg:
-            return cfg[node.node_id]
+        if str(node.node_id) in cfg:
+            return cfg[str(node.node_id)]
         else:
             df = self._node_to_default_name(node)
-            cfg[node.node_id] = df
+            cfg[str(node.node_id)] = df
 
             self.set_config_option("name_map", cfg)
             return df
