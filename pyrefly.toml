@@ -1,0 +1,2 @@
+preset ="strict"
+python-interpreter-path = ".venv/bin/python3"
