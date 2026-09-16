@@ -15,7 +15,7 @@ dependencies = [
     "yeelight",
     "colorzero",
     "gpiozero",
-    "aioesphomeapi==42.7.0",
+    "aioesphomeapi==46.4.1",
     "websockets",
     "niquests",
     "starlette",
