@@ -504,7 +504,7 @@ class Device:
         return {}
 
     @final
-    def set_config_default(self, key: str, value: str):
+    def set_config_default(self, key: str, value: Any):
         """sets an top-level option in self.config if it
         does not exist or is blank."""
         with self.__config_lock:

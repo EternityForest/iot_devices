@@ -1,5 +1,9 @@
+from __future__ import annotations
+
+from typing import Any, override
+
 import gpiozero
-from gpiozero.pins.mock import MockFactory
+from gpiozero.pins.mock import MockFactory, MockPWMPin
 
 from iot_devices import device
 
@@ -9,7 +13,7 @@ gpio_config_schema = {
         "pin": {"type": "string", "default": "MOCK1"},
         "active_high": {"type": "boolean", "default": True},
         "pwm_frequency": {"type": "integer", "default": 100},
-        "initial_value": {"type": "float", "min": 0, "max": 1},
+        "initial_value": {"type": "number", "min": 0, "max": 1},
         "pull_up": {"type": "boolean", "default": False},
         "pull_down": {"type": "boolean", "default": False},
         "debounce_time_ms": {"type": "integer", "default": 0},
@@ -29,7 +33,7 @@ class GPIOOutput(device.Device):
         "device.initial_value": "initial_value",
     }
 
-    def __init__(self, data, **kw):
+    def __init__(self, data: dict[str, Any], **kw: Any):
         device.Device.__init__(self, data, **kw)
 
         try:
@@ -39,8 +43,10 @@ class GPIOOutput(device.Device):
             freq = int(self.config["pwm_frequency"])
 
             if "mock" in self.config["pin"].lower():
-                driver = MockFactory()
+                driver = MockFactory(pin_class=MockPWMPin)
                 pin = pin.lower().replace("mock", "")
+
+            self.set_config_default("initial_value", 0)
 
             # Push type data point set by the device
             self.numeric_data_point(
@@ -54,6 +60,8 @@ class GPIOOutput(device.Device):
             )
 
             active_high = self.config["active_high"]
+
+            self.pin: gpiozero.LED | gpiozero.PWMLED | None
 
             if pin:
                 try:
@@ -81,11 +89,12 @@ class GPIOOutput(device.Device):
         except Exception:
             self.handle_exception()
 
+    @override
     def on_before_close(self):
         if self.pin:
             self.pin.close()
 
-    def _set_pin(self, v, t, a):
+    def _set_pin(self, v: float, t: float, a: Any):
         if self.pin:
             self.pin.value = v
 
@@ -112,17 +121,19 @@ class GPIOInput(device.Device):
         "device.debounce_time_ms": "debounce_time_ms",
     }
 
-    def __init__(self, data, **kw):
+    def __init__(self, data: dict[str, Any], **kw: Any):
         device.Device.__init__(self, data, **kw)
+
+        self.pin: gpiozero.Button | None
 
         try:
             driver = None
             pin = self.config["pin"]
 
-            debounce = int(self.config["debounce_time_ms"]) or None
+            debounce = (int(self.config["debounce_time_ms"]) / 1000) or None
 
             if "mock" in self.config["pin"].lower():
-                driver = MockFactory()
+                driver = MockFactory(pin_class=MockPWMPin)
                 pin = pin.lower().replace("mock", "")
 
             active_high = self.config["active_high"]
@@ -150,7 +161,7 @@ class GPIOInput(device.Device):
             if pin:
                 self.pin = gpiozero.Button(
                     pin,
-                    pull_up=(pull is True),
+                    pull_up=pull,
                     # Host may have altered this default
                     active_state=active_high,
                     pin_factory=driver,
@@ -182,9 +193,9 @@ class GPIOInput(device.Device):
     def test_val(self, x: bool):
         if self.pin:
             if x:
-                self.pin.drive_high()  # type: ignore
+                self.pin.pin.drive_high()
             else:
-                self.pin.drive_low()  # type: ignore
+                self.pin.pin.drive_low()
 
     def pressed(self):
         self.set_data_point("value", 1)
@@ -192,6 +203,7 @@ class GPIOInput(device.Device):
     def released(self):
         self.set_data_point("value", 0)
 
+    @override
     def on_before_close(self):
         if self.pin:
             self.pin.close()
