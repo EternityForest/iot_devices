@@ -37,6 +37,8 @@ class GPIOOutput(device.Device):
         device.Device.__init__(self, data, **kw)
 
         try:
+            self.pin: gpiozero.LED | gpiozero.PWMLED | None = None
+
             driver = None
             pin = self.config["pin"]
 
@@ -60,8 +62,6 @@ class GPIOOutput(device.Device):
             )
 
             active_high = self.config["active_high"]
-
-            self.pin: gpiozero.LED | gpiozero.PWMLED | None
 
             if pin:
                 try:
@@ -91,8 +91,11 @@ class GPIOOutput(device.Device):
 
     @override
     def on_before_close(self):
-        if self.pin:
-            self.pin.close()
+        try:
+            if self.pin:
+                self.pin.close()
+        except Exception:
+            self.handle_exception()
 
     def _set_pin(self, v: float, t: float, a: Any):
         if self.pin:
@@ -124,7 +127,7 @@ class GPIOInput(device.Device):
     def __init__(self, data: dict[str, Any], **kw: Any):
         device.Device.__init__(self, data, **kw)
 
-        self.pin: gpiozero.Button | None
+        self.pin: gpiozero.Button | None = None
 
         try:
             driver = None
@@ -158,12 +161,17 @@ class GPIOInput(device.Device):
                 else:
                     active_high = None
 
+            if self.config["pull_up"] or self.config["pull_down"]:
+                active_state = None
+            else:
+                active_state = active_high
+
             if pin:
                 self.pin = gpiozero.Button(
                     pin,
                     pull_up=pull,
                     # Host may have altered this default
-                    active_state=active_high,
+                    active_state=active_state,
                     pin_factory=driver,
                     bounce_time=debounce,
                 )
@@ -192,10 +200,12 @@ class GPIOInput(device.Device):
 
     def test_val(self, x: bool):
         if self.pin:
-            if x:
-                self.pin.pin.drive_high()
-            else:
-                self.pin.pin.drive_low()
+            p = self.pin
+            if p.pin:
+                if x:
+                    p.pin.drive_high()
+                else:
+                    p.pin.drive_low()
 
     def pressed(self):
         self.set_data_point("value", 1)
@@ -205,5 +215,8 @@ class GPIOInput(device.Device):
 
     @override
     def on_before_close(self):
-        if self.pin:
-            self.pin.close()
+        try:
+            if self.pin:
+                self.pin.close()
+        except Exception:
+            self.handle_exception()

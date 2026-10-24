@@ -3,6 +3,7 @@ from __future__ import annotations
 import abc
 import asyncio
 import copy
+import gc
 import logging
 import threading
 import time
@@ -20,7 +21,7 @@ if TYPE_CHECKING:
 
 
 class _ThreadLocalData(threading.local):
-    host: list[Host]
+    host: list[Host[Any]]
 
 
 _logger = logging.getLogger(__name__)
@@ -28,7 +29,9 @@ _host_context = _ThreadLocalData()
 _host_context.host = []
 
 
-def apply_defaults(data, schema):
+def apply_defaults(
+    data: dict[str, Any], schema: dict[str, Any]
+) -> dict[str, Any]:
     if "properties" in schema and isinstance(data, dict):
         for prop, prop_schema in schema["properties"].items():
             if prop not in data and "default" in prop_schema:
@@ -40,10 +43,10 @@ def apply_defaults(data, schema):
     return data
 
 
-def normalize_legacy_config(cls, config: dict[str, Any]):
+def normalize_legacy_config(cls: type[device.Device], config: dict[str, Any]):
     # Even if we don't need it, keep for consistency.
     if "extensions" not in config:
-        config["extensions"] = {}
+        config["extensions"] = {}  # type: ignore
 
     for i in cls.upgrade_legacy_config_keys:
         if i in config:
@@ -89,7 +92,7 @@ class DeviceHostContainer:
 
     def __init__(
         self,
-        host: Host,
+        host: Host[Any],
         parent_container: DeviceHostContainer | None,
         device_config: Mapping[str, Any],
     ):
@@ -253,7 +256,8 @@ class Host(Generic[_HostContainerTypeVar]):
     @final
     def close_device(self, name: str):
         """
-        Thread note:Do not reopen the device with the same name until this call returns"""
+        Thread note:Do not reopen the device with the
+        same name until this call returns. Logs failed cl"""
         x = None
         c = None
 
@@ -265,13 +269,29 @@ class Host(Generic[_HostContainerTypeVar]):
 
         if c:
             if x:
-                x.close()
+                try:
+                    x.close()
+                except Exception:
+                    _logger.exception("Error closing device")
+
             c.on_after_device_removed()
             self.on_after_device_removed(c)
 
-            if x.subdevices:
+            if x and x.subdevices:
                 warnings.warn(
                     f"Device {name} had subdevices and did not close them.",
+                )
+
+            wr = weakref.ref(c)
+            del c
+            if wr() is not None:
+                gc.collect()
+                gc.collect()
+
+            if wr() is not None:
+                warnings.warn(
+                    f"Device {name} host container still there after 2 gc runs",
+                    RuntimeWarning,
                 )
 
     @final
@@ -495,7 +515,7 @@ class Host(Generic[_HostContainerTypeVar]):
             name = data["name"]
 
             if data.get("is_subdevice", False) and parent is None:
-                raise Exception("Subdevice must have a parent")
+                raise RuntimeError("Subdevice must have a parent")
 
             data = copy.deepcopy(data)
 
@@ -511,12 +531,12 @@ class Host(Generic[_HostContainerTypeVar]):
                     d = self.devices[name]
                     dev = d.device
                     if not dev:
-                        raise Exception(
+                        raise RuntimeError(
                             f"Device with name {name} already exists but is not ready"
                         )
 
                     if dev.device_type not in ("UnusedSubdevice"):
-                        raise Exception(
+                        raise RuntimeError(
                             f"Device with name {name} already exists"
                         )
 
@@ -576,7 +596,7 @@ class Host(Generic[_HostContainerTypeVar]):
         trip_delay: float = 0,
         auto_ack: bool = False,
         release_condition: str | None = None,
-        **kw,
+        **kw: Any,
     ):
         pass
 
@@ -679,7 +699,7 @@ class Host(Generic[_HostContainerTypeVar]):
         pass
 
 
-def get_host() -> Host:
+def get_host() -> Host[_HostContainerTypeVar]:
     """Get the host that we are runing under, which is just
     the last host in this thread doing a context manager.
     """
