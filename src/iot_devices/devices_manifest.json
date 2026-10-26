@@ -55,6 +55,14 @@
         "MatterControllerClient":{
             "submodule": "devices.Matter",
             "description": "EXPERIMENTAL. Pre-alpha."
+        },
+        "SerialJsonLines": {
+            "submodule": "devices.JsonLines.serial",
+            "description": "Exchange newline delimited JSON packets with a device on a serial port, found by globbing a device pattern."
+        },
+        "UDPJsonLines": {
+            "submodule": "devices.JsonLines.udp",
+            "description": "Exchange newline delimited JSON packets with a UDP peer. Supports unicast, broadcast and multicast."
         }
     }
 }

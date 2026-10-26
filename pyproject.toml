@@ -29,6 +29,7 @@ dependencies = [
     "python-matter-server",
     "hypercorn>=0.18.0",
     "gpiod>=2.5.0",
+    "pyserial>=3.5",
 ]
 
 [dependency-groups]
