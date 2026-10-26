@@ -139,25 +139,43 @@ Use `iot_devices.util.str_to_bool(f)` to check the value, and raise a ValueError
 See devicedocs.md for a code example of each one.  Note these are generated with iot_devices_scan.py.  This script searches all of the python paths for any folder that contains devices,  creates
 an instance of each one, and inspects the object to generate report, including a usable code example.
 
-For example, here's an auto-generated example of using a GPIO input, powered by the GPIOZero library.
+For example, here's an auto-generated example of using a GPIO input, powered by the libgpiod (gpiod) client.
 
 ```python
-from iot_devices.host import create_device
-from iot_devices.devices.GPIODevice import GPIOInput
+from iot_devices.host.simple_host import SimpleHost
 
-dev = create_device(GPIOInput, "name", {
-    'active_high': 'true',
-    'pull_up': 'false',
-    'pull_down': 'false',
+data =  {
+    'type': 'GPIOInput',
+    'name': "foo",
+    'active_high': True,
+    'pull_up': False,
+    'pull_down': False,
     'pin': 'MOCK1',
-    'debounce_time_ms': '0'
-})
+    'debounce_time_ms': 0
+}
 
+h = SimpleHost()
+dev = h.add_new_device(data).wait_device_ready()
 
+print(dev.datapoints)
+```
 
-# boolean
-print(dev.datapoints['value'])
-# >>> 0
+or
+```python
+from iot_devices.host.simple_host import SimpleHost
+
+data =  {
+    'type': 'GPIOOutput',
+    'name': "foo",
+    'active_high': True,
+    'pin': 'gpiochip0:BUTTON_1',
+    'debounce_time_ms': 0
+}
+
+h = SimpleHost()
+dev = h.add_new_device(data).wait_device_ready()
+
+print(dev.datapoints)
 
 ```
 

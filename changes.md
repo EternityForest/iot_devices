@@ -1,5 +1,16 @@
 # Change Log
 
+## 0.35.0
+
+* GPIO devices now use libgpiod (the `gpiod` client) instead of gpiozero.
+* Removed software PWM from GPIO outputs; values are on/off only.
+* Pin specs accept `gpiochipN:lineOffset` and `gpiochipN:lineName`.
+  Plain numbers and `BCMx` still work, resolved to the first GPIO chip
+  exposing that line.
+* GPIO lines already claimed by a blacklisted consumer (e.g. `kernel`)
+  are refused, to avoid disturbing the running system.
+
+
 ## 0.34.0
 
 * Fix GPIODevices, add mock pins

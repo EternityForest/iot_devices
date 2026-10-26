@@ -1,6 +1,6 @@
 [project]
 name = "iot-devices"
-version = "0.34.0"
+version = "0.35.0"
 description = "Framework for creating and using device drives, and a library of devices."
 authors = [{ name = "Daniel Dunn" }]
 license = "MIT"
@@ -14,7 +14,6 @@ dependencies = [
     "paho-mqtt",
     "yeelight",
     "colorzero",
-    "gpiozero",
     "aioesphomeapi==46.4.1",
     "websockets",
     "niquests",
@@ -29,6 +28,7 @@ dependencies = [
     "aiohttp",
     "python-matter-server",
     "hypercorn>=0.18.0",
+    "gpiod>=2.5.0",
 ]
 
 [dependency-groups]

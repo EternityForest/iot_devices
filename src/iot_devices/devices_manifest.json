@@ -30,11 +30,11 @@
         },
         "GPIOOutput": {
             "submodule": "devices.GPIODevice",
-            "description": "Experimental. Represents a hardware output pin, possibly with PWM.  Supports RasPi and mocked fake pins."
+            "description": "Experimental. Represents a hardware output pin, on/off only.  Uses libgpiod chips, with mocked fake pins available."
         },
         "GPIOInput": {
             "submodule": "devices.GPIODevice",
-            "description": "Experimental. Represents a hardware input pin. Supports RasPi and mocked fake pins."
+            "description": "Experimental. Represents a hardware input pin.  Uses libgpiod chips, with mocked fake pins available."
         },
         "ArduinoCogsClient": {
             "submodule": "devices.ArduinoCogsWebsocket",

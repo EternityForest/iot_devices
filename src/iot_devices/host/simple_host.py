@@ -334,12 +334,13 @@ class SimpleHost(Host[SimpleHostDeviceContainer]):
             )
 
     def on_device_error(self, device: DeviceHostContainer, error: str):
-        pass
+        print(f"Error in device: {device.name}\n{error}")
+        _logger.error(f"Error in device: {device.name}\n{error}")
 
     def on_device_print(
         self, device: DeviceHostContainer, message: str, title: str = ""
     ):
-        pass
+        print(f"{device.name} {title}: {message}")
 
     def on_config_changed(
         self, device: DeviceHostContainer, config: Mapping[str, Any]
