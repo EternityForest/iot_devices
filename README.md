@@ -168,7 +168,7 @@ data =  {
     'type': 'GPIOOutput',
     'name': "foo",
     'active_high': True,
-    'pin': 'gpiochip0:BUTTON_1',
+    'pin': '17',
     'debounce_time_ms': 0
 }
 

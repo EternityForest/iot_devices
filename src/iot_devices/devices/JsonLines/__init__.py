@@ -120,6 +120,24 @@ config_schema: dict[str, Any] = {
                 "back to it."
             ),
         },
+        "send_heartbeat": {
+            "type": "number",
+            "title": "Send heartbeat",
+            "default": 0,
+            "description": (
+                "Seconds between empty heartbeat packets.  A heartbeat is "
+                "skipped if anything was sent more recently.  0 disables."
+            ),
+        },
+        "expect_heartbeat": {
+            "type": "number",
+            "title": "Expect heartbeat",
+            "default": 0,
+            "description": (
+                "Seconds without receiving data before the device is marked "
+                "offline.  0 disables the check."
+            ),
+        },
     },
 }
 
@@ -175,6 +193,31 @@ class JsonLinesDevice(iot_devices.device.Device):
 
         self.ratelimiter = RateLimiter(self.rate_limit, self.burst)
 
+        # Heartbeat and connection state
+        self.send_heartbeat_interval = float(
+            self.config.get("send_heartbeat", 0)
+        )
+        self.expect_heartbeat_interval = float(
+            self.config.get("expect_heartbeat", 0)
+        )
+
+        self._last_send_time = time.monotonic()
+        self._last_receive_time = time.monotonic()
+        self._connected = False
+
+        self._heartbeat_event: scheduling.WrappedFunction | None = None
+        self._expect_heartbeat_event: scheduling.WrappedFunction | None = None
+
+        # Register connection state datapoint
+        self.numeric_data_point(
+            "connection.connected",
+            min=0,
+            max=1,
+            default=0,
+            subtype="bool",
+            writable=False,
+        )
+
         keys: dict[str, KeyConfig] = dict(self.config.get("keys", {}))
         self.keys = keys
 
@@ -183,6 +226,16 @@ class JsonLinesDevice(iot_devices.device.Device):
 
         for remote_name, key in keys.items():
             self._add_datapoint(remote_name, key)
+
+        # Start heartbeat timers
+        if self.send_heartbeat_interval > 0:
+            self._heartbeat_event = scheduling.every(
+                self._send_heartbeat, self.send_heartbeat_interval
+            )
+        if self.expect_heartbeat_interval > 0:
+            self._expect_heartbeat_event = scheduling.every(
+                self._check_heartbeat, self.expect_heartbeat_interval
+            )
 
     def _add_datapoint(self, remote_name: str, key: KeyConfig) -> None:
         """Create the datapoint for a single ``keys`` entry."""
@@ -293,10 +346,48 @@ class JsonLinesDevice(iot_devices.device.Device):
         if packet:
             self._push(packet)
 
+    def _mark_connected(self) -> None:
+        """Mark the connection as established."""
+        with self.lock:
+            if not self._connected:
+                self._connected = True
+                self.set_data_point("connection.connected", 1)
+
+    def _mark_disconnected(self) -> None:
+        """Mark the connection as lost."""
+        with self.lock:
+            if self._connected:
+                self._connected = False
+                self.set_data_point("connection.connected", 0)
+
+    def _note_received(self) -> None:
+        """Record that data was received from the remote."""
+        with self.lock:
+            self._last_receive_time = time.monotonic()
+            self._mark_connected()
+
+    def _send_heartbeat(self) -> None:
+        """Send an empty heartbeat packet if nothing was sent recently."""
+        if (
+            time.monotonic() - self._last_send_time
+            >= self.send_heartbeat_interval
+        ):
+            self._push({})
+
+    def _check_heartbeat(self) -> None:
+        """Mark the device offline if no data was received recently."""
+        if (
+            time.monotonic() - self._last_receive_time
+            >= self.expect_heartbeat_interval
+        ):
+            self._mark_disconnected()
+
     def _push(self, packet: dict[str, Any]) -> None:
         try:
             self.push_json(packet)
+            self._last_send_time = time.monotonic()
         except Exception:
+            self._mark_disconnected()
             self.handle_exception()
 
     @final
@@ -309,6 +400,8 @@ class JsonLinesDevice(iot_devices.device.Device):
         datapoint.
         """
         with self.lock:
+            self._note_received()
+
             for remote_name in data:
                 self.outgoing.pop(remote_name, None)
 
@@ -324,6 +417,7 @@ class JsonLinesDevice(iot_devices.device.Device):
                 )
             except Exception:
                 # A single bad value must not tear down the transport.
+                self._mark_disconnected()
                 self.handle_exception()
 
     def _handle_json_line(self, raw: bytes) -> None:
@@ -402,11 +496,16 @@ class JsonLinesDevice(iot_devices.device.Device):
         with self.lock:
             event = self.scheduled_flush
             self.scheduled_flush = None
+            heartbeat_event = self._heartbeat_event
+            self._heartbeat_event = None
+            expect_heartbeat_event = self._expect_heartbeat_event
+            self._expect_heartbeat_event = None
 
-        if event is not None:
-            try:
-                event.unregister()
-            except Exception:
-                logger.debug("Failed to unregister flush event", exc_info=True)
+        for ev in (event, heartbeat_event, expect_heartbeat_event):
+            if ev is not None:
+                try:
+                    ev.unregister()
+                except Exception:
+                    logger.debug("Failed to unregister event", exc_info=True)
 
         super().on_before_close()

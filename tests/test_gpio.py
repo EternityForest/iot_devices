@@ -13,7 +13,7 @@ from __future__ import annotations
 import time
 from collections.abc import Iterator
 from datetime import timedelta
-from typing import Any, cast, override
+from typing import Any, cast
 
 import pytest
 
@@ -24,19 +24,8 @@ from iot_devices.devices.GPIODevice import (
     backend,
     mock,
 )
-from iot_devices.host.simple_host import SimpleHost
 
-
-class RecordingHost(SimpleHost):
-    """A host that records device errors so tests can assert on them."""
-
-    def __init__(self) -> None:
-        super().__init__()
-        self.errors: list[str] = []
-
-    @override
-    def on_device_error(self, device: Any, error: str) -> None:
-        self.errors.append(error)
+from .recording_host import RecordingHost
 
 
 @pytest.fixture(autouse=True)

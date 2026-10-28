@@ -20,24 +20,8 @@ from typing import Any, cast
 import pytest
 
 from iot_devices.devices.JsonLines.serial import SerialJsonLines
-from iot_devices.host.simple_host import SimpleHost
 
-
-class RecordingHost(SimpleHost):
-    """A host that records errors and prints so tests can assert on them."""
-
-    def __init__(self) -> None:
-        super().__init__()
-        self.errors: list[str] = []
-        self.prints: list[tuple[str, str]] = []
-
-    def on_device_error(self, device: Any, error: str) -> None:
-        self.errors.append(error)
-
-    def on_device_print(
-        self, device: Any, message: str, title: str = ""
-    ) -> None:
-        self.prints.append((message, title))
+from .recording_host import RecordingHost
 
 
 class VirtualSerial:
@@ -286,13 +270,132 @@ def test_reconnect_resyncs_state(
     assert serial.read_packets(1) == [{"foo": 5}]
 
     serial.disconnect()
-    wait_for(lambda: dev.datapoints["connected"].get()[0] == 0)
+    wait_for(lambda: dev.datapoints["connection.connected"].get()[0] == 0)
 
     serial.connect()
-    wait_for(lambda: dev.datapoints["connected"].get()[0] == 1)
+    wait_for(lambda: dev.datapoints["connection.connected"].get()[0] == 1)
 
     # On reconnect the device replays its output state.
     assert serial.read_packets(1) == [{"foo": 5}]
+
+
+def test_create_port_device_destroy_port_create_device(
+    host: RecordingHost, serial: VirtualSerial
+) -> None:
+    """Create port, create device, destroy port, create device."""
+    # 1. Create port (done by the serial fixture).
+    # 2. Create device 1.
+    dev1 = add_device(host, serial)
+    dev1.wait_ready()
+
+    dev1.set_data_point("foo", 1)
+    assert serial.read_packets(1) == [{"foo": 1}]
+
+    # 3. Destroy port.
+    serial.disconnect()
+    wait_for(lambda: dev1.datapoints["connection.connected"].get()[0] == 0)
+
+    # Close the first device so it does not compete for the port.
+    dev1.close()
+
+    # 4. Create a new device while the port is down.
+    config: dict[str, Any] = {
+        "type": "SerialJsonLines",
+        "name": "ser",
+        "serial_glob": str(serial.link),
+        "reconnect_interval": 0.1,
+        "keys": KEYS,
+    }
+    dev2 = cast(
+        SerialJsonLines, host.add_new_device(config).wait_device_ready()
+    )
+    wait_for(lambda: dev2.datapoints["connection.connected"].get()[0] == 0)
+
+    # 5. Create the port again.
+    serial.connect()
+
+    # The new device should connect.
+    dev2.wait_ready()
+    dev2.set_data_point("foo", 2)
+    assert serial.read_packets(1) == [{"foo": 2}]
+
+
+def test_create_device_without_port_create_port(
+    host: RecordingHost, serial: VirtualSerial
+) -> None:
+    """Create device without port up, then create port."""
+    # Start with no port.
+    serial.disconnect()
+
+    # Create device while the port is down.
+    config: dict[str, Any] = {
+        "type": "SerialJsonLines",
+        "name": "ser",
+        "serial_glob": str(serial.link),
+        "reconnect_interval": 0.1,
+        "keys": KEYS,
+    }
+    dev = cast(SerialJsonLines, host.add_new_device(config).wait_device_ready())
+    wait_for(lambda: dev.datapoints["connection.connected"].get()[0] == 0)
+
+    # Create the port.
+    serial.connect()
+
+    # The device should connect.
+    dev.wait_ready()
+    dev.set_data_point("foo", 3)
+    assert serial.read_packets(1) == [{"foo": 3}]
+
+
+def test_send_heartbeat_sends_empty_object(
+    host: RecordingHost, serial: VirtualSerial
+) -> None:
+    """An idle connection sends empty heartbeat packets."""
+    dev = add_device(host, serial, send_heartbeat=0.2)
+    dev.wait_ready()
+
+    # No output state and no writes, so the first packet is a heartbeat.
+    assert serial.read_packets(1, timeout=2.0) == [{}]
+
+
+def test_send_heartbeat_skipped_after_recent_send(
+    host: RecordingHost, serial: VirtualSerial
+) -> None:
+    """A heartbeat is not sent if something was sent more recently."""
+    dev = add_device(host, serial, send_heartbeat=0.5)
+    dev.wait_ready()
+
+    dev.set_data_point("foo", 7)
+    assert serial.read_packets(1) == [{"foo": 7}]
+
+    # The next heartbeat tick falls within the interval, so it is skipped.
+    assert serial.read_packets(1, timeout=0.2) == []
+
+    # After a full interval an idle heartbeat is sent.
+    assert serial.read_packets(1, timeout=2.0) == [{}]
+
+
+def test_expect_heartbeat_marks_offline(
+    host: RecordingHost, serial: VirtualSerial
+) -> None:
+    """A connection with no incoming data is marked offline."""
+    dev = add_device(host, serial, expect_heartbeat=0.3)
+    dev.wait_ready()
+
+    serial.send(b'{"bar": "alive"}\n')
+    wait_for(lambda: dev.datapoints["bar"].get()[0] == "alive")
+    wait_for(lambda: dev.datapoints["connection.connected"].get()[0] == 1)
+
+    # No further data arrives, so the device goes offline.
+    wait_for(
+        lambda: dev.datapoints["connection.connected"].get()[0] == 0,
+        timeout=2.0,
+    )
+
+    # Receiving data again brings it back online.
+    serial.send(b'{"bar": "back"}\n')
+    wait_for(lambda: dev.datapoints["bar"].get()[0] == "back")
+    wait_for(lambda: dev.datapoints["connection.connected"].get()[0] == 1)
 
 
 def test_missing_glob_raises(host: RecordingHost) -> None:

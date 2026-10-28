@@ -143,15 +143,6 @@ class UDPJsonLines(JsonLinesDevice):
         self._stop = Event()
         self._error_reported = False
 
-        self.numeric_data_point(
-            "connected",
-            min=0,
-            max=1,
-            default=0,
-            subtype="bool",
-            writable=False,
-        )
-
         self._thread = Thread(
             target=self._run,
             name="UDPJsonLines:" + self.name,
@@ -172,12 +163,13 @@ class UDPJsonLines(JsonLinesDevice):
             try:
                 sock.sendto(line, addr)
             except OSError:
+                self._mark_disconnected()
                 self.handle_exception()
 
     def wait_ready(self, timeout: float = 15) -> None:
         deadline = time.monotonic() + timeout
         while time.monotonic() < deadline:
-            if self.datapoints["connected"].get()[0]:
+            if self.datapoints["connection.connected"].get()[0]:
                 return
             time.sleep(0.01)
         raise TimeoutError(f"{self.name} did not connect within {timeout}s")
@@ -209,7 +201,7 @@ class UDPJsonLines(JsonLinesDevice):
         """Run one connection session, returning when it breaks."""
         self._error_reported = False
         self.discard_pending()
-        self.set_data_point("connected", 1)
+        self._mark_connected()
         self._send_state()
 
         next_resolve = time.monotonic() + self.resolve_interval
@@ -233,7 +225,7 @@ class UDPJsonLines(JsonLinesDevice):
             self._report_error()
         finally:
             self._close_socket()
-            self.set_data_point("connected", 0)
+            self._mark_disconnected()
 
     def _refresh_remote(self) -> None:
         """Re-resolve the remote, tolerating a transient failure."""

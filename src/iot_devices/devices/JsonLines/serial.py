@@ -93,15 +93,6 @@ class SerialJsonLines(JsonLinesDevice):
         self._stop = Event()
         self._error_reported = False
 
-        self.numeric_data_point(
-            "connected",
-            min=0,
-            max=1,
-            default=0,
-            subtype="bool",
-            writable=False,
-        )
-
         self._thread = Thread(
             target=self._run,
             name="SerialJsonLines:" + self.name,
@@ -122,7 +113,7 @@ class SerialJsonLines(JsonLinesDevice):
     def wait_ready(self, timeout: float = 15) -> None:
         deadline = time.monotonic() + timeout
         while time.monotonic() < deadline:
-            if self.datapoints["connected"].get()[0]:
+            if self.datapoints["connection.connected"].get()[0]:
                 return
             time.sleep(0.01)
         raise TimeoutError(f"{self.name} did not connect within {timeout}s")
@@ -162,7 +153,7 @@ class SerialJsonLines(JsonLinesDevice):
                     port.close()
                 except Exception:
                     self.handle_exception()
-                self.set_data_point("connected", 0)
+                self._mark_disconnected()
 
             if not self._stop.is_set():
                 self._stop.wait(self.reconnect_interval)
@@ -186,7 +177,7 @@ class SerialJsonLines(JsonLinesDevice):
             self.write_queue.clear()
 
         self._send_state(port)
-        self.set_data_point("connected", 1)
+        self._mark_connected()
 
         buffer = bytearray()
         while not self._stop.is_set():
