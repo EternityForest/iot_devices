@@ -201,14 +201,13 @@ class Host(Generic[_HostContainerTypeVar]):
 
         with self.__lock:
             self.closing = True
-            ordered = [i() for i in self.__load_order]
+            ordered = [i for i in self.__load_order]
             # Ref is needed because the iterator makes a nuisance error
             # without it thinking there's a held reference and the device hasn't
             # gone away.
-            ordered = [weakref.ref(i) for i in ordered if i]
             ordered.reverse()
 
-            x = list(self.devices.values())
+            x = [weakref.ref(j) for j in self.devices.values()]
 
             if self.__async_loop:
                 self.__async_loop.stop()
@@ -228,7 +227,7 @@ class Host(Generic[_HostContainerTypeVar]):
                     if not d.config.get("is_subdevice", False):
                         d.close()
                         try:
-                            x.remove(i)
+                            x.remove(r)
                         except ValueError:
                             pass
 
@@ -240,16 +239,19 @@ class Host(Generic[_HostContainerTypeVar]):
         # Close anything the ordered list somehow missed
 
         # Close outside of lock for deadlock prevention
-        for i in x:
+        for r in x:
+            i = r()
+            if not i:
+                continue
             d = i.device
             name = i.name
             if d:
                 if not d.config.get("is_subdevice", False):
                     try:
                         d.close()
-    
+
                         try:
-                            x.remove(i)
+                            x.remove(r)
                         except ValueError:
                             pass
 
@@ -259,7 +261,10 @@ class Host(Generic[_HostContainerTypeVar]):
                     except Exception:
                         _logger.exception("Error closing device")
         # Close any subdevices that the parent didn't close
-        for i in x:
+        for r in x:
+            i = r()
+            if not i:
+                continue
             try:
                 d = i.device
                 name = i.name
@@ -290,6 +295,7 @@ class Host(Generic[_HostContainerTypeVar]):
                 for i in range(100):
                     if self.__async_loop.is_running():
                         break
+
     @final
     def close_device(self, name: str):
         """
@@ -343,10 +349,14 @@ class Host(Generic[_HostContainerTypeVar]):
                 RuntimeWarning,
             )
             try:
-                print("held by", gc.get_referrers(wr()))
+                print(
+                    "held by",
+                    gc.get_referrers(
+                        gc.get_referrers(gc.get_referrers(wr())[0])[0]
+                    ),
+                )
             except Exception:
                 pass
-            raise RuntimeError("foo")
 
     @final
     def delete_device(self, name: str):
@@ -616,7 +626,7 @@ class Host(Generic[_HostContainerTypeVar]):
                     self.__load_order = [
                         x for x in self.__load_order if x() is not None
                     ]
-                
+
                 self.on_before_device_added(name, cont)
                 d = cls(data)
 

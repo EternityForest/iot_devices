@@ -7,7 +7,6 @@ import concurrent.futures
 import threading
 import time
 import traceback
-import weakref
 from collections.abc import Callable
 from typing import Any, override
 
@@ -59,10 +58,6 @@ class MatterControllerClient(Device):
 
     def __init__(self, config: dict[str, Any], **kw: Any):
         super().__init__(config, **kw)
-
-        self.subdevices_by_id: weakref.WeakValueDictionary[
-            int, matter_device.MatterDevice
-        ] = weakref.WeakValueDictionary()
         # Datapoints
         self.numeric_data_point("connected", subtype="bool", writable=False)
         self.string_data_point(
@@ -120,13 +115,14 @@ class MatterControllerClient(Device):
 
         elif ev == EventType.NODE_UPDATED:
             try:
-                sd = self.subdevices_by_id[d.node_id]
+                sd = self.devices_by_node_id[d.node_id]
                 sd.set_data_point("available", 1 if d.available else 0)
             except KeyError:
                 pass
 
-    def run_coroutine(self, coro: asyncio.Coroutine[Any, Any, Any]
-        ) -> concurrent.futures.Future[Any]:
+    def run_coroutine(
+        self, coro: asyncio.Coroutine[Any, Any, Any]
+    ) -> concurrent.futures.Future[Any]:
         """Execute coroutine in the device's event loop.
 
         This allows subdevices and handlers running in the main thread
@@ -164,10 +160,10 @@ class MatterControllerClient(Device):
         """Establish connection to Matter server and listen for events."""
         async with aiohttp.ClientSession() as session:
             # third party lib seems to have type checker issue?
-            #type: ignore
-            async with MatterClient( 
+            # type: ignore
+            async with MatterClient(
                 self.config["server_url"], session
-            ) as client: 
+            ) as client:
                 self.client = client
 
                 evt = asyncio.Event()
@@ -270,8 +266,12 @@ class MatterControllerClient(Device):
                 attribute_id,
             ), handler in subscriptions.items():
                 # Create closure to capture context and handler
-                def make_event_handler(ep_id:int, c_id:int, a_id:int, 
-                sub_handler:Callable[[Any], None]):
+                def make_event_handler(
+                    ep_id: int,
+                    c_id: int,
+                    a_id: int,
+                    sub_handler: Callable[[Any], None],
+                ):
                     def event_handler(event_type: EventType, data: Any) -> None:
                         if event_type == EventType.ATTRIBUTE_UPDATED:
                             # Extract value from event data
@@ -315,6 +315,8 @@ class MatterControllerClient(Device):
             node_id: The Matter node ID
             node: MatterNode object from server
         """
+        if not self.should_run:
+            raise RuntimeError("Closing")
         try:
             # Store raw node object for subdevice access
             self.nodes_by_id[node_id] = node
@@ -329,7 +331,6 @@ class MatterControllerClient(Device):
                 name,
                 {"node_id": node_id},
             )
-            self.subdevices_by_id[node_id] = device
             device.wait_ready()
 
             device.set_parent_controller(self)
@@ -343,7 +344,7 @@ class MatterControllerClient(Device):
             self.print(f"Created device: {name} (node_id={node_id})")
         except Exception:
             self.handle_error(
-                f"Failed to create device for {node_id}:\n{traceback.format_exc()}" # noqa: E501
+                f"Failed to create device for {node_id}:\n{traceback.format_exc()}"  # noqa: E501
             )
 
     def _get_node_name(self, node: Any):
@@ -457,7 +458,9 @@ class MatterControllerClient(Device):
         self.print(f"Deleted node {num}")
         await self.discover_nodes()
 
-    async def commission_device(self, code: str, on_network:bool=False) -> None:
+    async def commission_device(
+        self, code: str, on_network: bool = False
+    ) -> None:
         """Commission a new Matter device.
 
         Args:
@@ -512,4 +515,4 @@ class MatterControllerClient(Device):
         if self.thread is not threading.current_thread():
             self.thread.join(5)
 
-        return super().close()
+        self.devices_by_node_id.clear()

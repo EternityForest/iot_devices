@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import traceback
 from collections.abc import Callable
-from typing import Any
+from typing import Any, override
 
 from chip.clusters import Objects as clusters
 from scullery.ratelimits import RateLimiter
@@ -132,7 +132,7 @@ class MatterDevice(Device):
             )
 
     def set_parent_controller(
-        self, parent: Matter.MatterControllerClient
+        self, parent: Matter.MatterControllerClient | None
     ) -> None:
         """Set reference to parent MatterControllerClient.
 
@@ -226,6 +226,11 @@ class MatterDevice(Device):
 
         return handler
 
+    @override
+    def on_before_close(self):
+        self.parent_controller = None
+
+    @override
     def on_delete(self):
         sp = self.parent_controller
 
