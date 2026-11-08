@@ -1,0 +1,12 @@
+{
+  "name": "iot-devices-matter-e2e-fake-devices",
+  "version": "1.0.0",
+  "description": "Fake Matter devices for the iot_devices end-to-end tests",
+  "type": "module",
+  "license": "MIT",
+  "private": true,
+  "dependencies": {
+    "@matter/main": "0.18.0",
+    "@matter/nodejs": "0.18.0"
+  }
+}

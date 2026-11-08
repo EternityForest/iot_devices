@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import asyncio
+import concurrent.futures
 import threading
 import time
 import traceback
 import weakref
-from typing import Any
+from collections.abc import Callable
+from typing import Any, override
 
 import aiohttp
 from matter_server.client.client import MatterClient
@@ -48,7 +50,7 @@ class MatterControllerClient(Device):
                 ),
             },
             "name_map": {
-                "description": "Specifiy the names for devices by their node ID",
+                "description": "Specifiy the names for devices by node ID",
                 "type": "object",
                 "additionalProperties": {"type": "string"},
             },
@@ -78,14 +80,14 @@ class MatterControllerClient(Device):
         self.string_data_point(
             "admin.remove_device",
             handler=self.delete_device_handler,
-            description="Delete a device from the matter server by it's device name or by node ID",
+            description="Delete device on the server by device name or node ID",
         )
 
         try:
             if self.config.get("name_map"):
                 name_map = self.config["name_map"]
                 for i in list(name_map.keys()):
-                    if isinstance(i, (int, float)):
+                    if isinstance(i, int | float):
                         name_map.pop(i, None)
         except Exception:
             self.handle_exception()
@@ -108,7 +110,9 @@ class MatterControllerClient(Device):
         self.thread.start()
 
         # Start main connection task
-        asyncio.run_coroutine_threadsafe(self.main_loop(), self.loop)
+        self.main_loop_task: concurrent.futures.Future[None] | None = (
+            asyncio.run_coroutine_threadsafe(self.main_loop(), self.loop)
+        )
 
     def rescan_trigger(self, ev: EventType, d: Any):
         if ev == EventType.NODE_ADDED or ev == EventType.NODE_REMOVED:
@@ -121,7 +125,8 @@ class MatterControllerClient(Device):
             except KeyError:
                 pass
 
-    def run_coroutine(self, coro):
+    def run_coroutine(self, coro: asyncio.Coroutine[Any, Any, Any]
+        ) -> concurrent.futures.Future[Any]:
         """Execute coroutine in the device's event loop.
 
         This allows subdevices and handlers running in the main thread
@@ -138,10 +143,15 @@ class MatterControllerClient(Device):
             try:
                 await self.connect_and_listen()
             except Exception:
+                # During shutdown the host may already have dropped
+                # us, so don't try to report errors then.
+                if not self.should_run:
+                    break
+
+                self.set_data_point("connected", 0)
                 self.handle_error(
                     f"Connection failed:\n{traceback.format_exc()}"
                 )
-                self.set_data_point("connected", 0)
 
                 # Exponential backoff
                 await asyncio.sleep(retry_delay)
@@ -153,9 +163,11 @@ class MatterControllerClient(Device):
     async def connect_and_listen(self):
         """Establish connection to Matter server and listen for events."""
         async with aiohttp.ClientSession() as session:
-            async with MatterClient(
+            # third party lib seems to have type checker issue?
+            #type: ignore
+            async with MatterClient( 
                 self.config["server_url"], session
-            ) as client:
+            ) as client: 
                 self.client = client
 
                 evt = asyncio.Event()
@@ -185,9 +197,10 @@ class MatterControllerClient(Device):
                 try:
                     await listen_task
                 except Exception:
-                    self.handle_error(
-                        f"Listening failed:\n{traceback.format_exc()}"
-                    )
+                    if self.should_run:
+                        self.handle_error(
+                            f"Listening failed:\n{traceback.format_exc()}"
+                        )
                     raise
 
     async def discover_nodes(self):
@@ -219,7 +232,8 @@ class MatterControllerClient(Device):
     async def subscribe_to_attributes(self):
         """Subscribe to attribute updates for all devices.
 
-        Uses subscription registry from each subdevice to determine what to monitor.
+        Uses subscription registry from each
+         subdevice to determine what to monitor.
         """
         if not self.client:
             return
@@ -256,7 +270,8 @@ class MatterControllerClient(Device):
                 attribute_id,
             ), handler in subscriptions.items():
                 # Create closure to capture context and handler
-                def make_event_handler(ep_id, c_id, a_id, sub_handler):
+                def make_event_handler(ep_id:int, c_id:int, a_id:int, 
+                sub_handler:Callable[[Any], None]):
                     def event_handler(event_type: EventType, data: Any) -> None:
                         if event_type == EventType.ATTRIBUTE_UPDATED:
                             # Extract value from event data
@@ -328,7 +343,7 @@ class MatterControllerClient(Device):
             self.print(f"Created device: {name} (node_id={node_id})")
         except Exception:
             self.handle_error(
-                f"Failed to create device for node {node_id}:\n{traceback.format_exc()}"
+                f"Failed to create device for {node_id}:\n{traceback.format_exc()}" # noqa: E501
             )
 
     def _get_node_name(self, node: Any):
@@ -379,11 +394,11 @@ class MatterControllerClient(Device):
         """Handle Matter server node lifecycle events.
 
         Responds to node_added and node_removed events to manage subdevices.
-        Attribute updates are handled via individual subscriptions with closures.
+        Attribute updates are handled via individual
+        subscriptions with closures.
         """
         try:
             if event_type.value == "node_added":
-                # New device commissioned - create subdevice (which handles subscriptions)
                 node_id = arg.get("node_id")
                 node = arg.get("node")
 
@@ -397,8 +412,8 @@ class MatterControllerClient(Device):
                 node_id = arg.get("node_id")
                 if node_id in self.devices_by_node_id:
                     device = self.devices_by_node_id[node_id]
-                    self.close_subdevice(device.name)
                     del self.devices_by_node_id[node_id]
+                    self.close_subdevice(device.name)
                 if node_id in self.nodes_by_id:
                     del self.nodes_by_id[node_id]
 
@@ -442,7 +457,7 @@ class MatterControllerClient(Device):
         self.print(f"Deleted node {num}")
         await self.discover_nodes()
 
-    async def commission_device(self, code: str, on_network=False) -> None:
+    async def commission_device(self, code: str, on_network:bool=False) -> None:
         """Commission a new Matter device.
 
         Args:
@@ -467,21 +482,34 @@ class MatterControllerClient(Device):
 
         await self.discover_nodes()
 
+    @override
     def on_before_close(self):
         """Cleanup when device closes."""
         self.should_run = False
 
         try:
             if self.client:
-                self.run_coroutine(self.client.disconnect())
+                # Disconnect synchronously so the websocket closes
+                # cleanly.
+                self.run_coroutine(self.client.disconnect()).result(5)
         except Exception:
             self.handle_exception()
 
-        # Stop the event loop
+        # Give the event loop time to unwind the connection tasks so
+        # nothing is left pending when it stops.
+        if self.main_loop_task is not None:
+            deadline = time.monotonic() + 5
+            while (
+                not self.main_loop_task.done() and time.monotonic() < deadline
+            ):
+                time.sleep(0.05)
+
+        # Stop the event loop and wait for its thread so no tasks are
+        # abandoned and cleaned up later by the garbage collector.
         if self.loop.is_running():
             self.loop.call_soon_threadsafe(self.loop.stop)
 
-        # Wait briefly for clean shutdown
-        time.sleep(0.1)
+        if self.thread is not threading.current_thread():
+            self.thread.join(5)
 
         return super().close()

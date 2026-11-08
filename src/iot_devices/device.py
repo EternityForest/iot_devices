@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import copy
 import json
+import logging
 import threading
 import traceback
 import warnings
@@ -16,11 +17,13 @@ from . import host
 from .datapoints import (
     BytesDataPoint,
     DataPoint,
+    DataRequest,
     NumericDataPoint,
     ObjectDataPoint,
     StringDataPoint,
 )
 
+_logger =logging.getLogger()
 # type alias
 
 Priority = Literal["debug", "info", "warning", "error", "critical"]
@@ -40,11 +43,6 @@ def _key_to_title(k: str) -> str:
         title = title.split("device.", 1)[-1]
     title = title.replace("_", " ").title()
     return title
-
-
-@final
-class DataRequest:
-    pass
 
 
 _device_parents: weakref.WeakValueDictionary[str, Device] = (
@@ -977,6 +975,7 @@ class Device:
     @final
     def close(self):
         """Close all subdevices and tell the host to remove this device"""
+        _logger.debug("Closing device %s", self.name)
         with self.__config_lock:
             if self.__closing:
                 return

@@ -9,8 +9,6 @@ dev-build-docs:
 
 .PHONY: test
 test:
-	@uv run python -m pytest
-
-.PHONY: test-gpio-e2e
-test-gpio-e2e:
+	@uv run python -m pytest tests/
 	@uv run python scripts/gpio_e2e_test.py
+	@uv run python scripts/matter_e2e_test.py

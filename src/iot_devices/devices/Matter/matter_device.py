@@ -288,7 +288,9 @@ class MatterDevice(Device):
 
         tt = self.datapoints[f"transition_time_{endpoint_id}"]
 
-        tt_val = int(max(0, min(254, tt.get()[0] * 10)))
+        # The transition time datapoint starts out unset, in which
+        # case we use an instant transition.
+        tt_val = int(max(0, min(254, (tt.get()[0] or 0) * 10)))
         level = int(max(0, min(254, value)))
 
         command = clusters.LevelControl.Commands.MoveToLevel(
@@ -321,15 +323,17 @@ class MatterDevice(Device):
             return
 
         hue = self.datapoints[f"hue_{endpoint_id}"]
-        hue_val = int(max(0, min(254, hue.get()[0])))
+        hue_val = int(max(0, min(254, hue.get()[0] or 0)))
 
         sat = self.datapoints[f"saturation_{endpoint_id}"]
-        sat_val = int(max(0, min(254, sat.get()[0])))
+        sat_val = int(max(0, min(254, sat.get()[0] or 0)))
 
         tt_val = 0
         if f"transition_time_{endpoint_id}" in self.datapoints:
             tt = self.datapoints[f"transition_time_{endpoint_id}"]
-            tt_val = int(max(0, min(254, tt.get()[0] * 10)))
+            # The transition time datapoint starts out unset, in
+            # which case we use an instant transition.
+            tt_val = int(max(0, min(254, (tt.get()[0] or 0) * 10)))
 
         command = clusters.ColorControl.Commands.MoveToHueAndSaturation(
             hue=hue_val, saturation=sat_val, transitionTime=tt_val
@@ -445,7 +449,7 @@ class MatterDevice(Device):
         datapoint_name_hue = f"hue_{endpoint_id}"
         datapoint_name_sat = f"saturation_{endpoint_id}"
 
-        dp = device.numeric_data_point(
+        dp_hue = device.numeric_data_point(
             datapoint_name_hue,
             min=0,
             max=254,
@@ -453,7 +457,7 @@ class MatterDevice(Device):
             description=f"Color Control (hue) on endpoint {endpoint_id}",
         )
 
-        dp = device.numeric_data_point(
+        dp_sat = device.numeric_data_point(
             datapoint_name_sat,
             min=0,
             max=254,
@@ -462,10 +466,10 @@ class MatterDevice(Device):
         )
 
         if not isinstance(cluster_dict.currentHue, clusters.Nullable):
-            dp.set(int(cluster_dict.currentHue or 0), None, "from_matter")
+            dp_hue.set(int(cluster_dict.currentHue or 0), None, "from_matter")
 
         if not isinstance(cluster_dict.currentSaturation, clusters.Nullable):
-            dp.set(
+            dp_sat.set(
                 int(cluster_dict.currentSaturation or 0), None, "from_matter"
             )
 

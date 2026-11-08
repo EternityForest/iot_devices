@@ -3,13 +3,18 @@ from __future__ import annotations
 import time
 from collections.abc import Mapping
 from copy import deepcopy
-from typing import TYPE_CHECKING, Any, Generic, TypeVar
+from typing import TYPE_CHECKING, Any, Generic, TypeVar, final, override
 
 if TYPE_CHECKING:
     from .device import Device
 
 AnyDataPointType = str, int | float | str | bytes | Mapping[str, Any] | None
 DataPointTypeVar = TypeVar("DataPointTypeVar")
+
+
+@final
+class DataRequest:
+    pass
 
 
 class DataPoint(Generic[DataPointTypeVar]):
@@ -49,11 +54,13 @@ class DataPoint(Generic[DataPointTypeVar]):
 
 
 class StringDataPoint(DataPoint[str]):
+    @override
     def get(self) -> tuple[str, float, Any]:
         return self.device.host.get_string(
             self.device.name, self.datapoint_name
         )
 
+    @override
     def set(
         self,
         value: str,
@@ -66,11 +73,13 @@ class StringDataPoint(DataPoint[str]):
 
 
 class NumericDataPoint(DataPoint[float]):
+    @override
     def get(self) -> tuple[float, float, Any]:
         return self.device.host.get_number(
             self.device.name, self.datapoint_name
         )
 
+    @override
     def set(
         self,
         value: float | int,
@@ -87,11 +96,13 @@ class NumericDataPoint(DataPoint[float]):
 
 
 class ObjectDataPoint(DataPoint[dict[str, Any]]):
+    @override
     def get(self) -> tuple[dict[str, Any], float, Any]:
         return self.device.host.get_object(
             self.device.name, self.datapoint_name
         )
 
+    @override
     def set(
         self,
         value: dict[str, Any],
@@ -108,9 +119,11 @@ class ObjectDataPoint(DataPoint[dict[str, Any]]):
 
 
 class BytesDataPoint(DataPoint[bytes]):
+    @override
     def get(self) -> tuple[bytes, float, Any]:
         return self.device.host.get_bytes(self.device.name, self.datapoint_name)
 
+    @override
     def set(
         self,
         value: bytes,

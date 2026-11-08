@@ -148,3 +148,4 @@ cython_debug/
 #.idea/
 /.aider-desk
 /.aider.input.history
+/e2e/matter/run/

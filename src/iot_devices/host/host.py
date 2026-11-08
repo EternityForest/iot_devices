@@ -13,6 +13,8 @@ import weakref
 from collections.abc import Callable, Mapping
 from typing import TYPE_CHECKING, Any, Generic, Self, TypeVar, final
 
+from iot_devices.datapoints import DataRequest
+
 from ..util import str_to_bool
 from .util import get_class
 
@@ -200,7 +202,10 @@ class Host(Generic[_HostContainerTypeVar]):
         with self.__lock:
             self.closing = True
             ordered = [i() for i in self.__load_order]
-            ordered = [i for i in ordered if i]
+            # Ref is needed because the iterator makes a nuisance error
+            # without it thinking there's a held reference and the device hasn't
+            # gone away.
+            ordered = [weakref.ref(i) for i in ordered if i]
             ordered.reverse()
 
             x = list(self.devices.values())
@@ -212,47 +217,79 @@ class Host(Generic[_HostContainerTypeVar]):
                     if self.__async_loop.is_running():
                         break
 
-        for i in ordered:
+        for r in ordered:
+            i = r()
+            if not i:
+                continue
             d = i.device
+            name = i.name
             if d:
                 try:
                     if not d.config.get("is_subdevice", False):
                         d.close()
+                        try:
+                            x.remove(i)
+                        except ValueError:
+                            pass
+
+                        del i
+                        del d
+                        self._check_wr_collected(r, name)
                 except Exception:
                     _logger.exception("Error closing device")
-                try:
-                    x.remove(i)
-                except ValueError:
-                    pass
-
         # Close anything the ordered list somehow missed
 
         # Close outside of lock for deadlock prevention
         for i in x:
             d = i.device
+            name = i.name
             if d:
                 if not d.config.get("is_subdevice", False):
                     try:
                         d.close()
+    
+                        try:
+                            x.remove(i)
+                        except ValueError:
+                            pass
+
+                        del i
+                        del d
+                        self._check_wr_collected(r, name)
                     except Exception:
                         _logger.exception("Error closing device")
-
         # Close any subdevices that the parent didn't close
         for i in x:
             try:
                 d = i.device
+                name = i.name
                 if d:
                     warnings.warn(
                         f"Parent should have closed subdevice {d.name}",
                         RuntimeWarning,
                     )
                     d.close()
+                try:
+                    x.remove(i)
+                except ValueError:
+                    pass
+
+                del i
+                del d
+                self._check_wr_collected(r, name)
             except Exception:
                 _logger.exception("Error closing device")
 
         with self.__lock:
             self.devices.clear()
 
+        with self.__lock:
+            if self.__async_loop:
+                self.__async_loop.stop()
+                # Reduce nuisance errors
+                for i in range(100):
+                    if self.__async_loop.is_running():
+                        break
     @final
     def close_device(self, name: str):
         """
@@ -282,27 +319,46 @@ class Host(Generic[_HostContainerTypeVar]):
                     f"Device {name} had subdevices and did not close them.",
                 )
 
-            wr = weakref.ref(c)
-            del c
-            if wr() is not None:
-                gc.collect()
-                gc.collect()
+            # The loop holds a reference so we o the check there if we are
+            # closing everything
+            if not self.closing:
+                wr = weakref.ref(c)
+                del c
+                del x
+                self._check_wr_collected(wr, name)
 
-            if wr() is not None:
-                warnings.warn(
-                    f"Device {name} host container still there after 2 gc runs",
-                    RuntimeWarning,
-                )
+    @final
+    def _check_wr_collected(self, wr: weakref.ref[Any], name: str):
+        if wr() is not None:
+            st = time.monotonic()
+            while (time.monotonic() - st) < 5:
+                gc.collect()
+                if wr() is None:
+                    break
+                time.sleep(0.1)
+
+        if wr() is not None:
+            warnings.warn(
+                f"Device {name} host container still there",
+                RuntimeWarning,
+            )
+            try:
+                print("held by", gc.get_referrers(wr()))
+            except Exception:
+                pass
+            raise RuntimeError("foo")
 
     @final
     def delete_device(self, name: str):
         """Handle permanently deleting a device"""
+        if self.closing:
+            raise RuntimeError("Host closing")
         d = self.devices.get(name, None)
         if d is None:
             return
         dev = d.device
         if not dev:
-            raise Exception(f"Device with name {name} exists but is not ready")
+            raise RuntimeError(f"Device {name} exists but is not ready")
 
         dev.on_delete()
         self.close_device(name)
@@ -310,7 +366,8 @@ class Host(Generic[_HostContainerTypeVar]):
     def resolve_datapoint_name(
         self, device_name: str, datapoint_name: str
     ) -> str:
-        """Given a device name and datapoint name, returns the full datapoint name in
+        """Given a device name and datapoint name,
+        returns the full datapoint name in
         the host-wide namespace."""
         return f"{device_name}.{datapoint_name}"
 
@@ -348,7 +405,8 @@ class Host(Generic[_HostContainerTypeVar]):
         on_request: Callable[[], Any] | None = None,
         **kwargs: Any,  # pylint: disable=unused-argument
     ) -> None:
-        """Register a new object data point with the given properties.   Here "object"
+        """Register a new object data point with the given properties.
+        Here "object"
         means a JSON-like object.
         """
         raise NotImplementedError
@@ -396,7 +454,8 @@ class Host(Generic[_HostContainerTypeVar]):
         Bytestream data points do not store data,
         they only push it through.
 
-        Despite the name, buffers of bytes may not be broken up or combined, this is buffer oriented,
+        Despite the name, buffers of bytes may not be broken up or combined,
+        this is buffer oriented,
 
         """
         raise NotImplementedError
@@ -408,13 +467,13 @@ class Host(Generic[_HostContainerTypeVar]):
         d = self.devices[device]
         dev = d.device
         if not dev:
-            raise Exception(
+            raise RuntimeError(
                 f"Device with name {device} exists but is not ready"
             )
 
         x = dev.datapoint_getter_functions.get(name, None)
         if x is not None:
-            x()
+            x(DataRequest())
 
     @abc.abstractmethod
     def set_string(
@@ -490,6 +549,8 @@ class Host(Generic[_HostContainerTypeVar]):
         host_container_kwargs: dict[str, Any] = {},
         **kwargs: Any,
     ) -> _HostContainerTypeVar:
+        if self.closing:
+            raise RuntimeError("Host closing")
         c = get_class(config)
 
         # Make it visible and hang onto config for a while
@@ -511,6 +572,8 @@ class Host(Generic[_HostContainerTypeVar]):
         parent: device.Device | None = None,
         **kwargs: Any,
     ) -> _HostContainerTypeVar:
+        if self.closing:
+            raise RuntimeError("Host closing")
         with self:
             name = data["name"]
 
@@ -532,13 +595,11 @@ class Host(Generic[_HostContainerTypeVar]):
                     dev = d.device
                     if not dev:
                         raise RuntimeError(
-                            f"Device with name {name} already exists but is not ready"
+                            f"Device {name} already exists but is not ready"
                         )
 
                     if dev.device_type not in ("UnusedSubdevice"):
-                        raise RuntimeError(
-                            f"Device with name {name} already exists"
-                        )
+                        raise RuntimeError(f"Device {name} already exists")
 
                 parentContainer = None
                 if parent is not None:
@@ -550,15 +611,14 @@ class Host(Generic[_HostContainerTypeVar]):
                 self.devices[name] = cont
 
             try:
-                self.on_before_device_added(name, cont)
-
-                d = cls(data)
-
                 with self.__lock:
                     self.__load_order.append(weakref.ref(cont))
                     self.__load_order = [
                         x for x in self.__load_order if x() is not None
                     ]
+                
+                self.on_before_device_added(name, cont)
+                d = cls(data)
 
                 cont.device = d
                 cont.on_device_ready(d)

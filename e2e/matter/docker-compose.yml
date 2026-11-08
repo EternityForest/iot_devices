@@ -1,0 +1,66 @@
+# End-to-end test rig for the iot_devices Matter devices.
+#
+# Brings up:
+#   - the js matter server (the one used in production) on a
+#     non-default websocket port, with certificate checking disabled
+#     so our non-certified test devices can pair,
+#   - one container running the three fake devices, which only open
+#     their commissioning windows when the "commissionable" flag is
+#     passed on the command line.
+#
+# All state lives under ./run/, which is wiped between test runs.  The
+# fake devices mirror their attribute values to ./run/devices-data/.
+services:
+  matter-server:
+    image: ghcr.io/matter-js/matterjs-server:stable
+    container_name: matter-e2e-server
+    command:
+      - --port
+      - "5581"
+      - --storage-path
+      - /data
+      - --dcl-offline
+      - --disable-ota
+      # The fake devices use development certificates, so the test-net
+      # DCL roots have to be trusted.
+      - --enable-test-net-dcl
+      - --log-level
+      - notice
+    ports:
+      - "5581:5581"
+    # A named volume: the server writes as root, which would make the
+    # bind mounted run/ dir impossible for the host to clean up.
+    volumes:
+      - matter-server-data:/data
+    networks:
+      - e2e
+
+  devices:
+    build: ./devices
+    container_name: matter-e2e-devices
+    command: ["--commissionable"]
+    # Run as the invoking user so the host can read and clean up the
+    # bind mounted state files.
+    user: "${E2E_UID:-1000}:${E2E_GID:-1000}"
+    environment:
+      MATTER_LOG_LEVEL: notice
+      # matter.js maps MATTER_ prefixed environment variables onto its
+      # config, so this sets storage.path.
+      MATTER_STORAGE_PATH: /storage
+    volumes:
+      - ./run/devices-data:/data
+      - ./run/devices-storage:/storage
+    networks:
+      - e2e
+
+networks:
+  e2e:
+    enable_ipv6: true
+    ipam:
+      config:
+        # Matter relies on MDNS discovery which prefers IPv6, so give
+        # the test network a ULA range to advertise on.
+        - subnet: fd00:beef::/48
+
+volumes:
+  matter-server-data: {}
