@@ -16,7 +16,7 @@ import time
 from collections import deque
 from collections.abc import Mapping
 from threading import Event, RLock, Thread
-from typing import Any
+from typing import Any, override
 
 import serial
 
@@ -28,6 +28,16 @@ MAX_LINE_BYTES = 65536
 
 class SerialJsonLines(JsonLinesDevice):
     """Talk JSON lines over a serial port found by globbing a pattern.
+
+    The JSON Lines family allows you to communicate over various transports
+    using lines of JSON.
+
+    Each entry in the ``keys`` config maps a remote JSON key name to a
+    local datapoint.
+
+    Keys marked ``output`` become writable datapoints
+    whose values are pushed to the peer; all other keys are read only and
+    are only ever written by incoming packets.
 
     The device keeps a background thread that finds the first file
     matching ``serial_glob``, opens it, and retries forever.  If the
@@ -102,6 +112,7 @@ class SerialJsonLines(JsonLinesDevice):
 
     # -- public API ------------------------------------------------------
 
+    @override
     def push_json(self, data: Mapping[str, Any]) -> None:
         """Queue one packet to be written as a JSON line."""
         line = (json.dumps(data) + "\n").encode()
@@ -110,6 +121,7 @@ class SerialJsonLines(JsonLinesDevice):
                 self.write_queue.popleft()
             self.write_queue.append(line)
 
+    @override
     def wait_ready(self, timeout: float = 15) -> None:
         deadline = time.monotonic() + timeout
         while time.monotonic() < deadline:
@@ -118,6 +130,7 @@ class SerialJsonLines(JsonLinesDevice):
             time.sleep(0.01)
         raise TimeoutError(f"{self.name} did not connect within {timeout}s")
 
+    @override
     def on_before_close(self) -> None:
         self._stop.set()
         self._thread.join(timeout=5)
@@ -195,7 +208,7 @@ class SerialJsonLines(JsonLinesDevice):
             while b"\n" in buffer:
                 raw, _, rest = buffer.partition(b"\n")
                 buffer = bytearray(rest)
-                self._handle_json_line(raw)
+                self._handle_json_line(bytes(raw))
 
     def _send_state(self, port: serial.Serial) -> None:
         state = self.get_state()

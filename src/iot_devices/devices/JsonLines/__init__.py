@@ -13,7 +13,7 @@ import logging
 import time
 from collections.abc import Callable, Mapping
 from threading import RLock
-from typing import Any, NotRequired, TypedDict, final
+from typing import Any, NotRequired, TypedDict, final, override
 
 from scullery import scheduling
 from scullery.ratelimits import RateLimiter
@@ -248,7 +248,7 @@ class JsonLinesDevice(iot_devices.device.Device):
         self.local_to_remote[local_name] = remote_name
 
         subtype = key.get("subtype", "")
-        output = bool(key.get("output", False))
+        output = bool(key.get("output", False))  # type: ignore
 
         handler: Callable[[Any, float, Any], None] | None = None
         if output:
@@ -492,6 +492,7 @@ class JsonLinesDevice(iot_devices.device.Device):
         """
         raise NotImplementedError
 
+    @override
     def on_before_close(self) -> None:
         with self.lock:
             event = self.scheduled_flush

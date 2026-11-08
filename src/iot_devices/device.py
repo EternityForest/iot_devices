@@ -142,7 +142,7 @@ class Device:
 
         self.__closing = False
 
-        self.host: host.Host = host.get_host()
+        self.host: host.Host[Any] = host.get_host()
 
         self.host_data: dict[str, Any] = {}
 
@@ -150,7 +150,9 @@ class Device:
 
         self._config = copy.deepcopy(config)
 
-        self.datapoint_getter_functions: dict[str, Callable] = {}
+        self.datapoint_getter_functions: dict[
+            str, Callable[[DataRequest], Any]
+        ] = {}
 
         # here is where we keep track of our list of
         # sub-devices for each device.
@@ -186,7 +188,7 @@ class Device:
         )
         """Title for UI display"""
 
-        self.datapoints: dict[str, DataPoint] = {}
+        self.datapoints: dict[str, DataPoint[Any]] = {}
 
         """Device instanes all have unique names not shared with anything
         else in that host."""
@@ -198,6 +200,28 @@ class Device:
 
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__} {self.title} ({self.name})>"
+
+    @classmethod
+    def dynamic_schema(cls, old_config: dict[str, Any]) -> dict[str, Any]:
+        """Used to dynamically discover schema additions like examples
+        and help info.
+
+        Args:
+            old_config: The current config of the device, which may be used
+                to determine what the new schema should be.
+        """
+        return cls.config_schema
+
+    def dynamic_readme(self) -> str:
+        """Allows dynamically generating a help page"""
+        if len(self.readme) < 512:
+            try:
+                with open(self.readme) as f:
+                    return f.read()
+            except Exception:
+                pass
+
+        return self.readme
 
     @final
     def get_parent(
@@ -258,7 +282,7 @@ class Device:
         """
         d = copy.deepcopy(self.config_schema)
         if "properties" not in d:
-            d["properties"] = {}
+            d["properties"] = {}  # type: ignore
         assert "properties" in d
         assert isinstance(d["properties"], dict)
 
@@ -1046,7 +1070,7 @@ class UnusedSubdevice(Device):
     def warn(self):
         self.handle_error("This device's parent never properly set it up.'")
 
-    def __init__(self, data):
+    def __init__(self, data: dict[str, Any]):
         super().__init__(data)
 
 

@@ -50,7 +50,19 @@ def is_multicast(host: str) -> bool:
 
 
 class UDPJsonLines(JsonLinesDevice):
-    """Exchange JSON lines with a UDP peer."""
+    """Exchange JSON lines with a UDP peer, or via multicast.
+
+
+    The JSON Lines family allows you to communicate over various transports
+    using lines of JSON.
+
+    Each entry in the ``keys`` config maps a remote JSON key name to a
+    local datapoint.
+
+    Keys marked ``output`` become writable datapoints
+    whose values are pushed to the peer; all other keys are read only and
+    are only ever written by incoming packets.
+    """
 
     device_type = "UDPJsonLines"
 

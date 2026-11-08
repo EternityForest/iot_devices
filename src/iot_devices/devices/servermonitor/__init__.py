@@ -52,6 +52,8 @@ schema = {
 
 
 class ServerMonitor(device.Device):
+    """Poll a remote HTTP or ping server to make sure it is still running"""
+
     device_type = "ServerMonitor"
 
     upgrade_legacy_config_keys = {

@@ -63,6 +63,10 @@
         "UDPJsonLines": {
             "submodule": "devices.JsonLines.udp",
             "description": "Exchange newline delimited JSON packets with a UDP peer. Supports unicast, broadcast and multicast."
+        },
+        "PCInputDevice": {
+            "submodule": "devices.PCInput",
+            "description": "Aggregate local keyboards, mice and other evdev input devices matching a keyword filter. Key and button events are exposed through a key_event string datapoint, axis, relative and switch events become numeric datapoints. Requires read access to /dev/input, i.e. membership in the 'input' group."
         }
     }
 }

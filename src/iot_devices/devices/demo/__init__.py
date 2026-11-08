@@ -12,7 +12,7 @@ class DemoDevice(device.Device):
     config_schema = {
         "device.fixed_number_multiplier": {"type": "number", "default": 1},
         "device.echo_number": {"type": "number", "default": 5},
-        "set_by_device_itself": {"type": "string"},
+        "set_by_device_itself": {"type": "string", "examples": ["hello world"]},
         "requested_subdevice_number": {"type": "number", "default": 0},
     }
 

@@ -6,3 +6,7 @@ dev-build-docs:
 	@cp -r doc_build_md/markdown/autoapi/iot_devices/ docs/
 
 	@rm -rf doc_build_md
+
+.PHONY: test
+test:
+	@uv run python -m pytest

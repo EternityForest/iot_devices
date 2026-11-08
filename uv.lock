@@ -799,6 +799,12 @@ wheels = [
 ]
 
 [[package]]
+name = "evdev"
+version = "2.0.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/2e/07/eb30593524303d1367f0dc00c1c66582c994dba412a47751e34bad9fa29b/evdev-2.0.0.tar.gz", hash = "sha256:442fb3f4c8dfc9e61e901133c356220c02d663eca8f34722e0cecdd637eba504", size = 33766, upload-time = "2026-08-23T10:31:26.835Z" }
+
+[[package]]
 name = "flexcache"
 version = "0.3"
 source = { registry = "https://pypi.org/simple" }
@@ -1110,6 +1116,7 @@ dependencies = [
     { name = "bleak" },
     { name = "colorzero" },
     { name = "cryptography" },
+    { name = "evdev" },
     { name = "gpiod" },
     { name = "gpsdclient" },
     { name = "hypercorn" },
@@ -1125,6 +1132,7 @@ dependencies = [
     { name = "scullery" },
     { name = "starlette" },
     { name = "textual" },
+    { name = "tomli-w" },
     { name = "websockets" },
     { name = "yeelight" },
 ]
@@ -1139,6 +1147,8 @@ dev = [
     { name = "sphinx-markdown-builder" },
     { name = "sphinx-pyproject" },
     { name = "stamina" },
+    { name = "types-jsonschema" },
+    { name = "types-pyserial" },
 ]
 
 [package.metadata]
@@ -1149,6 +1159,7 @@ requires-dist = [
     { name = "bleak" },
     { name = "colorzero" },
     { name = "cryptography" },
+    { name = "evdev", specifier = ">=1.7.0" },
     { name = "gpiod", specifier = ">=2.5.0" },
     { name = "gpsdclient" },
     { name = "hypercorn", specifier = ">=0.18.0" },
@@ -1163,6 +1174,7 @@ requires-dist = [
     { name = "scullery", specifier = ">=0.4.0" },
     { name = "starlette" },
     { name = "textual" },
+    { name = "tomli-w", specifier = ">=1.2.0" },
     { name = "websockets" },
     { name = "yeelight" },
 ]
@@ -1177,6 +1189,8 @@ dev = [
     { name = "sphinx-markdown-builder", specifier = ">=0.6.8" },
     { name = "sphinx-pyproject", specifier = ">=0.3.0" },
     { name = "stamina", specifier = ">=25.1.0" },
+    { name = "types-jsonschema" },
+    { name = "types-pyserial" },
 ]
 
 [[package]]
@@ -2659,6 +2673,36 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/f6/2f/f0b408f227edca21d1996c1cd0b65309f0cbff44264aa40aded3ff9ce2e1/textual-6.6.0.tar.gz", hash = "sha256:53345166d6b0f9fd028ed0217d73b8f47c3a26679a18ba3b67616dcacb470eec", size = 1579327, upload-time = "2025-11-10T17:50:00.038Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/53/b3/95ab646b0c908823d71e49ab8b5949ec9f33346cee3897d1af6be28a8d91/textual-6.6.0-py3-none-any.whl", hash = "sha256:5a9484bd15ee8a6fd8ac4ed4849fb25ee56bed2cecc7b8a83c4cd7d5f19515e5", size = 712606, upload-time = "2025-11-10T17:49:58.391Z" },
+]
+
+[[package]]
+name = "tomli-w"
+version = "1.2.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/19/75/241269d1da26b624c0d5e110e8149093c759b7a286138f4efd61a60e75fe/tomli_w-1.2.0.tar.gz", hash = "sha256:2dd14fac5a47c27be9cd4c976af5a12d87fb1f0b4512f81d69cce3b35ae25021", size = 7184, upload-time = "2025-01-15T12:07:24.262Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/c7/18/c86eb8e0202e32dd3df50d43d7ff9854f8e0603945ff398974c1d91ac1ef/tomli_w-1.2.0-py3-none-any.whl", hash = "sha256:188306098d013b691fcadc011abd66727d3c414c571bb01b1a174ba8c983cf90", size = 6675, upload-time = "2025-01-15T12:07:22.074Z" },
+]
+
+[[package]]
+name = "types-jsonschema"
+version = "4.26.0.20261006"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "referencing" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/29/d2/1f742605f5a6d39f993134885b8de41c98af606871d3ebddaf3e776bd1eb/types_jsonschema-4.26.0.20261006.tar.gz", hash = "sha256:3eb7db61b6819d40addfdaac7173e749071a7d4a9a4394f0c844598ec84b2500", size = 16843, upload-time = "2026-10-06T08:16:07.318Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/8b/a0/4f2e3c0dc3d5cad958006f2e0307065cc8fe4fbf0393ff0b69d55ee9bbe5/types_jsonschema-4.26.0.20261006-py3-none-any.whl", hash = "sha256:29301f4e65e3928540cdf5e23ad716e38bb0c0b416a48dada213edd3d70206ec", size = 16113, upload-time = "2026-10-06T08:16:06.355Z" },
+]
+
+[[package]]
+name = "types-pyserial"
+version = "3.5.0.20261104"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/b7/12/a7f5c8e6529275da78de98283e407f4ad70612189c8b2c50076595824bde/types_pyserial-3.5.0.20261104.tar.gz", hash = "sha256:8276342a827facb25bd91976f2b2db576b74b3c32777464a5aa8ba6a7b91959f", size = 21336, upload-time = "2026-11-04T08:14:17.383Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/8e/08/16c3bd0453593e058d5e2abedea51cd913db0d0ac9754476d26d58461a2a/types_pyserial-3.5.0.20261104-py3-none-any.whl", hash = "sha256:b31c0b53cd57784db8434fc623a019e4d69b8e88a87796f09fc885d59799b593", size = 25372, upload-time = "2026-11-04T08:14:16.167Z" },
 ]
 
 [[package]]

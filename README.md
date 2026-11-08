@@ -147,10 +147,10 @@ from iot_devices.host.simple_host import SimpleHost
 data =  {
     'type': 'GPIOInput',
     'name': "foo",
-    'active_high': True,
-    'pull_up': False,
+    'active_high': False,
+    'pull_up': True,
     'pull_down': False,
-    'pin': 'MOCK1',
+    'pin': '18',
     'debounce_time_ms': 0
 }
 

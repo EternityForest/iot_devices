@@ -9,7 +9,7 @@
   exposing that line.
 * GPIO lines already claimed by a blacklisted consumer (e.g. `kernel`)
   are refused, to avoid disturbing the running system.
-
+* PCInputDevice for mice, keyboards, and game pads
 
 ## 0.34.0
 
