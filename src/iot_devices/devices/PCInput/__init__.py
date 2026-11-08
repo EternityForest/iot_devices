@@ -81,7 +81,7 @@ def _resolve_name(mapping: Mapping[int, Any], code: int) -> str | None:
     keys and buttons the ``key_``/``btn_`` spelling is preferred.
     """
     value = mapping.get(code)
-    if isinstance(value, list[str] | tuple[str]):
+    if isinstance(value, (list, tuple)):
         for candidate in value:
             if isinstance(candidate, str) and candidate.lower().startswith(
                 ("key_", "btn_")

@@ -8,6 +8,7 @@ permission checks can all be exercised on any machine.
 from __future__ import annotations
 
 import os
+import threading
 import time
 from collections.abc import Iterator
 from typing import Any
@@ -21,14 +22,35 @@ from iot_devices.devices.PCInput import PCInputDevice
 from .recording_host import RecordingHost
 
 
-def wait_for(predicate: Any, timeout: float = 3.0) -> None:
-    """Poll until predicate is true, or fail with a useful message."""
+def wait_for(
+    predicate: Any,
+    timeout: float = 3.0,
+    diagnostics: Any = None,
+) -> None:
+    """Poll until predicate is true, or fail with a useful message.
+
+    The optional ``diagnostics`` callable is evaluated on timeout and
+    appended to the failure message, which is how reader thread
+    problems surface.
+    """
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
         if predicate():
             return
         time.sleep(0.01)
-    assert predicate(), "condition was not met before the timeout"
+    message = "condition was not met before the timeout"
+    if diagnostics is not None:
+        message += "\n" + str(diagnostics())
+    assert predicate(), message
+
+
+def reader_state(dev: PCInputDevice) -> str:
+    """Describe reader threads and recorded errors for diagnostics."""
+    threads = [
+        t.name for t in threading.enumerate() if t.name.startswith("PCInput:")
+    ]
+    errors = getattr(dev.host, "errors", [])
+    return f"threads={threads} errors={errors}"
 
 
 def dp_value(dev: PCInputDevice, name: str) -> Any:
@@ -196,7 +218,10 @@ def test_key_events(env: Environment, host: RecordingHost) -> None:
     wait_for(lambda: dp_value(dev, "connected") == 1)
 
     kb.push(ecodes.EV_KEY, ecodes.KEY_A, 1)
-    wait_for(lambda: dp_value(dev, "key_event") == "key_a_down")
+    wait_for(
+        lambda: dp_value(dev, "key_event") == "key_a_down",
+        diagnostics=lambda: reader_state(dev),
+    )
 
     kb.push(ecodes.EV_KEY, ecodes.KEY_A, 0)
     wait_for(lambda: dp_value(dev, "key_event") == "key_a_up")
@@ -221,7 +246,10 @@ def test_numeric_datapoints_created_on_first_event(
     mouse.push(ecodes.EV_ABS, ecodes.ABS_X, 100)
     mouse.push(ecodes.EV_SW, ecodes.SW_LID, 1)
 
-    wait_for(lambda: dp_value(dev, "rel_x") == 5)
+    wait_for(
+        lambda: dp_value(dev, "rel_x") == 5,
+        diagnostics=lambda: reader_state(dev),
+    )
     wait_for(lambda: dp_value(dev, "rel_wheel") == -1)
     wait_for(lambda: dp_value(dev, "abs_x") == 100)
     wait_for(lambda: dp_value(dev, "sw_lid") == 1)
