@@ -14,10 +14,26 @@ class DemoDevice(device.Device):
         "device.echo_number": {"type": "number", "default": 5},
         "set_by_device_itself": {"type": "string", "examples": ["hello world"]},
         "requested_subdevice_number": {"type": "number", "default": 0},
+        "device.throw_on_create": {
+            "type": "boolean",
+            "default": False,
+            "description": "Intentionally raise an exception during device creation. For testing that host frameworks recover from device errors.",
+        },
+        "device.throw_on_close": {
+            "type": "boolean",
+            "default": False,
+            "description": "Intentionally raise an exception when the device is closed. For testing that host frameworks recover from device errors.",
+        },
     }
 
     def __init__(self, data, **kw):
         device.Device.__init__(self, data, **kw)
+
+        if self.config.get("device.throw_on_create"):
+            raise RuntimeError(
+                f"Device {self.name}: device.throw_on_create was set, "
+                "intentionally raising an exception on create"
+            )
 
         try:
             if not os.path.exists(
@@ -90,6 +106,13 @@ class DemoDevice(device.Device):
         self.numeric_data_point(
             "test_errors", subtype="trigger", handler=fake_an_error
         )
+
+    def on_before_close(self):
+        if self.config.get("device.throw_on_close"):
+            raise RuntimeError(
+                f"Device {self.name}: device.throw_on_close was set, "
+                "intentionally raising an exception on close"
+            )
 
     def update_config(self, config: dict[str, Any]):
         if "echo_number" in self.datapoints:
