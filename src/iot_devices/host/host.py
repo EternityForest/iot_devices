@@ -275,7 +275,7 @@ class Host(Generic[_HostContainerTypeVar]):
                     )
                     d.close()
                 try:
-                    x.remove(i)
+                    x.remove(r)
                 except ValueError:
                     pass
 

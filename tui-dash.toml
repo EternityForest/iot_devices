@@ -1,8 +1,4 @@
-[[devices]]
-name="Demo"
-type="DemoDevice"
-
-[[devices]]
-name="AnotherDemo"
-type="DemoDevice"
-
+devices = [
+    { name = "demo1", type = "DemoDevice" },
+    { name = "boom", type = "DemoDevice", "device.throw_on_create" = true },
+]

@@ -13,6 +13,7 @@ data when the user saves.
 from __future__ import annotations
 
 import copy
+from collections.abc import Awaitable, Callable
 from typing import Any
 
 from textual import on
@@ -35,6 +36,33 @@ Path = tuple[str | int, ...]
 Tuples are used rather than dotted strings so that config keys which
 themselves contain dots stay unambiguous.
 """
+
+
+class CallbackButton(Button):
+    """A Button that runs a callback when pressed.
+
+    The callback is a closure created at compose time, so any per-button
+    data (keys, indices) is captured at creation rather than stored on
+    the button instance. This avoids the late-binding problem of loop
+    variables shared across buttons.
+    """
+
+    def __init__(
+        self,
+        label: Any,
+        callback: Callable[[], Awaitable[None] | None],
+        *,
+        classes: str | None = None,
+    ) -> None:
+        super().__init__(label, classes=classes)
+        self._callback = callback
+
+    async def on_button_pressed(self, event: Button.Pressed) -> None:
+        # Stop propagation: the callback fully owns the button's action.
+        event.stop()
+        result = self._callback()
+        if result is not None:
+            await result
 
 
 def _key_to_title(key: str) -> str:
@@ -279,7 +307,6 @@ class EnumEditor(BaseEditor):
     }
     """
 
-    @override
     def compose(self) -> ComposeResult:
         opts = self.schema.get("enum", [])
         yield Select(
@@ -467,7 +494,7 @@ class ObjectEditor(Widget):
             ps = props.get(k)
             if isinstance(ps, dict):
                 po = ps.get("propertyOrder")
-                if isinstance(po, int | float):
+                if isinstance(po, (int, float)):
                     return float(po)
             return 0.0
 
@@ -515,46 +542,61 @@ class ObjectEditor(Widget):
                     yield make_editor(
                         self.form, self.path + (key,), aps, value.get(key)
                     )
-                    b = Button("✕", classes="remove-key")
-                    b.owner_editor = self
-                    b.extra_key = key
-                    yield b
+                    # Callback captures this row's key at creation time,
+                    # avoiding loop-scope late binding.
+                    yield CallbackButton(
+                        "✕",
+                        classes="remove-key",
+                        callback=self._make_remove_key_cb(key),
+                    )
             with Horizontal(classes="prop-row"):
                 self._add_key_input = Input(
                     placeholder="New key", classes="add-key-input"
                 )
                 yield self._add_key_input
-                b = Button("+ Add key", classes="add-key-btn")
-                b.owner_editor = self
+                b = CallbackButton(
+                    "+ Add key",
+                    classes="add-key-btn",
+                    callback=self._make_add_key_cb(),
+                )
                 yield b
 
     async def refresh_rows(self) -> None:
         """Rebuild the rows after a structural change."""
-        await self.remove_children()
-        await self.mount(*self.compose())
+        # Fire-and-forget: awaiting remove_children() here deadlocks the
+        # message pump when the button triggering this callback is nested
+        # inside a container being pruned (circular pump-task wait).
+        self.remove_children()
+        await self.mount_compose(self.compose())
 
-    @on(Button.Pressed, ".remove-key")
-    async def _remove_key(self, event: Button.Pressed) -> None:
-        b = event.button
-        if getattr(b, "owner_editor", None) is not self:
-            return
-        self.form.delete_value(self.path + (b.extra_key,))
-        await self.refresh_rows()
+    def _make_remove_key_cb(self, key: str) -> Callable[[], Awaitable[None]]:
+        """Build a closure capturing this row's key at creation time."""
 
-    @on(Button.Pressed, ".add-key-btn")
-    async def _add_key(self, event: Button.Pressed) -> None:
-        b = event.button
-        if getattr(b, "owner_editor", None) is not self:
-            return
-        key = self._add_key_input.value.strip()
-        props = self.schema.get("properties", {})
-        cur = self.form.get_value(self.path)
-        if not key or key in props or (isinstance(cur, dict) and key in cur):
-            return
-        aps = self.schema.get("additionalProperties")
-        aps = aps if isinstance(aps, dict) else {}
-        self.form.set_value(self.path + (key,), _default_for(aps))
-        await self.refresh_rows()
+        async def cb() -> None:
+            self.form.delete_value(self.path + (key,))
+            await self.refresh_rows()
+
+        return cb
+
+    def _make_add_key_cb(self) -> Callable[[], Awaitable[None]]:
+        """Build a closure for the add-key button."""
+
+        async def cb() -> None:
+            key = self._add_key_input.value.strip()
+            props = self.schema.get("properties", {})
+            cur = self.form.get_value(self.path)
+            if (
+                not key
+                or key in props
+                or (isinstance(cur, dict) and key in cur)
+            ):
+                return
+            aps = self.schema.get("additionalProperties")
+            aps = aps if isinstance(aps, dict) else {}
+            self.form.set_value(self.path + (key,), _default_for(aps))
+            await self.refresh_rows()
+
+        return cb
 
 
 class ArrayEditor(Widget):
@@ -598,35 +640,45 @@ class ArrayEditor(Widget):
         for i, item in enumerate(value):
             with Horizontal(classes="array-row"):
                 yield make_editor(self.form, self.path + (i,), items, item)
-                b = Button("✕", classes="array-remove")
-                b.owner_editor = self
-                b.item_index = i
-                yield b
-        b = Button("+ Add item", classes="array-add")
-        b.owner_editor = self
-        yield b
+                # Callback captures this row's index at creation time,
+                # avoiding loop-scope late binding.
+                yield CallbackButton(
+                    "✕",
+                    classes="array-remove",
+                    callback=self._make_remove_item_cb(i),
+                )
+        yield CallbackButton(
+            "+ Add item",
+            classes="array-add",
+            callback=self._make_add_item_cb(),
+        )
 
     async def refresh_rows(self) -> None:
-        await self.remove_children()
-        await self.mount(*self.compose())
+        # Fire-and-forget: awaiting remove_children() here deadlocks the
+        # message pump when the button triggering this callback is nested
+        # inside a container being pruned (circular pump-task wait).
+        self.remove_children()
+        await self.mount_compose(self.compose())
 
-    @on(Button.Pressed, ".array-remove")
-    async def _remove_item(self, event: Button.Pressed) -> None:
-        b = event.button
-        if getattr(b, "owner_editor", None) is not self:
-            return
-        self.form.delete_value(self.path + (b.item_index,))
-        await self.refresh_rows()
+    def _make_remove_item_cb(self, index: int) -> Callable[[], Awaitable[None]]:
+        """Build a closure capturing this row's index at creation time."""
 
-    @on(Button.Pressed, ".array-add")
-    async def _add_item(self, event: Button.Pressed) -> None:
-        b = event.button
-        if getattr(b, "owner_editor", None) is not self:
-            return
-        self.form.append_value(
-            self.path, _default_for(self.schema.get("items") or {})
-        )
-        await self.refresh_rows()
+        async def cb() -> None:
+            self.form.delete_value(self.path + (index,))
+            await self.refresh_rows()
+
+        return cb
+
+    def _make_add_item_cb(self) -> Callable[[], Awaitable[None]]:
+        """Build a closure for the add-item button."""
+
+        async def cb() -> None:
+            self.form.append_value(
+                self.path, _default_for(self.schema.get("items") or {})
+            )
+            await self.refresh_rows()
+
+        return cb
 
 
 def make_editor(

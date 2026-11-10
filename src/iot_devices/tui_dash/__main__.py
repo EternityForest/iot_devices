@@ -15,14 +15,12 @@ from textual.screen import ModalScreen, Screen
 from textual.widget import Widget
 from textual.widgets import (
     Button,
-    Input,
     Label,
     ListItem,
     ListView,
     Placeholder,
     RichLog,
     Select,
-    Static,
 )
 
 from iot_devices.host.host import DeviceHostContainer, apply_defaults
@@ -234,7 +232,13 @@ class TweetScreen(Screen):
     DEFAULT_CSS = """
     TweetScreen {
     border: solid $accent;
-    }"""
+    }
+    #config-btn {
+        dock: bottom;
+        height: 3;
+        width: 100%;
+    }
+    """
 
     def __init__(self):
         super().__init__()
@@ -249,6 +253,11 @@ class TweetScreen(Screen):
             yield self.devs
 
         yield log
+        yield Button("Config", id="config-btn")
+
+    @on(Button.Pressed, "#config-btn")
+    def _open_config(self) -> None:
+        self.app.push_screen(DeviceConfigScreen())
 
 
 devices_screen = TweetScreen()
@@ -304,15 +313,17 @@ def _remove_dashboard_widget(name: str) -> None:
 
 def apply_device_config(
     old_name: str | None, data: dict[str, Any], is_new: bool
-) -> bool:
+) -> str | None:
     """Save config, then destroy and recreate the affected device.
 
-    Returns True if the device was created (or recreated) successfully.
+    Returns an error message on failure, or None on success. The caller
+    displays errors to the user; they are intentionally NOT logged since
+    the main-page RichLog sits behind modal settings panes where it can't
+    be seen.
     """
     name = data.get("name")
     if not isinstance(name, str) or not name.strip():
-        log.write("Device must have a non-empty name")
-        return False
+        return "Device must have a non-empty name"
     name = name.strip()
     data["name"] = name
 
@@ -320,8 +331,7 @@ def apply_device_config(
     if is_new or (old_name and name != old_name):
         for d in config.get("devices", []):
             if d.get("name") == name:
-                log.write(f"A device named {name} already exists")
-                return False
+                return f"A device named {name} already exists"
 
     if is_new:
         config.setdefault("devices", []).append(copy.deepcopy(data))
@@ -341,9 +351,8 @@ def apply_device_config(
     try:
         host.add_new_device(copy.deepcopy(data))
     except Exception as e:
-        log.write(f"Error creating device {name}: {e}")
-        return False
-    return True
+        return f"Error creating device {name}: {e}"
+    return None
 
 
 def remove_device(name: str) -> None:
@@ -397,6 +406,50 @@ class ConfirmScreen(ModalScreen[bool]):
         self.dismiss(False)
 
 
+class ErrorScreen(ModalScreen):
+    """Splash dialog shown when saving a device fails."""
+
+    DEFAULT_CSS = """
+    ErrorScreen {
+        align: center middle;
+    }
+    #error-box {
+        width: auto;
+        max-width: 80%;
+        height: auto;
+        border: round $error;
+        background: $surface;
+        padding: 1 2;
+    }
+    #error-buttons {
+        height: auto;
+        margin-top: 1;
+    }
+    #error-buttons Button {
+        margin-right: 1;
+    }
+    """
+
+    BINDINGS = [("escape", "dismiss", "Dismiss")]
+
+    def __init__(self, message: str) -> None:
+        super().__init__()
+        self.message = message
+
+    def compose(self) -> ComposeResult:
+        with Vertical(id="error-box"):
+            yield Label(self.message)
+            with Horizontal(id="error-buttons"):
+                yield Button("OK", classes="ok-btn")
+
+    @on(Button.Pressed, ".ok-btn")
+    def _ok(self) -> None:
+        self.dismiss()
+
+    def action_dismiss(self) -> None:
+        self.dismiss()
+
+
 class DeviceEditScreen(ModalScreen):
     """Schema-driven editor for one device's config."""
 
@@ -423,10 +476,6 @@ class DeviceEditScreen(ModalScreen):
     #edit-buttons Button {
         margin-right: 1;
     }
-    DeviceEditScreen .error {
-        color: $error;
-        height: auto;
-    }
     """
 
     BINDINGS = [("escape", "cancel", "Cancel")]
@@ -444,7 +493,6 @@ class DeviceEditScreen(ModalScreen):
         self.dev_cls = cls
         self.schema = _normalize_schema(cls, data)
         self.form = SchemaForm(self.schema, data)
-        self.error = Static("", classes="error")
 
     def compose(self) -> ComposeResult:
         if self.is_new and self.dev_cls is not None:
@@ -455,7 +503,6 @@ class DeviceEditScreen(ModalScreen):
             yield Label(title)
             with VerticalScroll(id="edit-form-scroll"):
                 yield self.form
-            yield self.error
             with Horizontal(id="edit-buttons"):
                 yield Button("Save", variant="success", classes="save-btn")
                 yield Button("Cancel", classes="cancel-btn")
@@ -465,13 +512,21 @@ class DeviceEditScreen(ModalScreen):
         try:
             validate(self.form.data, self.schema)
         except ValidationError as e:
-            self.error.update(f"Invalid config: {e.message}")
+            self.app.push_screen(ErrorScreen(f"Invalid config: {e.message}"))
             return
-        if apply_device_config(
+        err = apply_device_config(
             None if self.is_new else self.original_name,
             copy.deepcopy(self.form.data),
             self.is_new,
-        ):
+        )
+        if err is not None:
+            self.app.push_screen(ErrorScreen(err))
+            return
+        # Saved successfully.
+        self.app.pop_screen()
+        if self.is_new:
+            # Close the device creation pane behind this editor, returning
+            # to the main dashboard.
             self.app.pop_screen()
 
     @on(Button.Pressed, ".cancel-btn")
@@ -676,9 +731,10 @@ def main():
             )
         )
     fn = sys.argv[1]
-    with open(fn, "rb") as f:
-        cfg = tomllib.load(f)
-    config.update(cfg)
+    if os.path.exists(fn):
+        with open(fn, "rb") as f:
+            cfg = tomllib.load(f)
+        config.update(cfg)
     global CONFIG_FILE
     CONFIG_FILE = fn
     app = LayoutApp()
